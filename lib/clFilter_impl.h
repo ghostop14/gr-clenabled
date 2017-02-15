@@ -51,7 +51,6 @@ namespace gr {
 
 		void * paddedInputPtr = NULL;
 		void * paddedResultPtr = NULL;
-		void * tailPtr = NULL;
 		float * filterPtr = NULL;
 
     	virtual int filterCPU(int noutput_items,

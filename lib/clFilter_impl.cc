@@ -90,14 +90,6 @@ namespace gr {
 				delete[] (float *)paddedResultPtr;
 			}
 		}
-		if (tailPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)tailPtr;
-			}
-			else {
-				delete[] (float *)tailPtr;
-			}
-		}
     }
 
     int clFilter_impl::testCPU(int noutput_items,
@@ -144,24 +136,14 @@ namespace gr {
 				delete[] (float *)paddedResultPtr;
 			}
 		}
-		if (tailPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)tailPtr;
-			}
-			else {
-				delete[] (float *)tailPtr;
-			}
-		}
 
 		if (dataType == DTYPE_COMPLEX) {
 			paddedInputPtr = (void *)new gr_complex[resultLengthPoints];
 			paddedResultPtr = (void *)new gr_complex[resultLengthPoints];
-			tailPtr = (void *)new gr_complex[paddingLength];
 		}
 		else {
 			paddedInputPtr = (void *)new float[resultLengthPoints];
 			paddedResultPtr = (void *)new float[resultLengthPoints];
-			tailPtr = (void *)new float[paddingLength];
 		}
 
 		// Save the converted pointer to our taps.
@@ -360,28 +342,6 @@ namespace gr {
 		resultBuffer,
 		(void *) output);
 
-		// Copy results back out
-		// memcpy(paddedResultPtr,(void *)&tmpArr[0],paddedBufferLengthBytes);
-		// Add in last tail
-
-		// Note that in fft_filter.cc implementation, regardless of decimation, the tail is added back in to the results.
-		if (dataType==DTYPE_COMPLEX) {
-			gr_complex *padding = (gr_complex *)tailPtr;
-	        gr_complex *ResultPtr = (gr_complex *)paddedResultPtr;
-
-			for (int i=0;i<paddingLength;i++) {
-				ResultPtr[i] += padding[i]; // gr_complex has a + operator
-			}
-		}
-		else {
-			float *padding = (float *)tailPtr;
-	        float *ResultPtr = (float *)paddedResultPtr;
-
-			for (int i=0;i<paddingLength;i++) {
-				ResultPtr[i] += padding[i];
-			}
-		}
-
 		int retVal;
 
 		if (fft_filter_ccf::d_decimation == 1) {
@@ -412,13 +372,6 @@ namespace gr {
 
 			retVal = i;
 		}
-
-		// copy forward tail
-		if (dataType==DTYPE_COMPLEX)
-			memcpy(tailPtr,(gr_complex *)paddedResultPtr+inputLengthBytes,paddingBytes);
-		else
-			memcpy(tailPtr,(float *)paddedResultPtr+inputLengthBytes,paddingBytes);
-
 		return retVal;  // Accounts for decimation.
     }
 

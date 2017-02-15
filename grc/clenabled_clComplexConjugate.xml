@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<block>
+  <name>OpenCL Complex Conjugate</name>
+  <key>clenabled_clComplexConjugate</key>
+  <category>[OpenCL-Enabled]</category>
+  <import>import clenabled</import>
+  <make>clenabled.clMathOp(1,$openCLPlatform,4)</make>
+	<param>
+		<name>OpenCL Platform</name>
+		<key>openCLPlatform</key>
+		<type>enum</type>
+		<option>
+			<name>GPU</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>Accelerator</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>CPU</name>
+			<key>3</key>
+		</option>
+		<option>
+			<name>Any</name>
+			<key>4</key>
+		</option>
+	</param>
+  <sink>
+    <name>in</name>
+    <type>complex</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>complex</type>
+  </source>
+	<doc>
+This block is an OpenCL enabled version of the built-in complex conjugate block.
+
+Note that due to the low number of computes per data point, a pure CPU
+
+approach is actually faster.
+	</doc>
+</block>

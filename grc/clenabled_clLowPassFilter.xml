@@ -1,0 +1,106 @@
+<block>
+  <name>OpenCL Low Pass Filter</name>
+  <key>clenabled_clLowPassFilter</key>
+  <category>[OpenCL-Enabled]</category>
+  <import>import clenabled</import>
+  <import>from gnuradio.filter import firdes</import>
+  <make>clenabled.clFilter($openCLPlatform,$decimation,firdes.low_pass(
+	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1)</make>
+	<callback>set_taps2(firdes.low_pass($gain, $samp_rate, $cutoff_freq, $width, $win, $beta))</callback>
+	<param>
+		<name>OpenCL Platform</name>
+		<key>openCLPlatform</key>
+		<type>enum</type>
+		<option>
+			<name>GPU</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>Accelerator</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>CPU</name>
+			<key>3</key>
+		</option>
+		<option>
+			<name>Any</name>
+			<key>4</key>
+		</option>
+	</param>
+  <param>
+    <name>Decimation</name>
+    <key>decimation</key>
+    <value>1</value>
+    <type>int</type>
+  </param>
+	<param>
+		<name>Gain</name>
+		<key>gain</key>
+		<value>1</value>
+		<type>real</type>
+	</param>
+	<param>
+		<name>Sample Rate</name>
+		<key>samp_rate</key>
+		<value>samp_rate</value>
+		<type>real</type>
+	</param>
+	<param>
+		<name>Cutoff Freq</name>
+		<key>cutoff_freq</key>
+		<type>real</type>
+	</param>
+	<param>
+		<name>Transition Width</name>
+		<key>width</key>
+		<type>real</type>
+	</param>
+	<param>
+		<name>Window</name>
+		<key>win</key>
+		<value>firdes.WIN_HAMMING</value>
+		<type>int</type>
+		<option>
+			<name>Hamming</name>
+			<key>firdes.WIN_HAMMING</key>
+		</option>
+		<option>
+			<name>Blackman</name>
+			<key>firdes.WIN_BLACKMAN</key>
+		</option>
+		<option>
+			<name>Hann</name>
+			<key>firdes.WIN_HANN</key>
+		</option>
+		<option>
+			<name>Rectangular</name>
+			<key>firdes.WIN_RECTANGULAR</key>
+		</option>
+		<option>
+			<name>Kaiser</name>
+			<key>firdes.WIN_KAISER</key>
+		</option>
+	</param>
+	<param>
+		<name>Beta</name>
+		<key>beta</key>
+		<value>6.76</value>
+		<type>real</type>
+	</param>
+  <sink>
+    <name>in</name>
+    <type>complex</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>complex</type>
+  </source>
+	<doc>
+This filter is an OpenCL enabled version of the built-in low pass filter.
+
+Sample rate, cutoff frequency, and transition width are in Hertz.
+
+The beta paramater only applies to the Kaiser window.
+	</doc>
+</block>

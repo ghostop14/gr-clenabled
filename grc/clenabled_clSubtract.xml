@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<block>
+  <name>OpenCL Subtract</name>
+  <key>clenabled_clSubtract</key>
+  <category>[OpenCL-Enabled]</category>
+  <import>import clenabled</import>
+  <make>clenabled.clMathOp($type.datatype,$openCLPlatform,3)</make>
+	<param>
+		<name>Data Type</name>
+		<key>type</key>
+		<type>enum</type>
+		<option>
+			<name>Complex</name>
+			<key>complex</key>
+			<opt>datatype:1</opt>
+			<opt>input:complex</opt>
+			<opt>output:complex</opt>
+		</option>
+		<option>
+			<name>Float</name>
+			<key>float</key>
+			<opt>datatype:2</opt>
+			<opt>input:float</opt>
+			<opt>output:float</opt>
+		</option>
+		<option>
+			<name>Int</name>
+			<key>int</key>
+			<opt>datatype:3</opt>
+			<opt>input:int</opt>
+			<opt>output:int</opt>
+		</option>
+	</param>
+	<param>
+		<name>OpenCL Platform</name>
+		<key>openCLPlatform</key>
+		<type>enum</type>
+		<option>
+			<name>GPU</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>Accelerator</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>CPU</name>
+			<key>3</key>
+		</option>
+		<option>
+			<name>Any</name>
+			<key>4</key>
+		</option>
+	</param>
+  <sink>
+    <name>in1</name>
+    <type>$type.input</type>
+  </sink>
+  <sink>
+    <name>in2</name>
+    <type>$type.input</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>$type.output</type>
+  </source>
+	<doc>
+This is an OpenCL enabled version of the built-in Subtract block.
+
+Note that due to the low number of computes per data point, a pure CPU
+
+approach is actually faster.
+	</doc>
+</block>

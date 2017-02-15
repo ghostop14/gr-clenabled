@@ -1,0 +1,19 @@
+/*
+ * clMathOpTypes.h
+ *
+ *  Created on: Feb 13, 2017
+ *      Author: root
+ */
+
+#ifndef INCLUDE_CLENABLED_CLMATHOPTYPES_H_
+#define INCLUDE_CLENABLED_CLMATHOPTYPES_H_
+
+#define MATHOP_MULTIPLY 1
+#define MATHOP_ADD 2
+#define MATHOP_SUBTRACT 3
+#define MATHOP_COMPLEX_CONJUGATE 4
+#define MATHOP_MULTIPLY_CONJUGATE 5
+#define MATHOP_LOG10 6
+#define MATHOP_LOG 7
+
+#endif /* INCLUDE_CLENABLED_CLMATHOPTYPES_H_ */

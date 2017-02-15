@@ -74,7 +74,7 @@ namespace gr {
 	case DTYPE_FLOAT:
 		switch (mathOperatorType) {
 		case MATHOP_MULTIPLY:
-		srcStdStr = "__kernel void multconst_float(__global float * restrict a, float multiplier, __global float * restrict c) {\n";
+		srcStdStr = "__kernel void multconst_float(__global const float * restrict a, const float multiplier, __global float * restrict c) {\n";
 		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] * multiplier;\n";
 		srcStdStr += "}\n";
@@ -82,7 +82,7 @@ namespace gr {
 		break;
 
 		case MATHOP_ADD:
-		srcStdStr = "__kernel void addconst_float(__global float * restrict a, float multiplier, __global float * restrict c) {\n";
+		srcStdStr = "__kernel void addconst_float(__global const float * restrict a, const float multiplier, __global float * restrict c) {\n";
 		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] + multiplier;\n";
 		srcStdStr += "}\n";
@@ -93,7 +93,7 @@ namespace gr {
 	case DTYPE_INT:
 		switch (mathOperatorType) {
 		case MATHOP_MULTIPLY:
-		srcStdStr = "__kernel void multonst_int(__global int * restrict a, int multiplier, __global int * restrict c) {\n";
+		srcStdStr = "__kernel void multonst_int(__global const int * restrict a, const int multiplier, __global int * restrict c) {\n";
 		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] * multiplier;\n";
 		srcStdStr += "}\n";
@@ -101,7 +101,7 @@ namespace gr {
 		break;
 
 		case MATHOP_ADD:
-		srcStdStr = "__kernel void addonst_int(__global int * restrict a, int multiplier, __global int * restrict c) {\n";
+		srcStdStr = "__kernel void addonst_int(__global const int * restrict a, const int multiplier, __global int * restrict c) {\n";
 		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] + multiplier;\n";
 		srcStdStr += "}\n";
@@ -116,10 +116,15 @@ namespace gr {
 		srcStdStr += "float real;\n";
 		srcStdStr += "float imag; };\n";
 		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-		srcStdStr += "__kernel void multconst_complex(__global SComplex * restrict a, float multiplier, __global SComplex * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
+		// see http://stackoverflow.com/questions/9912385/opencl-global-memory-fetches/9927270#9927270 for some efficiencies
+		// This kernel takes 10-12 ms to process all objects.
+		srcStdStr += "__kernel void multconst_complex(__global const SComplex * restrict a, const float multiplier, __global SComplex * restrict c) {\n";
+		srcStdStr += "    size_t index = get_global_id(0);\n";
+//		srcStdStr += "    size_t gSize = get_global_size(0);\n";
+//		srcStdStr += "    for (int i=index;i<8192;i+=gSize) {\n";
 		srcStdStr += "    c[index].real = a[index].real * multiplier;\n";
 		srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
+//		srcStdStr += "    }\n";
 		srcStdStr += "}\n";
 		fnName = "multconst_complex";
 		break;
@@ -128,7 +133,7 @@ namespace gr {
 		srcStdStr += "float real;\n";
 		srcStdStr += "float imag; };\n";
 		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-		srcStdStr += "__kernel void addconst_complex(__global SComplex * restrict a, SComplex val, __global SComplex * restrict c) {\n";
+		srcStdStr += "__kernel void addconst_complex(__global const SComplex * restrict a, const SComplex val, __global SComplex * restrict c) {\n";
 		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index].real = a[index].real + val.real;\n";
 		srcStdStr += "    c[index].imag = a[index].imag + val.imag;\n";
@@ -200,13 +205,14 @@ namespace gr {
 		// SComplex *out = (SComplex *) &output_items[0];
 
         // Create buffer for A and copy host contents
+
         cl::Buffer aBuffer = cl::Buffer(
             *context,
             CL_MEM_READ_ONLY | optimalBufferType,
 			noutput_items * dataSize,
             (void *) input_items[0]);
 
-        // Create buffer for that uses the host ptr C
+        // Create buffer that uses the host ptr C
         cl::Buffer cBuffer = cl::Buffer(
             *context,
             CL_MEM_WRITE_ONLY | optimalBufferType,
@@ -220,6 +226,7 @@ namespace gr {
         kernel->setArg(2, cBuffer);
 
         cl::NDRange localWGSize=cl::NullRange;
+        // localWGSize = cl::NDRange(preferredWorkGroupSizeMultiple);
 
         if (contextType!=CL_DEVICE_TYPE_CPU) {
         	if (noutput_items % preferredWorkGroupSizeMultiple == 0) {

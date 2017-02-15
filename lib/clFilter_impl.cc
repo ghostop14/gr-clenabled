@@ -184,13 +184,12 @@ namespace gr {
     		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
     		kernelCode +=")\n";
     		kernelCode +="{\n";
-//    		kernelCode +="	__local SComplex local_copy_input_array[N+K-1];\n";
+//			kernelCode +="	__local SComplex local_copy_input_array[N+K-1];\n";
     		kernelCode +="	__local float local_copy_filter_array[K];\n";
-//    		kernelCode +="  size_t groupId=get_group_id(0);\n";
     		kernelCode +="  size_t gId=get_global_id(0);\n";
 			kernelCode +="  size_t lid = gId; // get_local_id(0);\n";
-//    		kernelCode +="	local_copy_input_array[lid].real = InputArray[lid].real;\n";
-//    		kernelCode +="	local_copy_input_array[lid].imag = InputArray[lid].imag;\n";
+//        		kernelCode +="	local_copy_input_array[lid].real = InputArray[lid].real;\n";
+//        		kernelCode +="	local_copy_input_array[lid].imag = InputArray[lid].imag;\n";
     		kernelCode +="	if (lid < K)\n";
     		kernelCode +="		local_copy_filter_array[lid] = FilterArray[lid];\n";
     		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
@@ -199,12 +198,12 @@ namespace gr {
     		kernelCode +="	result.real=0.0f;\n";
     		kernelCode +="	result.imag=0.0f;\n";
     		kernelCode +="	// Unroll the loop for speed.\n";
-    		kernelCode +="	#pragma unroll\n";
+			kernelCode +="	#pragma unroll\n";
     		kernelCode +="	for (int i=0; i<K; i++) {\n";
-//    		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].real;\n";
-//    		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].imag;\n";
-    		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[lid+i].real;\n";
-    		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[lid+i].imag;\n";
+//        		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].real;\n";
+//        		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].imag;\n";
+			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[lid+i].real;\n";
+			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[lid+i].imag;\n";
     		kernelCode +="	}\n";
     		kernelCode +="	OutputArray[lid].real = result.real;\n";
     		kernelCode +="	OutputArray[lid].imag = result.imag;\n";
@@ -333,8 +332,9 @@ namespace gr {
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
-			cl::NDRange(resultLengthPoints),
-			cl::NullRange);
+			cl::NDRange(ninput_items),  // Actually for the FIR the input is inputItems + filterLength - 1,
+			cl::NullRange);				// However the output length is still just inputItems, otherwise the calculations
+										// would run off the end of the input buffer as they go up to i+k where i=iMax
 		}
 		catch (cl::Error& err) {
 			if (err.err() == CL_OUT_OF_RESOURCES) {

@@ -66,7 +66,6 @@ namespace gr {
 
     	// set up for initial 8192 sample input buffer
     	setFilterVariables(prevInputLength);
-
     }
 
     /*
@@ -90,18 +89,6 @@ namespace gr {
 				delete[] (float *)paddedResultPtr;
 			}
 		}
-    }
-
-    int clFilter_impl::testCPU(int noutput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items) {
-    	return filterCPU(noutput_items,input_items,output_items);
-    }
-
-    int clFilter_impl::testOpenCL(int noutput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items) {
-    	return filterGPU(noutput_items,input_items,output_items);;
     }
 
     void clFilter_impl::setFilterVariables(int ninput_items) {
@@ -159,6 +146,7 @@ namespace gr {
     		kernelCode +="	float real;\n";
     		kernelCode +="	float imag;\n";
     		kernelCode +="};\n";
+
     		kernelCode +="typedef struct ComplexStruct SComplex;\n";
     		kernelCode +="__kernel void td_FIR_complex\n";
     		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
@@ -166,12 +154,10 @@ namespace gr {
     		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
     		kernelCode +=")\n";
     		kernelCode +="{\n";
-//			kernelCode +="	__local SComplex local_copy_input_array[N+K-1];\n";
+
     		kernelCode +="	__local float local_copy_filter_array[K];\n";
     		kernelCode +="  size_t gId=get_global_id(0);\n";
 			kernelCode +="  size_t lid = gId; // get_local_id(0);\n";
-//        		kernelCode +="	local_copy_input_array[lid].real = InputArray[lid].real;\n";
-//        		kernelCode +="	local_copy_input_array[lid].imag = InputArray[lid].imag;\n";
     		kernelCode +="	if (lid < K)\n";
     		kernelCode +="		local_copy_filter_array[lid] = FilterArray[lid];\n";
     		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
@@ -182,51 +168,12 @@ namespace gr {
     		kernelCode +="	// Unroll the loop for speed.\n";
 			kernelCode +="	#pragma unroll\n";
     		kernelCode +="	for (int i=0; i<K; i++) {\n";
-//        		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].real;\n";
-//        		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].imag;\n";
 			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[lid+i].real;\n";
 			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[lid+i].imag;\n";
     		kernelCode +="	}\n";
     		kernelCode +="	OutputArray[lid].real = result.real;\n";
     		kernelCode +="	OutputArray[lid].imag = result.imag;\n";
     		kernelCode +="}\n";
-/*
-    		kernelCode += "    size_t index =  get_global_id(0);\n";
-    		kernelCode += "    SComplex localval;\n";
-//    		kernelCode += "    localval.real=InputArray[index].real;\n";
-//    		kernelCode += "    localval.imag=InputArray[index].imag;\n";
-//    		kernelCode += "    OutputArray[index].real = localval.real * 2.0;\n";
-//    		kernelCode += "    OutputArray[index].imag = localval.imag * 2.0;\n";
-//    		kernelCode += "    return;\n";
-
-//    		kernelCode +="	__local SComplex local_copy_input_array[N+K-1];\n";
-    		kernelCode +="	__local float local_copy_filter_array[K];\n";
-//    		kernelCode +="  InputArray += get_group_id(0) * N;\n";
-//			kernelCode +="  OutputArray += get_group_id(0) * (N+K);\n";
-			kernelCode +="  int lid = get_global_id(0);\n";
-//    		kernelCode +="	local_copy_input_array[lid].real = InputArray[lid].real;\n";
-//    		kernelCode +="	local_copy_input_array[lid].imag = InputArray[lid].imag;\n";
-    		kernelCode +="	if (lid < K)\n";
-    		kernelCode +="		local_copy_filter_array[lid] = FilterArray[lid];\n";
-    		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
-    		kernelCode +="	// Perform Compute\n";
-    		kernelCode +="	SComplex result;\n";
-    		kernelCode +="	result.real=0.0f;\n";
-    		kernelCode +="	result.imag=0.0f;\n";
-    		kernelCode +="	// Unroll the loop for speed.\n";
-    		kernelCode +="	#pragma unroll\n";
-    		kernelCode +="	for (int i=0; i<K; i++) {\n";
-//    		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].real;\n";
-//    		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*local_copy_input_array[lid+i].imag;\n";
-    		kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[lid+i].real;\n";
-    		kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[lid+i].imag;\n";
-    		kernelCode +="	}\n";
-    		kernelCode +="	OutputArray[lid].real = result.real;\n";
-//    		kernelCode +=" return;\n";
-    		kernelCode +="	OutputArray[lid].imag = result.imag;\n";
-    		kernelCode +="}\n";
-*/
-
     	}
     	else {
     		fnName = "td_FIR_float";
@@ -274,10 +221,10 @@ namespace gr {
 
         // In fft_filter.cc, the carry-forward tail is added to the head of the new output buffer.
 		memcpy(paddedInputPtr,(void *)input_items[0],inputLengthBytes);
-		if (dataType==DTYPE_COMPLEX)
-			memset((gr_complex *)paddedInputPtr+inputLengthBytes, '\0', paddingBytes);
-		else
-			memset((float *)paddedInputPtr+inputLengthBytes, '\0', paddingBytes);
+
+		// have to recast paddedInputPtr to char * since pointer math for void star is undefined
+		// and using a gr_complex or float would move that many elements, not bytes.
+		memset((char *)paddedInputPtr+inputLengthBytes, 0, paddingBytes);
 
 		// Call OpenCL here
 		// Create buffer for A and copy host contents
@@ -300,7 +247,6 @@ namespace gr {
 			(cl_mem_flags) (CL_MEM_WRITE_ONLY | optimalBufferType),
 			paddedBufferLengthBytes,
 			(void *)paddedResultPtr);
-
 
 		// Do the work
 
@@ -375,6 +321,18 @@ namespace gr {
 		return retVal;  // Accounts for decimation.
     }
 
+    int clFilter_impl::testCPU(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items) {
+    	return filterCPU(noutput_items,input_items,output_items);
+    }
+
+    int clFilter_impl::testOpenCL(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items) {
+    	return filterGPU(noutput_items,input_items,output_items);;
+    }
+
     int
 	clFilter_impl::filterCPU(int noutput_items,
             gr_vector_const_void_star &input_items,
@@ -384,6 +342,31 @@ namespace gr {
         gr_complex *out = (gr_complex *) output_items[0];
 
 		return fft_filter_ccf::filter(noutput_items,in,out);
+    }
+
+    int
+	clFilter_impl::filterCPU2(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items)
+    {
+        const gr_complex *in = (const gr_complex *) input_items[0];
+        gr_complex *out = (gr_complex *) output_items[0];
+
+        int tapId;
+
+        for (int N=0;N<noutput_items;N++) {
+    		SComplex result;
+    		result.real=0.0f;
+    		result.imag=0.0f;
+    		for (int i=0; i<d_ntaps; i++) {
+    			tapId=d_ntaps-1-i;
+    			result.real += d_taps[tapId]*in[N+i].real();
+    			result.imag += d_taps[tapId]*in[N+i].imag();
+    		}
+    		out[N]=gr_complex(result.real,result.imag);
+        }
+
+		return noutput_items;
     }
 
     int
@@ -400,7 +383,6 @@ namespace gr {
 			setFilterVariables(noutput_items);
 			prevTaps = d_ntaps;
 			prevInputLength = ninput_items;
-			return 0;				// output multiple may have changed
         }
         else {
         	if (prevInputLength != noutput_items) {

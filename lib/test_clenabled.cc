@@ -365,15 +365,12 @@ bool testLowPassFilter() {
 		return false;
 	}
 
-
-
 	std::cout << "Testing filter performance with 10 MSPS sample rate, " << largeBlockSize << " items, and " << test->taps().size() << " taps..." << std::endl;
 
 	int i;
 
-
-	std::vector<gr_complex> *inputItems = new std::vector<gr_complex>;
-	std::vector<gr_complex> *outputItems = new std::vector<gr_complex>;
+	std::vector<gr_complex> inputItems;
+	std::vector<gr_complex> outputItems;
 
 	std::vector< const void *> inputPointers;
 	std::vector<void *> outputPointers;
@@ -381,15 +378,14 @@ bool testLowPassFilter() {
 	int noutputitems;
 
 	for (i=1;i<=largeBlockSize;i++) {
-		inputItems->push_back(gr_complex(1.0f,0.5f));
-		outputItems->push_back(gr_complex(0.0,0.0));
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(gr_complex(0.0,0.0));
 	}
 
-	inputPointers.push_back((const void *)&(*inputItems)[0]);
-	outputPointers.push_back((void *)&(*outputItems)[0]);
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
 
 	std::chrono::time_point<std::chrono::system_clock> start, end;
-
 
 	int iterations=100;
 

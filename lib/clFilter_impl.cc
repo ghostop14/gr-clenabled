@@ -25,9 +25,11 @@
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
 
+// turn this on for more verbose output messages.
+#define CL_VERBOSE
+
 namespace gr {
   namespace clenabled {
-
     clFilter::sptr
     clFilter::make(int openclPlatform, int decimation,
             const std::vector<float> &taps,
@@ -41,6 +43,21 @@ namespace gr {
 	clFilter_impl::set_taps2(const std::vector<float> &taps) {
         d_new_taps = taps;
         d_updated = true;
+    }
+
+    void
+	clFilter_impl::TestNotifyNewFilter(int noutput_items) {
+    	// This is only used in our test app since work isn't called.
+    	int ninput_items = noutput_items * fft_filter_ccf::d_decimation;
+        if (d_updated){
+        	// set_taps sets d_nsamples so changed this line.
+        	d_nsamples = fft_filter_ccf::set_taps(d_new_taps);
+			d_updated = false;
+			set_output_multiple(d_nsamples);
+			setFilterVariables(noutput_items);
+			prevTaps = d_ntaps;
+			prevInputLength = ninput_items;
+        }
     }
 
     std::vector<float> clFilter_impl::taps() const {
@@ -138,6 +155,7 @@ namespace gr {
 		filterLengthBytes=d_taps.size() * sizeof(float);
 
     	kernelCode = "";
+    	kernelCodeWithConst = "";
         std::string fnName = "";
 
     	if (dataType==DTYPE_COMPLEX) {
@@ -146,8 +164,8 @@ namespace gr {
     		kernelCode +="	float real;\n";
     		kernelCode +="	float imag;\n";
     		kernelCode +="};\n";
-
     		kernelCode +="typedef struct ComplexStruct SComplex;\n";
+
     		kernelCode +="__kernel void td_FIR_complex\n";
     		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
     		kernelCode +="__global const float *restrict FilterArray, // Length K\n";
@@ -156,24 +174,54 @@ namespace gr {
     		kernelCode +="{\n";
 
     		kernelCode +="	__local float local_copy_filter_array[K];\n";
-    		kernelCode +="  size_t gId=get_global_id(0);\n";
-			kernelCode +="  size_t lid = gId; // get_local_id(0);\n";
-    		kernelCode +="	if (lid < K)\n";
-    		kernelCode +="		local_copy_filter_array[lid] = FilterArray[lid];\n";
+    		kernelCode +="  size_t gid=get_global_id(0);\n";
+//			kernelCode +="  size_t lid = gId; // get_local_id(0);\n";
+    		kernelCode +="	if (gid < K)\n";
+    		kernelCode +="		local_copy_filter_array[gid] = FilterArray[gid];\n";
     		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
     		kernelCode +="	// Perform Compute\n";
     		kernelCode +="	SComplex result;\n";
     		kernelCode +="	result.real=0.0f;\n";
     		kernelCode +="	result.imag=0.0f;\n";
-    		kernelCode +="	// Unroll the loop for speed.\n";
-			kernelCode +="	#pragma unroll\n";
+//    		kernelCode +="	// Unroll the loop for speed.\n";
+    		// Too many taps to unroll this loop.  1000+ taps may decrease performance
+    		// due to increased instruction base.
+//			kernelCode +="	#pragma unroll\n";
     		kernelCode +="	for (int i=0; i<K; i++) {\n";
-			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[lid+i].real;\n";
-			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[lid+i].imag;\n";
+			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[gid+i].real;\n";
+			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[gid+i].imag;\n";
+//			kernelCode +="		result.real += FilterArray[K-1-i]*InputArray[lid+i].real;\n";
+//			kernelCode +="		result.imag += FilterArray[K-1-i]*InputArray[lid+i].imag;\n";
     		kernelCode +="	}\n";
-    		kernelCode +="	OutputArray[lid].real = result.real;\n";
-    		kernelCode +="	OutputArray[lid].imag = result.imag;\n";
+    		kernelCode +="	OutputArray[gid].real = result.real;\n";
+    		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
     		kernelCode +="}\n";
+
+    		// If the filter array is < constant memory, this approach is faster:
+    		kernelCodeWithConst +="struct ComplexStruct {\n";
+    		kernelCodeWithConst +="	float real;\n";
+    		kernelCodeWithConst +="	float imag;\n";
+    		kernelCodeWithConst +="};\n";
+    		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
+
+    		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
+    		kernelCodeWithConst +="( __global const SComplex *restrict InputArray, // Length N\n";
+    		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
+    		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
+    		kernelCodeWithConst +=")\n";
+    		kernelCodeWithConst +="{\n";
+    		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
+    		kernelCodeWithConst +="	// Perform Compute\n";
+    		kernelCodeWithConst +="	SComplex result;\n";
+    		kernelCodeWithConst +="	result.real=0.0f;\n";
+    		kernelCodeWithConst +="	result.imag=0.0f;\n";
+    		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
+			kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
+			kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+    		kernelCodeWithConst +="	}\n";
+    		kernelCodeWithConst +="	OutputArray[gid].real = result.real;\n";
+    		kernelCodeWithConst +="	OutputArray[gid].imag = result.imag;\n";
+    		kernelCodeWithConst +="}\n";
     	}
     	else {
     		fnName = "td_FIR_float";
@@ -200,15 +248,52 @@ namespace gr {
     		kernelCode += "	}\n";
     		kernelCode += "	OutputArray[get_local_id(0)] = result;\n";
     		kernelCode += "}\n";
+
+    		kernelCodeWithConst += "__kernel void td_FIR_float\n";
+    		kernelCodeWithConst += "( __global const float *restrict InputArray, // Length N\n";
+    		kernelCodeWithConst += "__global const float *restrict FilterArray, // Length K\n";
+    		kernelCodeWithConst += "__global float *restrict OutputArray // Length N+K-1\n";
+    		kernelCodeWithConst += ")\n";
+    		kernelCodeWithConst += "{\n";
+    		kernelCodeWithConst += "	__local float local_copy_input_array[2*K+N];\n";
+    		kernelCodeWithConst += "	__local float local_copy_filter_array[K];\n";
+    		kernelCodeWithConst += "	InputArray += get_group_id(0) * N;\n";
+    		kernelCodeWithConst += "	FilterArray += get_group_id(0) * K;\n";
+    		kernelCodeWithConst += "	OutputArray += get_group_id(0) * (N+K);\n";
+    		kernelCodeWithConst += "	// Copy from global to local\n";
+    		kernelCodeWithConst += "	local_copy_input_array[get_local_id(0)] = InputArray[get_local_id(0)];\n";
+    		kernelCodeWithConst += "	if (get_local_id(0) < K)\n";
+    		kernelCodeWithConst += "		local_copy_filter_array[get_local_id(0)] = FilterArray[get_local_id(0)];\n";
+    		kernelCodeWithConst += "	barrier(CLK_LOCAL_MEM_FENCE);\n";
+    		kernelCodeWithConst += "	// Perform Compute\n";
+    		kernelCodeWithConst += "	float result=0.0f;\n";
+    		kernelCodeWithConst += "	for (int i=0; i<K; i++) {\n";
+    		kernelCodeWithConst += "		result += local_copy_filter_array[K-1-i]*local_copy_input_array[get_local_id(0)+i];\n";
+    		kernelCodeWithConst += "	}\n";
+    		kernelCodeWithConst += "	OutputArray[get_local_id(0)] = result;\n";
+    		kernelCodeWithConst += "}\n";
+
     	}
 
     	std::string lbDefines;
     	lbDefines = "#define N " + std::to_string(ninput_items) + "\n";
     	lbDefines += "#define K "+ std::to_string(d_ntaps) + "\n";
 
-    	kernelCode = lbDefines + kernelCode;
+    	std::string tmpKernelCode;
+    	if ((d_ntaps*sizeof(float)) < maxConstMemSize) {
+    		tmpKernelCode = lbDefines + kernelCodeWithConst;
+#ifdef CL_VERBOSE
+    		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
+#endif
+    	}
+    	else {
+    		tmpKernelCode = lbDefines + kernelCode;
+#ifdef Cl_VERBOSE
+    		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
+#endif
+    	}
 
-        GRCLBase::CompileKernel((const char *)kernelCode.c_str(),(const char *)fnName.c_str());
+        GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
     }
 
     int
@@ -341,7 +426,14 @@ namespace gr {
         const gr_complex *in = (const gr_complex *) input_items[0];
         gr_complex *out = (gr_complex *) output_items[0];
 
-		return fft_filter_ccf::filter(noutput_items,in,out);
+        int retVal=0;
+        try {
+        retVal = fft_filter_ccf::filter(noutput_items,in,out);
+        }
+        catch (...) {
+        	std::cout << "Exception in fft_filter_ccf::filter()" << std::endl;
+        }
+		return retVal;
     }
 
     int

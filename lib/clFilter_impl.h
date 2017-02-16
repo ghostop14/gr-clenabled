@@ -34,6 +34,7 @@ namespace gr {
         bool d_updated;
         std::vector<float> d_new_taps;
         std::string kernelCode;
+        std::string kernelCodeWithConst;  // only used if size of filter array is less than constant memory max space.
 
         void setFilterVariables(int noutput_items);
         int prevTaps=0;
@@ -75,6 +76,7 @@ namespace gr {
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
 
+      void TestNotifyNewFilter(int noutput_items);
       virtual void set_taps2(const std::vector<float> &taps);
       virtual void set_nthreads(int n);
       virtual std::vector<float> taps() const;

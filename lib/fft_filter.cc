@@ -23,14 +23,20 @@ namespace gr {
 
   fft_filter_ccf::~fft_filter_ccf()
   {
-	if (d_fwdfft != NULL)
+	if (d_fwdfft != NULL) {
 	  delete d_fwdfft;
+	  d_fwdfft = NULL;
+	}
 
-	if (d_invfft != NULL)
+	if (d_invfft != NULL) {
 	  delete d_invfft;
+	  d_invfft = NULL;
+	}
 
-	if(d_xformed_taps != NULL)
+	if(d_xformed_taps != NULL) {
 	  volk_free(d_xformed_taps);
+	  d_xformed_taps = NULL;
+	}
   }
 
   /*
@@ -86,16 +92,33 @@ namespace gr {
 	*/
 	// compute new plans
 	if(d_fftsize != old_fftsize) {
-		if (d_fwdfft != NULL) {
-			delete d_fwdfft;
+		try {
+			if (d_fwdfft != NULL) {
+				delete d_fwdfft;
+			}
+		}
+		catch (...) {
+			std::cout << "FFT_Filter_ccf::compute_sizes: exception deleting d_fwdfft" << std::endl;
 		}
 
-		if (d_invfft) {
-			delete d_invfft;
+		try {
+			if (d_invfft) {
+				delete d_invfft;
+			}
 		}
-		if(d_xformed_taps != NULL) {
-			volk_free(d_xformed_taps);
+		catch (...) {
+			std::cout << "FFT_Filter_ccf::compute_sizes: exception deleting d_invfft" << std::endl;
 		}
+
+		try {
+			if(d_xformed_taps != NULL) {
+				volk_free(d_xformed_taps);
+			}
+		}
+		catch (...) {
+			std::cout << "FFT_Filter_ccf::compute_sizes: exception volk_free(d_xformed_taps)" << std::endl;
+		}
+
 
 		d_fwdfft = new fft_complex(d_fftsize, true, d_nthreads);
 		d_invfft = new fft_complex(d_fftsize, false, d_nthreads);

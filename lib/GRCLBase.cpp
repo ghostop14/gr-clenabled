@@ -146,6 +146,14 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
 
     	exit(0);
     }
+
+	try {
+		maxConstMemSize = devices[0].getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>();
+	}
+	catch(cl::Error& e) {
+		std::cout << "Error getting device constant memory size." << std::endl;
+	}
+
 }
 
 cl_device_type GRCLBase::GetContextType() {
@@ -184,8 +192,6 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 	catch(cl::Error& e) {
 		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
 	}
-
-
 }
 void GRCLBase::cleanup() {
 	// Cleanup order:

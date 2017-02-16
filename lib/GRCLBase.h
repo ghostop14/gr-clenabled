@@ -14,7 +14,8 @@
 #define __CL_ENABLE_EXCEPTIONS
 // Disable the deprecated functions warning.  If you want to keep support for 1.2 devices
 // You need to use the deprecated functions.  This #define makes the warning go away.
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+// #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_VERSION_1_2
 
 #if defined(__APPLE__) || defined(__MACOSX)
 #include <OpenCL/cl.hpp>
@@ -44,6 +45,7 @@ protected:
 	 size_t dataSize;
 	 int preferredWorkGroupSizeMultiple=1;
 	 int maxWorkGroupSize=1;
+	 int maxConstMemSize=0;
 	 int optimalBufferType = CL_MEM_USE_HOST_PTR;
 
     int platformMode;

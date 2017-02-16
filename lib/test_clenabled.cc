@@ -347,13 +347,16 @@ bool testMultiply() {
 
 bool testLowPassFilter() {
 	gr::clenabled::clFilter_impl *test=NULL;
+	double gain=1.0;
+	double samp_rate=10000000;
+	double cutoff_freq=100000.0;
+	double transition_width = 15000.0;
 	try {
-		double gain=1.0;
-		double samp_rate=10000000;
-		double cutoff_freq=67000.0;
-		double transition_width = 13000.0;
+		std::cout << "Testing filter performance with 10 MSPS sample rate and " << largeBlockSize << " items" << std::endl;
+
 		test = new gr::clenabled::clFilter_impl(opencltype,1,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+		std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up filter OpenCL environment." << std::endl;
@@ -364,8 +367,6 @@ bool testLowPassFilter() {
 
 		return false;
 	}
-
-	std::cout << "Testing filter performance with 10 MSPS sample rate, " << largeBlockSize << " items, and " << test->taps().size() << " taps..." << std::endl;
 
 	int i;
 
@@ -415,7 +416,62 @@ bool testLowPassFilter() {
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
+	std::cout << std::endl;
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.1);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 10% transition filter:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.05);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 5% transition filter:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.03);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 3% transition filter:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+
+	std::cout << std::endl;
+	// CPU
+	transition_width = (int)(cutoff_freq*0.15);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
 	start = std::chrono::system_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
@@ -424,11 +480,41 @@ bool testLowPassFilter() {
 	end = std::chrono::system_clock::now();
 
 	elapsed_seconds = end-start;
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+	std::cout << "CPU-only Run Time for 15% filter: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
-	inputPointers.clear();
-	outputPointers.clear();
+	std::cout << std::endl;
+	// CPU
+	transition_width = (int)(cutoff_freq*0.10);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+	std::cout << "CPU-only Run Time for 10% filter: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+	// CPU
+	transition_width = (int)(cutoff_freq*0.5);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+	std::cout << "CPU-only Run Time for 5% filter: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
 
 	if (test != NULL) {
 		delete test;

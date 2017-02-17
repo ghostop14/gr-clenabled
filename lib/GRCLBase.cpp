@@ -163,6 +163,14 @@ cl_device_type GRCLBase::GetContextType() {
 void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName) {
 	try {
     // Create and program from source
+	if (program) {
+		delete program;
+		program = NULL;
+	}
+	if (sources) {
+		delete sources;
+		sources = NULL;
+	}
     sources=new cl::Program::Sources(1, std::make_pair(kernelCode, 0));
     program = new cl::Program(*context, *sources);
 

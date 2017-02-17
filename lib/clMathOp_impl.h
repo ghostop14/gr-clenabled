@@ -33,8 +33,13 @@ namespace gr {
       // Nothing to declare in this block.
     	int numParams=2;
 
+		cl::Buffer *aBuffer=NULL;
+		cl::Buffer *bBuffer=NULL;
+		cl::Buffer *cBuffer=NULL;
+		int curBufferSize=0;
+
      public:
-      clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType,int operatorType);
+      clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType,int operatorType, bool setDebug=false);
       ~clMathOp_impl();
 
       // Where all the action really happens
@@ -44,6 +49,13 @@ namespace gr {
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
+
+      int processOpenCL(int noutput_items,
+              gr_vector_int &ninput_items,
+              gr_vector_const_void_star &input_items,
+              gr_vector_void_star &output_items);
+
+      void setBufferLength(int numItems);
 
       int testOpenCL(int noutput_items,
               gr_vector_int &ninput_items,

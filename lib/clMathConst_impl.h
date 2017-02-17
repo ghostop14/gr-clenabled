@@ -33,8 +33,12 @@ namespace gr {
 		float value;
 		int mathOperatorType;
 
+		cl::Buffer *aBuffer=NULL;
+		cl::Buffer *cBuffer=NULL;
+		int curBufferSize=0;
+
      public:
-      clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType);
+      clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType, bool setDebug=false);
       ~clMathConst_impl();
 
       void setup_rpc();
@@ -43,6 +47,13 @@ namespace gr {
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
+
+      int processOpenCL(int noutput_items,
+              gr_vector_int &ninput_items,
+              gr_vector_const_void_star &input_items,
+              gr_vector_void_star &output_items);
+
+      void setBufferLength(int numItems);
 
       int testOpenCL(int noutput_items,
               gr_vector_int &ninput_items,

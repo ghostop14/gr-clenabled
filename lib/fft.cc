@@ -183,9 +183,34 @@ namespace gr {
       // Hold global mutex during plan construction and destruction.
       planner::scoped_lock lock(planner::mutex());
 
-      fftwf_destroy_plan ((fftwf_plan) d_plan);
-      volk_free (d_inbuf);
-      volk_free (d_outbuf);
+      if (d_plan) {
+    	  try {
+    	  fftwf_destroy_plan ((fftwf_plan) d_plan);
+    	  }
+    	  catch(...) {
+
+    	  }
+    	  d_plan = NULL;
+      }
+      if (d_inbuf) {
+    	  try {
+    		  volk_free (d_inbuf);
+    	  }
+    	  catch (...) {
+
+    	  }
+    	  d_inbuf = NULL;
+      }
+
+      if (d_outbuf) {
+    	  try {
+        	  volk_free (d_outbuf);
+    	  }
+    	  catch (...) {
+
+    	  }
+    	  d_outbuf = NULL;
+      }
     }
 
     void
@@ -253,9 +278,20 @@ namespace gr {
       // Hold global mutex during plan construction and destruction.
       planner::scoped_lock lock(planner::mutex());
 
-      fftwf_destroy_plan ((fftwf_plan) d_plan);
-      volk_free (d_inbuf);
-      volk_free (d_outbuf);
+      if (d_plan) {
+    	  fftwf_destroy_plan ((fftwf_plan) d_plan);
+    	  d_plan=NULL;
+      }
+
+      if (d_inbuf) {
+    	  volk_free (d_inbuf);
+    	  d_inbuf = NULL;
+      }
+
+      if (d_outbuf) {
+    	  volk_free (d_outbuf);
+    	  d_outbuf = NULL;
+      }
     }
 
     void

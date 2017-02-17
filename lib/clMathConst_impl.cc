@@ -34,7 +34,7 @@ namespace gr {
   namespace clenabled {
 
     clMathConst::sptr
-    clMathConst::make(int idataType,int openCLPlatformType,float fValue,int operatorType)
+    clMathConst::make(int idataType,int openCLPlatformType,float fValue,int operatorType,int setDebug)
     {
     	size_t dsize = sizeof(float);
 
@@ -50,19 +50,27 @@ namespace gr {
     	break;
     	}
 
-	      return gnuradio::get_initial_sptr
-	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,fValue,operatorType));
+    	if (setDebug == 1) {
+  	      return gnuradio::get_initial_sptr
+  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,fValue,operatorType,true));
+    	}
+    	else {
+  	      return gnuradio::get_initial_sptr
+  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,fValue,operatorType,false));
+    	}
     }
 
     /*
      * The private constructor
      */
-    clMathConst_impl::clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType)
+    clMathConst_impl::clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType,bool setDebug)
       : gr::block("clMathConst",
               gr::io_signature::make(1, 1, dsize),
               gr::io_signature::make(1, 1, dsize)),
 			  GRCLBase(idataType, dsize,openCLPlatformType)
 	{
+    debugMode = setDebug;
+
 	value = fValue;
 	mathOperatorType = operatorType;
 
@@ -73,87 +81,129 @@ namespace gr {
 	switch(dataType) {
 	case DTYPE_FLOAT:
 		switch (mathOperatorType) {
+		fnName = "opconst_float";
+		srcStdStr = "__kernel void opconst_float(__constant float * a, const float multiplier, __global float * restrict c) {\n";
+    	if (operatorType != MATHOP_EMPTY)
+    		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		case MATHOP_MULTIPLY:
-		srcStdStr = "__kernel void multconst_float(__global const float * restrict a, const float multiplier, __global float * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] * multiplier;\n";
-		srcStdStr += "}\n";
-		fnName = "multconst_float";
 		break;
 
 		case MATHOP_ADD:
-		srcStdStr = "__kernel void addconst_float(__global const float * restrict a, const float multiplier, __global float * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] + multiplier;\n";
-		srcStdStr += "}\n";
-		fnName = "addconst_float";
+		break;
+		case MATHOP_SUBTRACT:
+		srcStdStr += "    c[index] = a[index] - multiplier;\n";
 		break;
 		}
+		srcStdStr += "}\n";
 	break;
 	case DTYPE_INT:
+		fnName = "opconst_int";
+		srcStdStr = "__kernel void opconst_int(__constant int * a, const int multiplier, __global int * restrict c) {\n";
+    	if (operatorType != MATHOP_EMPTY)
+    		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		switch (mathOperatorType) {
 		case MATHOP_MULTIPLY:
-		srcStdStr = "__kernel void multonst_int(__global const int * restrict a, const int multiplier, __global int * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] * multiplier;\n";
-		srcStdStr += "}\n";
-		fnName = "multconst_int";
 		break;
 
 		case MATHOP_ADD:
-		srcStdStr = "__kernel void addonst_int(__global const int * restrict a, const int multiplier, __global int * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index] = a[index] + multiplier;\n";
-		srcStdStr += "}\n";
-		fnName = "addconst_int";
+		break;
+
+		case MATHOP_SUBTRACT:
+		srcStdStr += "    c[index] = a[index] - multiplier;\n";
 		break;
 		}
+		srcStdStr += "}\n";
 	break;
 	case DTYPE_COMPLEX:
+		fnName = "opconst_complex";
+		srcStdStr = "struct ComplexStruct {\n";
+		srcStdStr += "float real;\n";
+		srcStdStr += "float imag; };\n";
+		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+		srcStdStr += "__kernel void opconst_complex(__constant SComplex * a, const float multiplier, __global SComplex * restrict c) {\n";
+    	if (operatorType != MATHOP_EMPTY)
+    		srcStdStr += "    size_t index =  get_global_id(0);\n";
+    	else
+    		srcStdStr += "return;\n";
+
 		switch (mathOperatorType) {
 		case MATHOP_MULTIPLY:
-		srcStdStr = "struct ComplexStruct {\n";
-		srcStdStr += "float real;\n";
-		srcStdStr += "float imag; };\n";
-		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-		// see http://stackoverflow.com/questions/9912385/opencl-global-memory-fetches/9927270#9927270 for some efficiencies
-		// This kernel takes 10-12 ms to process all objects.
-		srcStdStr += "__kernel void multconst_complex(__global const SComplex * restrict a, const float multiplier, __global SComplex * restrict c) {\n";
-		srcStdStr += "    size_t index = get_global_id(0);\n";
-//		srcStdStr += "    size_t gSize = get_global_size(0);\n";
-//		srcStdStr += "    for (int i=index;i<8192;i+=gSize) {\n";
 		srcStdStr += "    c[index].real = a[index].real * multiplier;\n";
 		srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
-//		srcStdStr += "    }\n";
-		srcStdStr += "}\n";
-		fnName = "multconst_complex";
 		break;
 		case MATHOP_ADD:
-		srcStdStr = "struct ComplexStruct {\n";
-		srcStdStr += "float real;\n";
-		srcStdStr += "float imag; };\n";
-		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-		srcStdStr += "__kernel void addconst_complex(__global const SComplex * restrict a, const SComplex val, __global SComplex * restrict c) {\n";
-		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    c[index].real = a[index].real + val.real;\n";
 		srcStdStr += "    c[index].imag = a[index].imag + val.imag;\n";
-		srcStdStr += "}\n";
-		fnName = "addconst_complex";
+		break;
+		case MATHOP_SUBTRACT:
+		srcStdStr += "    c[index].real = a[index].real - val.real;\n";
+		srcStdStr += "    c[index].imag = a[index].imag - val.imag;\n";
 		break;
 		}
+		srcStdStr += "}\n";
 	break;
+	}
+
+	int imaxItems=gr::block::max_noutput_items();
+	if (imaxItems==0)
+		imaxItems=8192;
+
+	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize));
+
+	if (maxItemsForConst < imaxItems || imaxItems == 0) {
+		gr::block::set_max_noutput_items(maxItemsForConst);
+
+		if (debugMode)
+			std::cout << "OpenCL INFO: Math Op Const adjusting output buffer for " << maxItemsForConst << " due to OpenCL constant memory restrictions" << std::endl;
+	}
+	else {
+		if (debugMode)
+			std::cout << "OpenCL INFO: Math Op Const using default output buffer of " << imaxItems << "..." << std::endl;
 	}
 
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+
+	setBufferLength(maxItemsForConst);
 	}
 
 
-    /*
+    void clMathConst_impl::setBufferLength(int numItems) {
+    	if (aBuffer)
+    		delete aBuffer;
+
+    	if (cBuffer)
+    		delete cBuffer;
+
+    	aBuffer = new cl::Buffer(
+            *context,
+            CL_MEM_READ_ONLY,
+			numItems * dataSize);
+
+        cBuffer = new cl::Buffer(
+            *context,
+            CL_MEM_READ_WRITE,
+			numItems * dataSize);
+
+        curBufferSize = numItems;
+    }
+  /*
      * Our virtual destructor.
      */
     clMathConst_impl::~clMathConst_impl()
     {
+    	if (aBuffer)
+    		delete aBuffer;
+
+    	if (cBuffer)
+    		delete cBuffer;
+
     	cleanup();
+
     }
 
     void
@@ -179,7 +229,15 @@ namespace gr {
     	return noutput_items;
     }
 
+
     int clMathConst_impl::testOpenCL(int noutput_items,
+            gr_vector_int &ninput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items) {
+    	return processOpenCL(noutput_items,ninput_items,input_items, output_items);
+    }
+
+    int clMathConst_impl::processOpenCL(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
@@ -187,43 +245,20 @@ namespace gr {
     	if (kernel == NULL) {
     		return 0;
     	}
-        const gr_complex *in = (const gr_complex *)input_items[0];
-        gr_complex *out = (gr_complex *)output_items[0];
-/*
-        const float *in = (const float *) input_items[0];
-        float *out = (float *) output_items[0];
 
-    	for (int i=0;i<noutput_items;i++) {
-    		// out[i]=in[i] * value;
-    		out[i]=in[i];
+    	if (noutput_items > curBufferSize) {
+    		setBufferLength(noutput_items);
     	}
 
-    	consume_each(noutput_items);
-    	return noutput_items;
-*/
-		// const SComplex *in = (const SComplex *) &input_items[0];
-		// SComplex *out = (SComplex *) &output_items[0];
-
-        // Create buffer for A and copy host contents
-
-        cl::Buffer aBuffer = cl::Buffer(
-            *context,
-            CL_MEM_READ_ONLY | optimalBufferType,
-			noutput_items * dataSize,
-            (void *) input_items[0]);
-
-        // Create buffer that uses the host ptr C
-        cl::Buffer cBuffer = cl::Buffer(
-            *context,
-            CL_MEM_WRITE_ONLY | optimalBufferType,
-			noutput_items * dataSize,
-            (void *) output_items[0]);
+    	int inputSize = noutput_items*dataSize;
 
         // Set kernel args
-        kernel->setArg(0, aBuffer);
+        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
+
+        kernel->setArg(0, *aBuffer);
 
         kernel->setArg(1, value);
-        kernel->setArg(2, cBuffer);
+        kernel->setArg(2, *cBuffer);
 
         cl::NDRange localWGSize=cl::NullRange;
         // localWGSize = cl::NDRange(preferredWorkGroupSizeMultiple);
@@ -241,22 +276,26 @@ namespace gr {
 			cl::NDRange(noutput_items),
 			localWGSize);
 
+    	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
+/*
       // Map cBuffer to host pointer. This enforces a sync with
       // the host backing space, remember we choose GPU device.
       void * output = (void *) queue->enqueueMapBuffer(
-          cBuffer,
+          *cBuffer,
           CL_TRUE, // block
           CL_MAP_READ,
           0,
 			noutput_items * dataSize);
 
+      memcpy((void *)output_items[0],output,inputSize);
+
       cl_int err;
 
       // Finally release our hold on accessing the memory
       err = queue->enqueueUnmapMemObject(
-          cBuffer,
+          *cBuffer,
           (void *) output);
-
+*/
       // Tell runtime system how many input items we consumed on
       // each input stream.
       // consume_each (noutput_items);
@@ -271,68 +310,13 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
+        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
+        // Tell runtime system how many input items we consumed on
+        // each input stream.
+        consume_each (noutput_items);
 
-    	if (kernel == NULL) {
-    		return 0;
-    	}
-
-        // Create buffer for A and copy host contents
-        cl::Buffer aBuffer = cl::Buffer(
-            *context,
-            CL_MEM_READ_ONLY | optimalBufferType,
-			noutput_items * dataSize,
-            (void *) input_items[0]);
-
-        // Create buffer for that uses the host ptr C
-        cl::Buffer cBuffer = cl::Buffer(
-            *context,
-            CL_MEM_WRITE_ONLY | optimalBufferType,
-			noutput_items * dataSize,
-            (void *) output_items[0]);
-
-        // Set kernel args
-        kernel->setArg(0, aBuffer);
-
-        kernel->setArg(1, value);
-        kernel->setArg(2, cBuffer);
-
-        cl::NDRange localWGSize=cl::NullRange;
-
-        if (contextType!=CL_DEVICE_TYPE_CPU) {
-        	if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
-        		localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
-        	}
-        }
-
-        // Do the work
-        queue->enqueueNDRangeKernel(
-            *kernel,
-            cl::NullRange,
-			cl::NDRange(noutput_items),
-			localWGSize);
-
-      // Map cBuffer to host pointer. This enforces a sync with
-      // the host backing space, remember we choose GPU device.
-      void * output = (void *) queue->enqueueMapBuffer(
-          cBuffer,
-          CL_TRUE, // block
-          CL_MAP_READ,
-          0,
-			noutput_items * dataSize);
-
-      cl_int err;
-
-      // Finally release our hold on accessing the memory
-      err = queue->enqueueUnmapMemObject(
-          cBuffer,
-          (void *) output);
-
-      // Tell runtime system how many input items we consumed on
-      // each input stream.
-      consume_each (noutput_items);
-
-      // Tell runtime system how many output items we produced.
-      return noutput_items;
+        // Tell runtime system how many output items we produced.
+        return retVal;
     }
 
     void

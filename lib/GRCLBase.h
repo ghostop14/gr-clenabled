@@ -48,6 +48,8 @@ protected:
 	 int maxConstMemSize=0;
 	 int optimalBufferType = CL_MEM_USE_HOST_PTR;
 
+	 bool debugMode = false;
+
     int platformMode;
 
     virtual void cleanup();
@@ -70,6 +72,12 @@ protected:
     void CompileKernel(const char* kernelCode, const char* kernelFunctionName);
 
 public:
+    std::string debugDisplayName = "";
+
+    void SetDebugMode(bool newMode) { debugMode = newMode; };
+
+    int ActiveContextType() {return contextType;};
+
 	GRCLBase(int idataType, size_t dsize,int openCLPlatformType);
 	virtual ~GRCLBase();
 

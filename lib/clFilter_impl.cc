@@ -25,18 +25,23 @@
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
 
-// turn this on for more verbose output messages.
-#define CL_VERBOSE
-
 namespace gr {
   namespace clenabled {
     clFilter::sptr
     clFilter::make(int openclPlatform, int decimation,
             const std::vector<float> &taps,
-            int nthreads)
+            int nthreads,int setDebug)
     {
-      return gnuradio::get_initial_sptr
-        (new clFilter_impl(openclPlatform,decimation,taps,nthreads));
+
+      	if (setDebug == 1) {
+            return gnuradio::get_initial_sptr
+              (new clFilter_impl(openclPlatform,decimation,taps,nthreads,true));
+      	}
+      	else {
+            return gnuradio::get_initial_sptr
+              (new clFilter_impl(openclPlatform,decimation,taps,nthreads,false));
+      	}
+
     }
 
     void
@@ -70,7 +75,7 @@ namespace gr {
     /*
      * The private constructor
      */
-    clFilter_impl::clFilter_impl(int openclPlatform, int decimation, const std::vector<float> &taps,int nthreads)
+    clFilter_impl::clFilter_impl(int openclPlatform, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug)
       : gr::sync_decimator("clLowPassFilter",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
@@ -90,7 +95,19 @@ namespace gr {
      */
     clFilter_impl::~clFilter_impl()
     {
-		if (paddedInputPtr != NULL) {
+    	if (aBuffer)
+    		delete aBuffer;
+
+    	if (bBuffer)
+    		delete bBuffer;
+
+    	if (cBuffer)
+    		delete cBuffer;
+
+    	if (zeroBuff)
+    		delete zeroBuff;
+/*
+    	if (paddedInputPtr != NULL) {
 			if (dataType==DTYPE_COMPLEX) {
 				delete[] (gr_complex *)paddedInputPtr;
 			}
@@ -106,6 +123,7 @@ namespace gr {
 				delete[] (float *)paddedResultPtr;
 			}
 		}
+*/
     }
 
     void clFilter_impl::setFilterVariables(int ninput_items) {
@@ -124,6 +142,7 @@ namespace gr {
 		inputLengthBytes = ninput_items*dataSize;
 		paddedBufferLengthBytes=resultLengthPoints*dataSize;
 
+/*
 		if (paddedInputPtr != NULL) {
 			if (dataType==DTYPE_COMPLEX) {
 				delete[] (gr_complex *)paddedInputPtr;
@@ -140,7 +159,9 @@ namespace gr {
 				delete[] (float *)paddedResultPtr;
 			}
 		}
+*/
 
+		/*
 		if (dataType == DTYPE_COMPLEX) {
 			paddedInputPtr = (void *)new gr_complex[resultLengthPoints];
 			paddedResultPtr = (void *)new gr_complex[resultLengthPoints];
@@ -149,10 +170,11 @@ namespace gr {
 			paddedInputPtr = (void *)new float[resultLengthPoints];
 			paddedResultPtr = (void *)new float[resultLengthPoints];
 		}
-
+*/
 		// Save the converted pointer to our taps.
-		filterPtr = (float *) &(d_taps[0]);
+//		filterPtr = (float *) &(d_taps[0]);
 		filterLengthBytes=d_taps.size() * sizeof(float);
+
 
     	kernelCode = "";
     	kernelCodeWithConst = "";
@@ -282,18 +304,67 @@ namespace gr {
     	std::string tmpKernelCode;
     	if ((d_ntaps*sizeof(float)) < maxConstMemSize) {
     		tmpKernelCode = lbDefines + kernelCodeWithConst;
-#ifdef CL_VERBOSE
-    		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
-#endif
+
+    		if (debugMode)
+        		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
     	}
     	else {
     		tmpKernelCode = lbDefines + kernelCode;
-#ifdef Cl_VERBOSE
-    		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
-#endif
+    		if (debugMode)
+        		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
     	}
 
-        GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
+    	// Try releasing any buffers before compiling a new kernel.
+    	if (aBuffer) {
+    		delete aBuffer;
+    		aBuffer = NULL;
+    	}
+    	if (bBuffer) {
+    		delete bBuffer;
+    		bBuffer = NULL;
+    	}
+    	if (cBuffer) {
+    		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
+
+        setBufferLength(ninput_items);
+
+        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,filterLengthBytes,&(d_taps[0]));
+
+}
+
+void clFilter_impl::setBufferLength(int numItems) {
+	if (aBuffer)
+		delete aBuffer;
+	if (bBuffer)
+		delete bBuffer;
+	if (cBuffer)
+		delete cBuffer;
+
+	if (zeroBuff)
+		delete zeroBuff;
+
+        aBuffer = new cl::Buffer(
+            *context,
+            CL_MEM_READ_ONLY,
+			paddedBufferLengthBytes);
+
+        bBuffer = new cl::Buffer(
+            *context,
+            CL_MEM_READ_ONLY,
+			filterLengthBytes);
+
+        cBuffer = new cl::Buffer(
+            *context,
+            CL_MEM_READ_WRITE,
+			paddedBufferLengthBytes);
+
+        zeroBuff=new char[paddedBufferLengthBytes];
+
+        curBufferSize = numItems;
     }
 
     int
@@ -301,44 +372,24 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
 
+    	if (ninput_items != curBufferSize) {
+    		// This could get expensive if we have to rebuild kernels
+    		// in GNURadio min input items and max items should be
+    		// set to the same value to ensure consistency.
+    		setFilterVariables(ninput_items);
+    	}
+
+    	int inputBytes=ninput_items*dataSize;
     	// See https://www.altera.com/support/support-resources/design-examples/design-software/opencl/td-fir.html
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
-        // In fft_filter.cc, the carry-forward tail is added to the head of the new output buffer.
-		memcpy(paddedInputPtr,(void *)input_items[0],inputLengthBytes);
+        int remaining=paddedBufferLengthBytes-ninput_items*dataSize;
+        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
+        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
 
-		// have to recast paddedInputPtr to char * since pointer math for void star is undefined
-		// and using a gr_complex or float would move that many elements, not bytes.
-		memset((char *)paddedInputPtr+inputLengthBytes, 0, paddingBytes);
-
-		// Call OpenCL here
-		// Create buffer for A and copy host contents
-		cl::Buffer inBuffer = cl::Buffer(
-			*context,
-			(cl_mem_flags) (CL_MEM_READ_ONLY | optimalBufferType),  //CL_MEM_COPY_HOST_PTR
-			paddedBufferLengthBytes,
-			(void *)paddedInputPtr);
-
-		cl::Buffer filterBuffer = cl::Buffer(
-			*context,
-			(cl_mem_flags) (CL_MEM_READ_ONLY | optimalBufferType),  //CL_MEM_COPY_HOST_PTR
-			filterLengthBytes,
-			(void *)filterPtr);
-
-		// Create buffer that uses the host ptr
-		cl::Buffer resultBuffer = cl::Buffer(
-			*context,
-//			(cl_mem_flags) (CL_MEM_WRITE_ONLY),
-			(cl_mem_flags) (CL_MEM_WRITE_ONLY | optimalBufferType),
-			paddedBufferLengthBytes,
-			(void *)paddedResultPtr);
-
-		// Do the work
-
-		// Set kernel args
-		kernel->setArg(0, inBuffer);
-		kernel->setArg(1, filterBuffer);
-		kernel->setArg(2, resultBuffer);
+		kernel->setArg(0, *aBuffer);
+		kernel->setArg(1, *bBuffer);
+		kernel->setArg(2, *cBuffer);
 
 		// Do the work
 		try {
@@ -359,41 +410,38 @@ namespace gr {
 		}
 
 		// Map cBuffer to host pointer. This enforces a sync
-		void * output = (void *) queue->enqueueMapBuffer(
-		resultBuffer,
-		CL_TRUE, // block
-		CL_MAP_READ,
-		0,
-		paddedBufferLengthBytes);
 
 		cl_int err;
-
-		// Finally release our hold on accessing the memory
-		err = queue->enqueueUnmapMemObject(
-		resultBuffer,
-		(void *) output);
 
 		int retVal;
 
 		if (fft_filter_ccf::d_decimation == 1) {
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
+
 			// # in=# out. Do it the quick way
-			memcpy((void *)output_items[0],paddedResultPtr,inputLengthBytes);
+			// memcpy((void *)output_items[0],output,ninput_items*dataSize);
 			retVal = ninput_items;
 		}
 		else {
+			void * output = (void *) queue->enqueueMapBuffer(
+			*cBuffer,
+			CL_TRUE, // block
+			CL_MAP_READ,
+			0,
+			paddedBufferLengthBytes);
 			// copy results to output buffer and increment for decimation!
 			int j=0;
 			int i=0;
 			while(j < ninput_items) {
 				if (dataType==DTYPE_COMPLEX) {
 			        gr_complex *out = (gr_complex *)output_items[0];
-			        gr_complex *ResultPtr = (gr_complex *)paddedResultPtr;
+			        gr_complex *ResultPtr = (gr_complex *)output;
 
 					out[i++] = ResultPtr[j];
 				}
 				else {
 			        float *out = (float *)output_items[0];
-			        float *ResultPtr = (float *)paddedResultPtr;
+			        float *ResultPtr = (float *)output;
 
 					out[i++] = ResultPtr[j];
 				}
@@ -401,8 +449,15 @@ namespace gr {
 				j += fft_filter_ccf::d_decimation;
 			}
 
+			err = queue->enqueueUnmapMemObject(
+			*cBuffer,
+			(void *) output);
+
 			retVal = i;
 		}
+
+		// Finally release our hold on accessing the memory
+
 		return retVal;  // Accounts for decimation.
     }
 

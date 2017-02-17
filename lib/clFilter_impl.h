@@ -36,6 +36,10 @@ namespace gr {
         std::string kernelCode;
         std::string kernelCodeWithConst;  // only used if size of filter array is less than constant memory max space.
 
+		cl::Buffer *aBuffer=NULL;
+		cl::Buffer *bBuffer=NULL;
+		cl::Buffer *cBuffer=NULL;
+
         void setFilterVariables(int noutput_items);
         int prevTaps=0;
         int prevInputLength=0;  // numinputs
@@ -50,10 +54,16 @@ namespace gr {
 		int paddingLength;
 		int paddingBytes;
 
+		char *zeroBuff=NULL;
+
+		int curBufferSize=0;
+        void setBufferLength(int numItems);
+
+/*
 		void * paddedInputPtr = NULL;
 		void * paddedResultPtr = NULL;
 		float * filterPtr = NULL;
-
+*/
     	virtual int filterCPU(int noutput_items,
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
@@ -66,7 +76,7 @@ namespace gr {
      public:
     	clFilter_impl(int openclPlatform, int decimation,
               const std::vector<float> &taps,
-              int nthreads=1);
+              int nthreads=1, bool setDebug=false);
       virtual ~clFilter_impl();
 
       int testCPU(int noutput_items,

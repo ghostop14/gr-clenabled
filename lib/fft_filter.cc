@@ -112,7 +112,12 @@ namespace gr {
 
 		try {
 			if(d_xformed_taps != NULL) {
+				try {
 				volk_free(d_xformed_taps);
+				}
+				catch (...) {
+
+				}
 			}
 		}
 		catch (...) {

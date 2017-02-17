@@ -47,7 +47,7 @@ namespace gr {
        * class. clenabled::clMathOp::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int idataType, int openCLPlatformType,int operatorType);
+      static sptr make(int idataType, int openCLPlatformType,int operatorType,int setDebug=0);
     };
 
   } // namespace clenabled

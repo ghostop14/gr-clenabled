@@ -48,7 +48,7 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int openclPlatform, int decimation,
-              const std::vector<float> &taps,int nthreads=1);
+              const std::vector<float> &taps,int nthreads=1,int setDebug=0);
 
   	virtual void set_taps2(const std::vector<float> &taps)=0;
     virtual std::vector<float> taps() const = 0;

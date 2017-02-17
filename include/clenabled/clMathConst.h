@@ -48,7 +48,7 @@ namespace gr {
        * class. clenabled::clMathConst::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int idataType,int openCLPlatformType,float fValue,int operatorType);
+      static sptr make(int idataType,int openCLPlatformType,float fValue,int operatorType,int setDebug=0);
 
       virtual float k() const = 0;
       virtual void set_k(float newValue) = 0;

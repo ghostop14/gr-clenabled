@@ -69,7 +69,7 @@ namespace gr {
             gr_vector_void_star &output_items);
 
       clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int setDebug=0);
-      ~clFFT_impl();
+      virtual ~clFFT_impl();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

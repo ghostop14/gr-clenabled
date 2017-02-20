@@ -23,38 +23,62 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
         std::vector<cl::Platform> platformList;
 
         // Pick platform
-        cl::Platform::get(&platformList);
+        try {
+            cl::Platform::get(&platformList);
+        }
+        catch(...) {
+        	std::string errMsg = "OpenCL Error: Unable to get platform list.";
+        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+        }
+
+        std::string openclString="GPU";
 
         cl_device_type clType=CL_DEVICE_TYPE_GPU;
         switch(platformMode) {
         case OCLTYPE_CPU:
         	clType=CL_DEVICE_TYPE_CPU;
+        	openclString = "CPU";
         break;
         case OCLTYPE_ACCELERATOR:
         	clType=CL_DEVICE_TYPE_ACCELERATOR;
+        	openclString = "Accelerator";
         break;
         case OCLTYPE_ANY:
-        try {
-        	// Test for GPU first...
-            cl_context_properties cprops[] = {
-                CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
-            cl::Context testContext(clType, cprops);
+			try {
+				// Test for GPU first...
+				cl_context_properties cprops[] = {
+					CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
+				cl::Context testContext(clType, cprops);
 
-            clType=CL_DEVICE_TYPE_GPU;
-        }
-        catch(cl::Error& err) {
-            try {
-            	// Test for GPU first...
-                cl_context_properties cprops[] = {
-                    CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
-                cl::Context testContext(CL_DEVICE_TYPE_CPU, cprops);
+				clType=CL_DEVICE_TYPE_GPU;
+				openclString="Any/GPU Preferred";
+			}
+			catch(cl::Error& err) {
+				try {
+					// Will take any time.  So whatever's left.
+					try {
+						cl_context_properties cprops[] = {
+							CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
+						cl::Context testContext(CL_DEVICE_TYPE_CPU, cprops);
 
-                clType=CL_DEVICE_TYPE_CPU;
-            }
-            catch(cl::Error& err) {
-            	clType=CL_DEVICE_TYPE_ALL;
-            }
-        }
+						clType=CL_DEVICE_TYPE_CPU;
+						openclString="Any/CPU";
+					}
+					catch (cl::Error& err) {
+						cl_context_properties cprops[] = {
+							CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
+						cl::Context testContext(CL_DEVICE_TYPE_ALL, cprops);
+
+						clType=CL_DEVICE_TYPE_ALL;
+						openclString="Any/Any";
+
+					}
+				}
+				catch(cl::Error& err) {
+					clType=CL_DEVICE_TYPE_ALL;
+					openclString="Any/ALL";
+				}
+			}
         break;
         }
 
@@ -89,28 +113,48 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
         // https://gist.github.com/dogukancagatay/8419284
 
         if (context == NULL) {
-        	throw cl::Error(CL_DEVICE_NOT_FOUND,"No devices of the desired type found.");
+        	std::string errMsg = "No OpenCL devices of type " + openclString + " found.";
+        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
         }
         // Query the set of devices attached to the context
-        devices = context->getInfo<CL_CONTEXT_DEVICES>();
+        try {
+            devices = context->getInfo<CL_CONTEXT_DEVICES>();
+        }
+        catch(...) {
+        	std::string errMsg = "OpenCL Error: unable to enumerate " + platformName + " devices.";
+        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+        }
 
-        deviceNames.push_back(devices[0].getInfo<CL_DEVICE_NAME>());
-        switch (devices[0].getInfo<CL_DEVICE_TYPE>()) {
-        case CL_DEVICE_TYPE_GPU:
-        deviceTypes.push_back("GPU");
-		break;
-        case CL_DEVICE_TYPE_CPU:
-        deviceTypes.push_back("CPU");
-		break;
-        case CL_DEVICE_TYPE_ACCELERATOR:
-        deviceTypes.push_back("Accelerator");
-		break;
-        case CL_DEVICE_TYPE_ALL:
-        deviceTypes.push_back("ALL");
-		break;
-        case CL_DEVICE_TYPE_CUSTOM:
-        deviceTypes.push_back("CUSTOM");
-		break;
+        try {
+        	deviceNames.push_back(devices[0].getInfo<CL_DEVICE_NAME>());
+        }
+        catch (...) {
+        	std::cout << "GRCLBase: Error getting CL_DEVICE_NAME" << std::endl;
+        	exit(0);
+        }
+
+        try {
+            switch (devices[0].getInfo<CL_DEVICE_TYPE>()) {
+            case CL_DEVICE_TYPE_GPU:
+            deviceTypes.push_back("GPU");
+    		break;
+            case CL_DEVICE_TYPE_CPU:
+            deviceTypes.push_back("CPU");
+    		break;
+            case CL_DEVICE_TYPE_ACCELERATOR:
+            deviceTypes.push_back("Accelerator");
+    		break;
+            case CL_DEVICE_TYPE_ALL:
+            deviceTypes.push_back("ALL");
+    		break;
+            case CL_DEVICE_TYPE_CUSTOM:
+            deviceTypes.push_back("CUSTOM");
+    		break;
+            }
+        }
+        catch (...){
+        	std::cout << "GRCLBase: Error getting CL_DEVICE_TYPE" << std::endl;
+        	exit(0);
         }
 
         dataSize=0;
@@ -128,7 +172,7 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
         }
     }
     catch(cl::Error& e) {
-    	std::cout << "OpenCL Error: " << e.what() << std::endl;
+    	std::cout << "OpenCL Error " + std::to_string(e.err()) + ": " << e.what() << std::endl;
         switch(platformMode) {
         case OCLTYPE_CPU:
         	std::cout << "Attempted Context Type: CPU" << std::endl;
@@ -155,7 +199,13 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
 	}
 
     // Create command queue
-    queue = new cl::CommandQueue(*context, devices[0], 0);
+	try {
+	    queue = new cl::CommandQueue(*context, devices[0], 0);
+	}
+	catch(...) {
+    	std::string errMsg = "OpenCL Error: Unable to create OpenCL command queue on " + platformName;
+    	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+	}
 }
 
 cl_device_type GRCLBase::GetContextType() {
@@ -164,26 +214,26 @@ cl_device_type GRCLBase::GetContextType() {
 
 void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName) {
 	try {
-    // Create and program from source
-	if (program) {
-		delete program;
-		program = NULL;
-	}
-	if (sources) {
-		delete sources;
-		sources = NULL;
-	}
-    sources=new cl::Program::Sources(1, std::make_pair(kernelCode, 0));
-    program = new cl::Program(*context, *sources);
+		// Create and program from source
+		if (program) {
+			delete program;
+			program = NULL;
+		}
+		if (sources) {
+			delete sources;
+			sources = NULL;
+		}
+		sources=new cl::Program::Sources(1, std::make_pair(kernelCode, 0));
+		program = new cl::Program(*context, *sources);
 
-    // Build program
-    program->build(devices);
+		// Build program
+		program->build(devices);
 
-    kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
-
+		kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
 	}
 	catch(cl::Error& e) {
-		std::cout << "OpenCL Error: " << e.what() << std::endl;
+		std::cout << "OpenCL Error compiling kernel for " << kernelFunctionName << std::endl;
+		std::cout << kernelCode << std::endl;
 		exit(0);
 	}
 

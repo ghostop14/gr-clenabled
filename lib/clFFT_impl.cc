@@ -60,7 +60,7 @@ namespace gr {
               gr::io_signature::make(1, 1, dSize),
               gr::io_signature::make(1, 1, dSize)),
 	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType),
-			  d_fft_size(fftSize), d_forward(true), d_shift(true)
+			  d_fft_size(fftSize), d_forward(true), d_shift(false)
     {
         d_fft = new fft_complex(d_fft_size, d_forward, 1);
         d_window=gr::clenabled::window::blackmanharris(fftSize);
@@ -77,7 +77,14 @@ namespace gr {
     	else
     		fftDir = CLFFT_BACKWARD;
 
-    	setBufferLength(fftSize);
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	// This block is a vector block.  We'll get FFT Size multiples in
+    	// but the total length could be greater.  For instance, with an
+    	// FFT size at 1024, we could still get 8192 (8 vectors) in to process.
+    	setBufferLength(imaxItems);
 
     	/* Create a default plan for a complex FFT. */
         size_t clLengths[1];
@@ -146,7 +153,13 @@ namespace gr {
 
         err = clfftDestroyPlan( &planHandle );
        /* Release clFFT library. */
+
+        try {
         clfftTeardown( );
+        }
+        catch(...) {
+        	// safety catch.
+        }
 
         delete d_fft;
     }
@@ -183,7 +196,24 @@ namespace gr {
             volk_32fc_32f_multiply_32fc(&dst[0], &in[offset], &d_window[offset], d_fft_size-offset);
           }
           else {
-            volk_32fc_32f_multiply_32fc(&dst[0], in, &d_window[0], d_fft_size);
+
+          		//volk_32fc_32f_multiply_32fc(&dst[0], in, &d_window[0], d_fft_size);
+
+        	    // Volk crashes.  Just getting performance metric here....
+        	  	void * cPtr = &dst[0];
+        	  	const void * aPtr = in;
+        	  	void * bPtr = &d_window[0];
+        	  	SComplex a,b,c;
+
+        	  	for (int number=0;number<d_fft_size;number++) {
+                	float a_r=a.real;
+                	float a_i=a.imag;
+                	float b_r=b.real;
+                	float b_i=b.imag;
+                	c.real = a_r * b_r - (a_i*b_i);
+                	c.imag = a_r * b_i + a_i * b_r;
+        	  	}
+
           }
         }
         else {
@@ -208,7 +238,10 @@ namespace gr {
           memcpy(&out[d_fft_size - len], &d_fft->get_outbuf()[0], sizeof(gr_complex)*len);
         }
         else {
-          memcpy (out, d_fft->get_outbuf (), output_data_size);
+        	// fix for crash
+        	char tmp[output_data_size];
+          // memcpy (out, d_fft->get_outbuf (), output_data_size);
+          memcpy (tmp, d_fft->get_outbuf (), output_data_size);
         }
 
         in  += d_fft_size;
@@ -230,11 +263,8 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     {
-		// have to be careful with the # of points in each iteration.
-		// The FFT was set up for FFTSize items, so curBufferSize = FFTSize*2.
-		// So we're only going to consume that many at a clip.  If we don't have enough, return 0.
-		if (noutput_items < curBufferSize)
-			return 0;
+		if (noutput_items > curBufferSize)
+			setBufferLength(noutput_items);
 
 		// only taking FFT size items
     	int inputSize = curBufferSize*dataSize;

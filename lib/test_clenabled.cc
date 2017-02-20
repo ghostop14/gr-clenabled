@@ -96,7 +96,7 @@ int testFn(int noutput_items,
 }
 
 
-bool testFFT() {
+bool testFFT(bool runReverse) {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	std::cout << "Testing Forward FFT" << std::endl;
@@ -129,7 +129,7 @@ bool testFFT() {
 	}
 
 	float frequency_signal = 10;
-	float frequency_sampling = fftSize*frequency_signal;
+	float frequency_sampling = largeBlockSize*frequency_signal;
 	float step = 1.0/frequency_sampling;
 
 	std::vector<gr_complex> inputItems;
@@ -142,7 +142,7 @@ bool testFFT() {
 
 	float h=0.0;
 
-	for (i=0;i<fftSize;i++) {
+	for (i=0;i<largeBlockSize;i++) {
 		inputItems.push_back(gr_complex(sin(2*M_PI*frequency_signal*h),cos(2*M_PI*frequency_signal*h)));
 		outputItems.push_back(grZero);
 		h = h + step;
@@ -161,12 +161,12 @@ bool testFFT() {
 	int noutputitems;
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 
 	start = std::chrono::system_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
 	end = std::chrono::system_clock::now();
 
@@ -193,7 +193,7 @@ bool testFFT() {
 
 	start = std::chrono::system_clock::now();
 	for (j=0;j<1;j++) {
-		noutputitems = test->testCPU(fftSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
 	end = std::chrono::system_clock::now();
 
@@ -204,8 +204,10 @@ bool testFFT() {
 
 	std::cout << std::endl;
 
-	return true;
-
+	if (!runReverse) {
+		delete test;
+		return true;
+	}
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	std::cout << "Testing Reverse FFT" << std::endl;
@@ -215,12 +217,13 @@ bool testFFT() {
 	inputItems.clear();
 
 	// Load previous output items into new input items
-	for (i=0;i<fftSize;i++) {
+	for (i=0;i<largeBlockSize*2;i++) {
 		inputItems.push_back(outputItems[i]);
 	}
 
 	outputItems.clear();
-	for (i=0;i<fftSize;i++) {
+	// There's a seg fault somewhere.  Give this output buffer more memory.
+	for (i=0;i<largeBlockSize*2;i++) {
 		outputItems.push_back(grZero);
 	}
 
@@ -230,12 +233,12 @@ bool testFFT() {
 	outputPointers.push_back((void *)&outputItems[0]);
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 
 	start = std::chrono::system_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
 	end = std::chrono::system_clock::now();
 
@@ -264,9 +267,10 @@ bool testFFT() {
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
 
+	iterations = 50;  // way slower to run.
 	start = std::chrono::system_clock::now();
 	for (j=0;j<iterations;j++) {
-		noutputitems = test->testCPU(fftSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
 	end = std::chrono::system_clock::now();
 
@@ -1002,19 +1006,11 @@ main (int argc, char **argv)
 	was_successful = testQuadDemod();
 	std::cout << std::endl;
 
-	was_successful = testFFT();
+	was_successful = testFFT(false);
 	std::cout << std::endl;
 
-	/*
-	try {
 	was_successful = testLowPassFilter();
-	}
-	catch(...) {
-
-	}
 	std::cout << std::endl;
-
-	*/
 
 	return was_successful ? 0 : 1;
 }

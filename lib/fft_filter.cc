@@ -34,7 +34,8 @@ namespace gr {
 	}
 
 	if(d_xformed_taps != NULL) {
-	  volk_free(d_xformed_taps);
+	  // volk_free(d_xformed_taps);
+		delete[] d_xformed_taps;
 	  d_xformed_taps = NULL;
 	}
   }
@@ -113,7 +114,8 @@ namespace gr {
 		try {
 			if(d_xformed_taps != NULL) {
 				try {
-				volk_free(d_xformed_taps);
+				// volk_free(d_xformed_taps);
+					delete[] d_xformed_taps;
 				}
 				catch (...) {
 
@@ -128,7 +130,8 @@ namespace gr {
 		d_fwdfft = new fft_complex(d_fftsize, true, d_nthreads);
 		d_invfft = new fft_complex(d_fftsize, false, d_nthreads);
 
-		d_xformed_taps = (gr_complex*)volk_malloc(sizeof(gr_complex)*d_fftsize,volk_get_alignment());
+		// d_xformed_taps = (gr_complex*)volk_malloc(sizeof(gr_complex)*d_fftsize,volk_get_alignment());
+		d_xformed_taps = new gr_complex[d_fftsize];
 	}
 }
 

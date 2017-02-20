@@ -68,10 +68,9 @@ namespace gr {
     	debugMode=setDebug;
 
     	// Now we set up our OpenCL kernel
-        std::string srcStdStr;
-        std::string fnName = "";
 
         numParams = 2;
+        d_operatorType = operatorType;
 
         int numConstParams = 2;
 
@@ -207,6 +206,8 @@ namespace gr {
     	if (maxItemsForConst < imaxItems || imaxItems == 0) {
     		gr::block::set_max_noutput_items(maxItemsForConst);
 
+    		imaxItems = maxItemsForConst;
+
     		if (debugMode)
     			std::cout << "OpenCL INFO: Math Op adjusting output buffer for " << maxItemsForConst << " due to OpenCL constant memory restrictions" << std::endl;
 		}
@@ -215,9 +216,7 @@ namespace gr {
 				std::cout << "OpenCL INFO: Math Op using default output buffer of " << imaxItems << "..." << std::endl;
 		}
 
-        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
-
-        setBufferLength(maxItemsForConst);
+        setBufferLength(imaxItems);
     }
 
     void clMathOp_impl::setBufferLength(int numItems) {
@@ -245,6 +244,24 @@ namespace gr {
             CL_MEM_READ_WRITE,
 			numItems * dataSize);
 
+        int numConstParams;
+        int imaxItems = numItems;
+
+        if (d_operatorType == MATHOP_LOG || d_operatorType == MATHOP_LOG10)
+        	numConstParams = 1;
+        	else
+        		numConstParams = 2;
+
+        // Now if we change the buffer size larger than __constant can handle, we need to remove constant from the kernel...
+    	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
+
+    	if (maxItemsForConst < imaxItems) {
+    		// Asking for a buffer larger than __constant can handle.
+    		std::cout << "WARNING: MathOp OpenCL is requesting a buffer larger than __constant memory space.  forcing smaller buffer." << std::endl;
+		}
+
+        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+
         curBufferSize=numItems;
     }
     /*
@@ -261,13 +278,32 @@ namespace gr {
     	if (cBuffer)
     		delete cBuffer;
 
-    	cleanup();
+    	// Called in grclbase destructor
+    	// cleanup();
     }
 
     void
     clMathOp_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     {
       /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
+    }
+
+    int clMathOp_impl::testLog10(int noutput_items,
+            gr_vector_int &ninput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items)
+    	{
+
+        const float *in = (const float *) input_items[0];
+        float *out = (float *) output_items[0];
+        float n = 1.0;
+        float k = 0.0;
+
+		for (int i=0;i<noutput_items;i++) {
+			out[i] = n * log10(std::max(in[i], (float) 1e-18)) + k;
+		}
+
+    	return noutput_items;
     }
 
     int clMathOp_impl::testCPU(int noutput_items,

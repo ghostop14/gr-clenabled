@@ -37,13 +37,16 @@
 #include "clMathConst_impl.h"
 #include "clMathOp_impl.h"
 #include "clFilter_impl.h"
+#include "clQuadratureDemod_impl.h"
+#include "clFFT.h"
 #include "clMathOpTypes.h"
 #include "firdes.h"
+#include "clFFT_impl.h"
 #include <iostream>
 #include <chrono>
 #include <ctime>
 
-bool verbose=true;
+bool verbose=false;
 int largeBlockSize=8192;
 int opencltype=OCLTYPE_ANY;
 
@@ -92,6 +95,312 @@ int testFn(int noutput_items,
 	return 0;
 }
 
+
+bool testFFT() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Forward FFT" << std::endl;
+
+	int fftSize=1024;
+
+	gr::clenabled::clFFT_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	int i;
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array for 1024 point FFT..." << std::endl;
+	}
+
+	float frequency_signal = 10;
+	float frequency_sampling = fftSize*frequency_signal;
+	float step = 1.0/frequency_sampling;
+
+	std::vector<gr_complex> inputItems;
+	std::vector<gr_complex> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	float h=0.0;
+
+	for (i=0;i<fftSize;i++) {
+		inputItems.push_back(gr_complex(sin(2*M_PI*frequency_signal*h),cos(2*M_PI*frequency_signal*h)));
+		outputItems.push_back(grZero);
+		h = h + step;
+	}
+
+	std::cout << "First few points of input signal" << std::endl;
+
+	for (i=0;i<4;i++) {
+		std::cout << "input[" << i << "]: " << inputItems[i].real() << "," << inputItems[i].imag() << "j" << std::endl;
+	}
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::system_clock::now();
+	for (j=0;j<1;j++) {
+		noutputitems = test->testCPU(fftSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	return true;
+
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Reverse FFT" << std::endl;
+	delete test;
+	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,true);
+
+	inputItems.clear();
+
+	// Load previous output items into new input items
+	for (i=0;i<fftSize;i++) {
+		inputItems.push_back(outputItems[i]);
+	}
+
+	outputItems.clear();
+	for (i=0;i<fftSize;i++) {
+		outputItems.push_back(grZero);
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(fftSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	std::cout << "First few points of FWD->Rev FFT" << std::endl;
+
+	for (i=0;i<4;i++) {
+		std::cout << "output[" << i << "]: " << outputItems[i].real() << "," << outputItems[i].imag() << "j" << std::endl;
+	}
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	start = std::chrono::system_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(fftSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
+}
+
+bool testQuadDemod() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Quadrature Demodulation (used for FSK)" << std::endl;
+
+	gr::clenabled::clQuadratureDemod_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clQuadratureDemod_impl(2.0,opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array..." << std::endl;
+	}
+
+	std::vector<gr_complex> inputItems;
+	std::vector<float> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(0.0);
+	}
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::system_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
+}
+
 bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
@@ -128,6 +437,10 @@ bool testMultiplyConst() {
 
 	std::vector<gr_complex> inputItems;
 	std::vector<gr_complex> outputItems;
+	std::vector<float> inputFloats;
+	std::vector<float> outputFloats;
+	std::vector<const void *> inputFloatPointers;
+	std::vector<void *> outputFloatPointers;
 
 	std::vector< const void *> inputPointers;
 	std::vector<void *> outputPointers;
@@ -138,10 +451,16 @@ bool testMultiplyConst() {
 	for (i=0;i<largeBlockSize;i++) {
 		inputItems.push_back(gr_complex(1.0f,0.5f));
 		outputItems.push_back(gr_complex(0.0,0.0));
+
+		inputFloats.push_back(0.0);
+		outputFloats.push_back(0.0);
 	}
 
 	inputPointers.push_back((const void *)&inputItems[0]);
 	outputPointers.push_back((void *)&outputItems[0]);
+
+	inputFloatPointers.push_back((const void *)&inputFloats[0]);
+	outputFloatPointers.push_back((void *)&outputFloats[0]);
 
 	// Run empty test
 	int noutputitems;
@@ -250,8 +569,56 @@ bool testMultiplyConst() {
 
 	std::cout << std::endl;
 
-	// std::cout << "OK." << std::endl;
+	// switch to Log10 of float
+	std::cout << "----------------------------------------------------------" << std::endl;
 
+	gr::clenabled::clMathOp_impl *testLog=NULL;
+	testLog = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,MATHOP_LOG10,true);
+	testLog->setBufferLength(largeBlockSize);
+
+	std::cout << "Testing Log10 float performance with " << largeBlockSize << " items..." << std::endl;
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testLog->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+
+	start = std::chrono::system_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testLog->testLog10(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::system_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
 	if (test != NULL) {
 		delete test;
 	}
@@ -578,7 +945,8 @@ main (int argc, char **argv)
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
-			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
+//			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any]" << std::endl;
 			std::cout << "where gpu, cpu, accel[erator], or any defines the type of OpenCL device opened." << std::endl;
 			std::cout << "It is recomended that the size be a multiple of the 'Preferred work group size multiple' visible from the clinfo command." << std::endl;
 			std::cout << std::endl;
@@ -599,6 +967,9 @@ main (int argc, char **argv)
 				opencltype=OCLTYPE_ANY;
 			}
 			else {
+				std::cout << "ERROR: Unknown parameter." << std::endl;
+				exit(1);
+
 				int newVal=atoi(argv[i]);
 
 				if (newVal > 0) {
@@ -628,6 +999,13 @@ main (int argc, char **argv)
 	was_successful = testMultiply();
 	std::cout << std::endl;
 
+	was_successful = testQuadDemod();
+	std::cout << std::endl;
+
+	was_successful = testFFT();
+	std::cout << std::endl;
+
+	/*
 	try {
 	was_successful = testLowPassFilter();
 	}
@@ -636,6 +1014,7 @@ main (int argc, char **argv)
 	}
 	std::cout << std::endl;
 
+	*/
 
 	return was_successful ? 0 : 1;
 }

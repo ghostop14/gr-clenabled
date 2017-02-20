@@ -154,6 +154,8 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
 		std::cout << "Error getting device constant memory size." << std::endl;
 	}
 
+    // Create command queue
+    queue = new cl::CommandQueue(*context, devices[0], 0);
 }
 
 cl_device_type GRCLBase::GetContextType() {
@@ -179,8 +181,6 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 
     kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
 
-    // Create command queue
-    queue = new cl::CommandQueue(*context, devices[0], 0);
 	}
 	catch(cl::Error& e) {
 		std::cout << "OpenCL Error: " << e.what() << std::endl;

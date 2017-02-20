@@ -158,6 +158,8 @@ namespace gr {
 	if (maxItemsForConst < imaxItems || imaxItems == 0) {
 		gr::block::set_max_noutput_items(maxItemsForConst);
 
+		imaxItems = maxItemsForConst;
+
 		if (debugMode)
 			std::cout << "OpenCL INFO: Math Op Const adjusting output buffer for " << maxItemsForConst << " due to OpenCL constant memory restrictions" << std::endl;
 	}
@@ -168,7 +170,7 @@ namespace gr {
 
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
-	setBufferLength(maxItemsForConst);
+	setBufferLength(imaxItems);
 	}
 
 
@@ -202,8 +204,8 @@ namespace gr {
     	if (cBuffer)
     		delete cBuffer;
 
-    	cleanup();
-
+    	// Called in grclbase destructor
+    	// cleanup();
     }
 
     void

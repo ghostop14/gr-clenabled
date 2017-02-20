@@ -17,6 +17,8 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 
+set(VOLK_LIBRARIES volk)
+
 ########################################################################
 # Setup library
 ########################################################################
@@ -35,6 +37,9 @@ list(APPEND clenabled_sources
     fft_filter.cc
     fft.cc
     clFilter_impl.cc
+    clQuadratureDemod_impl.cc
+    fast_atan2f.cc
+    clFFT_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -44,7 +49,7 @@ if(NOT clenabled_sources)
 endif(NOT clenabled_sources)
 
 add_library(gnuradio-clenabled SHARED ${clenabled_sources})
-target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES})
+target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
 set_target_properties(gnuradio-clenabled PROPERTIES DEFINE_SYMBOL "gnuradio_clenabled_EXPORTS")
 
 if(APPLE)
@@ -69,6 +74,8 @@ include_directories(${CPPUNIT_INCLUDE_DIRS})
 list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test_clenabled.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clenabled.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clFFT.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clQuadratureDemod.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clFilter.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clMathOp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clMathConst.cc
@@ -76,7 +83,10 @@ list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/clMathConst_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/clFilter_impl.cc
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/clQuadratureDemod_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/fast_atan2f.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clFFT_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/window.cc
 )
 
 add_executable(test-clenabled ${test_clenabled_sources})
@@ -90,6 +100,8 @@ target_link_libraries(
   ${FFTW3F_LIBRARIES}
   OpenCL
   gnuradio-clenabled
+  clFFT
+  
 )
 
 GR_ADD_TEST(test_clenabled test-clenabled)

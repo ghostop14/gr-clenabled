@@ -86,6 +86,12 @@ namespace gr {
     	prevTaps = d_ntaps;
     	prevInputLength = 8192;
 
+    	int err;
+
+        clfftSetupData fftSetup;
+        err = clfftInitSetupData(&fftSetup);
+        err = clfftSetup(&fftSetup);
+
     	// set up for initial 8192 sample input buffer
     	setFilterVariables(prevInputLength);
     }
@@ -106,24 +112,12 @@ namespace gr {
 
     	if (zeroBuff)
     		delete zeroBuff;
-/*
-    	if (paddedInputPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)paddedInputPtr;
-			}
-			else {
-				delete[] (float *)paddedInputPtr;
-			}
-		}
-		if (paddedResultPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)paddedResultPtr;
-			}
-			else {
-				delete[] (float *)paddedResultPtr;
-			}
-		}
-*/
+
+        /* Release clFFT library. */
+        clfftTeardown( );
+
+    	// Called in grclbase destructor
+    	// cleanup();
     }
 
     void clFilter_impl::setFilterVariables(int ninput_items) {
@@ -131,48 +125,9 @@ namespace gr {
 		paddingBytes = dataSize*paddingLength;
 
     	resultLengthPoints = ninput_items + d_ntaps - 1;
-/*
-    	if (ninput_items % d_ntaps > 0) {
-    		resultLengthAlignedWithTaps = (int((float)ninput_items / (float)d_ntaps)+1) * d_ntaps;
-		}
-		else {
-			resultLengthAlignedWithTaps = resultLengthPoints;
-		}
-*/
 		inputLengthBytes = ninput_items*dataSize;
 		paddedBufferLengthBytes=resultLengthPoints*dataSize;
 
-/*
-		if (paddedInputPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)paddedInputPtr;
-			}
-			else {
-				delete[] (float *)paddedInputPtr;
-			}
-		}
-		if (paddedResultPtr != NULL) {
-			if (dataType==DTYPE_COMPLEX) {
-				delete[] (gr_complex *)paddedResultPtr;
-			}
-			else {
-				delete[] (float *)paddedResultPtr;
-			}
-		}
-*/
-
-		/*
-		if (dataType == DTYPE_COMPLEX) {
-			paddedInputPtr = (void *)new gr_complex[resultLengthPoints];
-			paddedResultPtr = (void *)new gr_complex[resultLengthPoints];
-		}
-		else {
-			paddedInputPtr = (void *)new float[resultLengthPoints];
-			paddedResultPtr = (void *)new float[resultLengthPoints];
-		}
-*/
-		// Save the converted pointer to our taps.
-//		filterPtr = (float *) &(d_taps[0]);
 		filterLengthBytes=d_taps.size() * sizeof(float);
 
 
@@ -334,6 +289,27 @@ namespace gr {
 
         queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,filterLengthBytes,&(d_taps[0]));
 
+        int err;
+        /* Setup clFFT. */
+        clfftSetupData fftSetup;
+        err = clfftInitSetupData(&fftSetup);
+        err = clfftSetup(&fftSetup);
+
+        /* Create a default plan for a complex FFT. */
+        size_t clLengths[1];
+        clLengths[0]=(size_t)ninput_items;
+
+
+        err = clfftCreateDefaultPlan(&planHandle, (*context)(), dim, clLengths);
+
+        /* Set plan parameters. */
+        err = clfftSetPlanPrecision(planHandle, CLFFT_SINGLE);
+        err = clfftSetLayout(planHandle, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
+        err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);
+
+        /* Bake the plan. */
+        err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
+
 }
 
 void clFilter_impl::setBufferLength(int numItems) {
@@ -347,24 +323,32 @@ void clFilter_impl::setBufferLength(int numItems) {
 	if (zeroBuff)
 		delete zeroBuff;
 
-        aBuffer = new cl::Buffer(
-            *context,
-            CL_MEM_READ_ONLY,
-			paddedBufferLengthBytes);
+	aBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_ONLY,
+		paddedBufferLengthBytes);
 
-        bBuffer = new cl::Buffer(
-            *context,
-            CL_MEM_READ_ONLY,
-			filterLengthBytes);
+	bBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_ONLY,
+		filterLengthBytes);
 
-        cBuffer = new cl::Buffer(
-            *context,
-            CL_MEM_READ_WRITE,
-			paddedBufferLengthBytes);
+	cBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_WRITE,
+		paddedBufferLengthBytes);
 
-        zeroBuff=new char[paddedBufferLengthBytes];
+	zeroBuff=new char[paddedBufferLengthBytes];
 
-        curBufferSize = numItems;
+	curBufferSize = numItems;
+
+    /* Release the plan. */
+	int err;
+
+    err = clfftDestroyPlan( &planHandle );
+   /* Release clFFT library. */
+    clfftTeardown( );
+
     }
 
     int
@@ -372,7 +356,7 @@ void clFilter_impl::setBufferLength(int numItems) {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
 
-    	if (ninput_items != curBufferSize) {
+    	if (ninput_items > curBufferSize) {
     		// This could get expensive if we have to rebuild kernels
     		// in GNURadio min input items and max items should be
     		// set to the same value to ensure consistency.
@@ -383,7 +367,8 @@ void clFilter_impl::setBufferLength(int numItems) {
     	// See https://www.altera.com/support/support-resources/design-examples/design-software/opencl/td-fir.html
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
-        int remaining=paddedBufferLengthBytes-ninput_items*dataSize;
+        int remaining=paddedBufferLengthBytes - inputBytes;
+
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
 
@@ -392,13 +377,19 @@ void clFilter_impl::setBufferLength(int numItems) {
 		kernel->setArg(2, *cBuffer);
 
 		// Do the work
+		queue->enqueueNDRangeKernel(
+			*kernel,
+			cl::NullRange,
+			cl::NDRange(ninput_items),
+			cl::NullRange);
+
+		/*
 		try {
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
-			cl::NDRange(ninput_items),  // Actually for the FIR the input is inputItems + filterLength - 1,
-			cl::NullRange);				// However the output length is still just inputItems, otherwise the calculations
-										// would run off the end of the input buffer as they go up to i+k where i=iMax
+			cl::NDRange(ninput_items),
+			cl::NullRange);
 		}
 		catch (cl::Error& err) {
 			if (err.err() == CL_OUT_OF_RESOURCES) {
@@ -408,11 +399,10 @@ void clFilter_impl::setBufferLength(int numItems) {
 				std::cout << "Error: " << err.what() << " " << err.err() << std::endl;
 			}
 		}
-
+		*/
 		// Map cBuffer to host pointer. This enforces a sync
 
 		cl_int err;
-
 		int retVal;
 
 		if (fft_filter_ccf::d_decimation == 1) {

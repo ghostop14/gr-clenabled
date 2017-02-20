@@ -24,6 +24,7 @@
 #include <clenabled/clFilter.h>
 #include "fft_filter.h"
 #include "GRCLBase.h"
+#include <clFFT.h>
 
 namespace gr {
   namespace clenabled {
@@ -43,6 +44,10 @@ namespace gr {
         void setFilterVariables(int noutput_items);
         int prevTaps=0;
         int prevInputLength=0;  // numinputs
+
+        // clFFT
+        clfftPlanHandle planHandle;
+        clfftDim dim = CLFFT_1D;
 
         // Precalculated values
         int inputLengthBytes;

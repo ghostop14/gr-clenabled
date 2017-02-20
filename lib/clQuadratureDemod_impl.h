@@ -18,40 +18,32 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CLENABLED_CLMATHOP_IMPL_H
-#define INCLUDED_CLENABLED_CLMATHOP_IMPL_H
+#ifndef INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
+#define INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
 
-#include <clenabled/clMathOp.h>
+#include <clenabled/clQuadratureDemod.h>
 #include "GRCLBase.h"
+#include <volk/volk.h>
 
 namespace gr {
   namespace clenabled {
 
-    class clMathOp_impl : public clMathOp, public GRCLBase
+    class clQuadratureDemod_impl : public clQuadratureDemod, public GRCLBase
     {
      private:
       // Nothing to declare in this block.
-    	int numParams=2;
-    	int d_operatorType;
-        std::string srcStdStr;
-        std::string fnName = "";
 
+    	float d_gain;
 		cl::Buffer *aBuffer=NULL;
-		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
      public:
-      clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType,int operatorType, bool setDebug=false);
-      ~clMathOp_impl();
+      clQuadratureDemod_impl(float gain, int openCLPlatformType,int setDebug=0);
+      ~clQuadratureDemod_impl();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
-
-      int testLog10(int noutput_items,
-              gr_vector_int &ninput_items,
-              gr_vector_const_void_star &input_items,
-              gr_vector_void_star &output_items);
 
       int testCPU(int noutput_items,
               gr_vector_int &ninput_items,
@@ -79,5 +71,5 @@ namespace gr {
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLMATHOP_IMPL_H */
+#endif /* INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H */
 

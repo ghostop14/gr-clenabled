@@ -29,6 +29,8 @@
 #include "qa_clMathConst.h"
 #include "qa_clMathOp.h"
 #include "qa_clFilter.h"
+#include "qa_clQuadratureDemod.h"
+#include "qa_clFFT.h"
 
 CppUnit::TestSuite *
 qa_clenabled::suite()
@@ -37,6 +39,8 @@ qa_clenabled::suite()
   s->addTest(gr::clenabled::qa_clMathConst::suite());
   s->addTest(gr::clenabled::qa_clMathOp::suite());
   s->addTest(gr::clenabled::qa_clFilter::suite());
+  s->addTest(gr::clenabled::qa_clQuadratureDemod::suite());
+  s->addTest(gr::clenabled::qa_clFFT::suite());
 
   return s;
 }

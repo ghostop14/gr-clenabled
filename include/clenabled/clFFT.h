@@ -49,7 +49,9 @@ namespace gr {
        * class. clenabled::clFFT::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int fftSize, int clFFTDir,int idataType,int openCLPlatformType,int setDebug=0);
+
+      // Default to ANY OpenCL device.
+      static sptr make(int fftSize, int clFFTDir,int idataType,int openCLPlatformType=4,int setDebug=0);
     };
 
   } // namespace clenabled

@@ -24,5 +24,7 @@ install(FILES
     api.h
     clMathConst.h
     clMathOp.h
-    clFilter.h DESTINATION include/clenabled
+    clFilter.h
+    clQuadratureDemod.h
+    clFFT.h DESTINATION include/clenabled
 )

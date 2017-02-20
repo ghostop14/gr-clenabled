@@ -31,6 +31,7 @@ install(FILES
     clenabled_clBandPassFilter.xml
     clenabled_clBandRejectFilter.xml
     clenabled_clRootRaisedCosine.xml
-    clenabled_clLowPassFilter.xml 
-    DESTINATION share/gnuradio/grc/blocks
+    clenabled_clLowPassFilter.xml
+    clenabled_clQuadratureDemod.xml
+    clenabled_clFFT.xml DESTINATION share/gnuradio/grc/blocks
 )

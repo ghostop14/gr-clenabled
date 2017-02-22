@@ -768,6 +768,17 @@ bool testLowPassFilter() {
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 		std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 	}
+	catch(const std::runtime_error& re)
+	{
+	    // speciffic handling for runtime_error
+	    std::cerr << "Runtime error: " << re.what() << std::endl;
+	}
+	catch(const std::exception& ex)
+	{
+	    // speciffic handling for all exceptions extending std::exception, except
+	    // std::runtime_error which is handled explicitly
+	    std::cerr << "Error occurred: " << ex.what() << std::endl;
+	}
 	catch (...) {
 		std::cout << "ERROR: error setting up filter OpenCL environment." << std::endl;
 
@@ -844,6 +855,7 @@ bool testLowPassFilter() {
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
+	/*
 	// Running with narrower filter:
 	transition_width = (int)(cutoff_freq*0.05);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
@@ -882,6 +894,7 @@ bool testLowPassFilter() {
 	}
 
 	std::cout << std::endl;
+	*/
 	// CPU
 	transition_width = (int)(cutoff_freq*0.15);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
@@ -914,12 +927,12 @@ bool testLowPassFilter() {
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
-
+/*
 	// CPU
-	/*
-	 * NOTE: The fftw calls ARE NOT thread safe!  It works within gnuradio but
-	 * seems to be seg faulting here.
-	 */
+
+	// NOTE: The fftw calls ARE NOT thread safe!  It works within gnuradio but
+	// seems to be seg faulting here.
+
 	transition_width = (int)(cutoff_freq*0.5);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
@@ -933,6 +946,7 @@ bool testLowPassFilter() {
 	elapsed_seconds = end-start;
 	std::cout << "CPU-only Run Time for 5% filter: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+*/
 
 
 	if (test != NULL) {

@@ -55,29 +55,29 @@ namespace gr {
     gr_complex *
     malloc_complex(int size)
     {
-//      return (gr_complex*) volk_malloc (sizeof (gr_complex)*size, volk_get_alignment ());
-    	return new gr_complex[size];
+      return (gr_complex*) volk_malloc (sizeof (gr_complex)*size, volk_get_alignment ());
+//    	return new gr_complex[size];
     }
 
     float *
     malloc_float(int size)
     {
-//      return (float*) volk_malloc (sizeof (float)*size, volk_get_alignment ());
-        return new float[size];
+      return (float*) volk_malloc (sizeof (float)*size, volk_get_alignment ());
+//        return new float[size];
     }
 
     double *
     malloc_double(int size)
     {
-//      return (double*) volk_malloc (sizeof (double)*size, volk_get_alignment ());
-      return new double[size];
+      return (double*) volk_malloc (sizeof (double)*size, volk_get_alignment ());
+//      return new double[size];
     }
 
     void
     free(void *b)
     {
-      // volk_free(b);
-    	delete[] b;
+      volk_free(b);
+  //  	delete[] b;
     }
 
     boost::mutex &
@@ -155,17 +155,16 @@ namespace gr {
       }
 
       d_fft_size = fft_size;
-      // d_inbuf = (gr_complex *) volk_malloc (sizeof (gr_complex) * inbuf_length (), volk_get_alignment ());
-      // d_inbuf = (gr_complex *) volk_malloc (sizeof (gr_complex) * inbuf_length (), volk_get_alignment ());
-      d_inbuf = new gr_complex(inbuf_length());
+       d_inbuf = (gr_complex *) volk_malloc (sizeof (gr_complex) * inbuf_length (), volk_get_alignment ());
+      // d_inbuf = new gr_complex[inbuf_length()];
       if (d_inbuf == 0) {
         throw std::runtime_error ("volk_malloc");
       }
-      // d_outbuf = (gr_complex *) volk_malloc (sizeof (gr_complex) * outbuf_length (), volk_get_alignment ());
-      d_outbuf = new gr_complex[outbuf_length()];
+      d_outbuf = (gr_complex *) volk_malloc (sizeof (gr_complex) * outbuf_length (), volk_get_alignment ());
+      // d_outbuf = new gr_complex[outbuf_length()];
       if (d_outbuf == 0) {
-        // volk_free (d_inbuf);
-    	  delete[] d_inbuf;
+        volk_free (d_inbuf);
+    	//  delete[] d_inbuf;
         throw std::runtime_error ("volk_malloc");
       }
 
@@ -202,8 +201,8 @@ namespace gr {
       }
       if (d_inbuf) {
     	  try {
-    		  // volk_free (d_inbuf);
-    		  delete[] d_inbuf;
+    		  volk_free (d_inbuf);
+    		  // delete[] d_inbuf;
     	  }
     	  catch (...) {
 
@@ -213,8 +212,8 @@ namespace gr {
 
       if (d_outbuf) {
     	  try {
-        	  // volk_free (d_outbuf);
-    		  delete[] d_outbuf;
+        	  volk_free (d_outbuf);
+    		  // delete[] d_outbuf;
     	  }
     	  catch (...) {
 

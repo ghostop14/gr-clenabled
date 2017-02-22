@@ -18,7 +18,7 @@ namespace gr {
 : d_fftsize(-1), d_decimation(decimation), d_fwdfft(NULL),
   d_invfft(NULL), d_nthreads(nthreads), d_xformed_taps(NULL)
   {
-	  set_taps(taps);
+	  // set_taps(taps); moved up a level
   }
 
   fft_filter_ccf::~fft_filter_ccf()
@@ -47,7 +47,7 @@ namespace gr {
   fft_filter_ccf::set_taps(const std::vector<float> &taps)
   {
 	int i = 0;
-		d_taps = taps;
+	d_taps = taps;
 	compute_sizes(taps.size());
 
 	d_tail.resize(tailsize());

@@ -33,14 +33,7 @@ namespace gr {
     {
      private:
         bool d_updated;
-
-
         std::vector<float> d_new_taps;
-
-
-        float *transformedTaps_float=NULL;
-        std::vector<float>  d_tail_float;	    // state carried between blocks for overlap-add
-
         std::string kernelCode;
         std::string kernelCodeWithConst;  // only used if size of filter array is less than constant memory max space.
 
@@ -69,16 +62,15 @@ namespace gr {
 		int paddingBytes;
 
 		char *zeroBuff=NULL;
-		char *tmpFFTBuff=NULL;
 
 		int curBufferSize=0;
         void setBufferLength(int numItems);
 
-
+/*
 		void * paddedInputPtr = NULL;
 		void * paddedResultPtr = NULL;
 		float * filterPtr = NULL;
-
+*/
     	virtual int filterCPU(int noutput_items,
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
@@ -86,12 +78,6 @@ namespace gr {
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
     	virtual int filterGPU(int ninput_items,
-                gr_vector_const_void_star &input_items,
-                gr_vector_void_star &output_items);
-    	virtual int filterGPUTimeDomain(int ninput_items,
-                gr_vector_const_void_star &input_items,
-                gr_vector_void_star &output_items);
-    	virtual int filterGPUFrequencyDomain(int ninput_items,
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
      public:
@@ -109,12 +95,6 @@ namespace gr {
 
       void TestNotifyNewFilter(int noutput_items);
       virtual void set_taps2(const std::vector<float> &taps);
-
-      // overrides for fft_filter_ccf implementation to support complex and floats
-      virtual int set_taps(const std::vector<float> &taps);
-      virtual void compute_sizes(int ntaps);
-
-
       virtual void set_nthreads(int n);
       virtual std::vector<float> taps() const;
 

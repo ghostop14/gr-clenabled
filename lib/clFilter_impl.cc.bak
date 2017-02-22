@@ -25,8 +25,6 @@
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
 
-const bool USE_TIME_DOMAIN=true;
-
 namespace gr {
   namespace clenabled {
     clFilter::sptr
@@ -58,11 +56,11 @@ namespace gr {
     	int ninput_items = noutput_items * fft_filter_ccf::d_decimation;
         if (d_updated){
         	// set_taps sets d_nsamples so changed this line.
-			prevTaps = d_ntaps;
-        	d_nsamples = set_taps(d_new_taps);
+        	d_nsamples = fft_filter_ccf::set_taps(d_new_taps);
 			d_updated = false;
 			set_output_multiple(d_nsamples);
-			setFilterVariables(ninput_items);
+			setFilterVariables(noutput_items);
+			prevTaps = d_ntaps;
 			prevInputLength = ninput_items;
         }
     }
@@ -98,11 +96,6 @@ namespace gr {
      */
     clFilter_impl::~clFilter_impl()
     {
-		if (dataType==DTYPE_FLOAT) {
-			if (transformedTaps_float)
-				delete[] transformedTaps_float;
-		}
-
     	if (aBuffer)
     		delete aBuffer;
 
@@ -113,32 +106,27 @@ namespace gr {
     		delete cBuffer;
 
     	if (zeroBuff)
-    		delete[] zeroBuff;
+    		delete zeroBuff;
 
-    	if (tmpFFTBuff)
-    		delete[] tmpFFTBuff;
+        /* Release the plan. */
+    	int err;
 
-    	if (!USE_TIME_DOMAIN) {
-            /* Release the plan. */
-        	int err;
+        err = clfftDestroyPlan( &planHandle );
+       /* Release clFFT library. */
 
-            err = clfftDestroyPlan( &planHandle );
-           /* Release clFFT library. */
-
-            try {
-            	clfftTeardown( );
-            }
-            catch(...) {
-            	// safety catch.
-            }
-    	}
+        try {
+        	clfftTeardown( );
+        }
+        catch(...) {
+        	// safety catch.
+        }
     }
 
     void clFilter_impl::setFilterVariables(int ninput_items) {
         // From fft_filter.cc
     	// NOTE: MUST BE CALLED BEFORE setFilterVariables setup since some values are assumed set in there
     	// This also fills d_xformed_taps which is a gr_complex vector of size d_fftsize
-        set_taps(d_taps);
+        fft_filter_ccf::set_taps(d_taps);
 
     	paddingLength = d_ntaps - 1;
 		paddingBytes = dataSize*paddingLength;
@@ -147,8 +135,9 @@ namespace gr {
 		inputLengthBytes = ninput_items*dataSize;
 		paddedBufferLengthBytes=resultLengthPoints*dataSize;
 
-		filterLengthBytes=d_ntaps * sizeof(float);
+		filterLengthBytes=d_taps.size() * sizeof(float);
 
+/*
     	kernelCode = "";
     	kernelCodeWithConst = "";
         std::string fnName = "";
@@ -287,268 +276,81 @@ namespace gr {
         		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
     	}
 
-    	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
+    	// GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
+*/
 
         setBufferLength(ninput_items);
 
-        if (!USE_TIME_DOMAIN) {
-            int err;
-            /* Setup clFFT. */
-            if (!hasInitialized_clFFT) {
-            	hasInitialized_clFFT = true;
-                clfftSetupData fftSetup;
-                err = clfftInitSetupData(&fftSetup);
-                err = clfftSetup(&fftSetup);
-            }
-            else {
-            	// delete the old plan
-                err = clfftDestroyPlan( &planHandle );
-            }
+//        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,filterLengthBytes,&(d_taps[0]));
 
-            size_t clLengths[1];
-            clLengths[0]=(size_t)d_fftsize;  // calculated in set_taps then compute_sizes
-
-            err = clfftCreateDefaultPlan(&planHandle, (*context)(), dim, clLengths);
-
-            /* Set plan parameters. */
-            err = clfftSetPlanPrecision(planHandle, CLFFT_SINGLE);
-
-            if (dataType==DTYPE_COMPLEX) {
-                err = clfftSetLayout(planHandle, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
-            }
-            else {
-                err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_REAL);
-            }
-            //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
-            err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
-
-            /* Bake the plan. */
-            err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
+        int err;
+        /* Setup clFFT. */
+        if (!hasInitialized_clFFT) {
+        	hasInitialized_clFFT = true;
+            clfftSetupData fftSetup;
+            err = clfftInitSetupData(&fftSetup);
+            err = clfftSetup(&fftSetup);
         }
+        else {
+        	// delete the old plan
+            err = clfftDestroyPlan( &planHandle );
+        }
+
+        size_t clLengths[1];
+        clLengths[0]=(size_t)d_fftsize;  // calculated in set_taps then compute_sizes
+
+        err = clfftCreateDefaultPlan(&planHandle, (*context)(), dim, clLengths);
+
+        /* Set plan parameters. */
+        err = clfftSetPlanPrecision(planHandle, CLFFT_SINGLE);
+
+        if (dataType==DTYPE_COMPLEX) {
+            err = clfftSetLayout(planHandle, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
+        }
+        else {
+            err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_REAL);
+        }
+        //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
+        err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
+
+        /* Bake the plan. */
+        err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
 }
 
 void clFilter_impl::setBufferLength(int numItems) {
 	if (aBuffer)
 		delete aBuffer;
-
 	if (bBuffer)
 		delete bBuffer;
-
-
 	if (cBuffer)
 		delete cBuffer;
 
 	if (zeroBuff)
-		delete[] zeroBuff;
+		delete zeroBuff;
 
-	if (tmpFFTBuff)
-		delete[] tmpFFTBuff;
+	aBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_ONLY,
+		numItems*dataSize);
 
+	// This is our tap buffer.
+	bBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_ONLY,
+		d_fftsize*dataSize,d_xformed_taps);
 
-	if (USE_TIME_DOMAIN) {
-		aBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			paddedBufferLengthBytes);
+	cBuffer = new cl::Buffer(
+		*context,
+		CL_MEM_READ_WRITE,
+		numItems*dataSize);
 
-		zeroBuff=new char[paddedBufferLengthBytes];
-		memset(zeroBuff,0x00,paddedBufferLengthBytes);
-		// This is our tap buffer.
-		bBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_ONLY,
-			d_ntaps*sizeof(float));
+	zeroBuff=new char[paddedBufferLengthBytes];
 
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_ntaps*sizeof(float),&(d_taps[0]));
-
-		cBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			numItems*dataSize);
-
-		tmpFFTBuff = new char[paddedBufferLengthBytes];
-	}
-	else {
-		zeroBuff=new char[(d_fftsize-d_nsamples)*dataSize];
-		memset(zeroBuff,0x00,(d_fftsize-d_nsamples)*dataSize);
-
-		aBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			numItems*dataSize);
-
-		cBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			d_fftsize*dataSize);
-
-		tmpFFTBuff = new char[d_fftsize*dataSize];
-	}
 	curBufferSize = numItems;
 }
 
-/*
- * determines d_ntaps, d_nsamples, d_fftsize, d_xformed_taps
- */
-int
-clFilter_impl::set_taps(const std::vector<float> &taps)
-{
-	int i = 0;
-	d_taps = taps;
-	compute_sizes(taps.size());
-	float scale = 1.0 / d_fftsize;
-
-	// tailsize is d_ntaps - 1 which is the remaining data on the tap filter.
-	// Input data = fft_size + d_ntaps - 1.   d_ntaps - 1 is the tail that should get zero'd out.
-	if (dataType==DTYPE_COMPLEX) {
-		d_tail.resize(tailsize());
-		for(i = 0; i < tailsize(); i++)
-		  d_tail[i] = 0;
-
-		gr_complex *in = d_fwdfft->get_inbuf();
-		gr_complex *out = d_fwdfft->get_outbuf();
-
-		// Compute forward xform of taps.
-		// Copy taps into first ntaps slots, then pad with zeros
-		for(i = 0; i < d_ntaps; i++)
-		  in[i] = gr_complex(taps[i] * scale, 0.0f);
-
-		for(i=d_ntaps; i < d_fftsize; i++)
-		  in[i] = gr_complex(0.0f, 0.0f);
-
-		d_fwdfft->execute();		// do the xform
-
-		// now copy output to d_xformed_taps
-		for(i = 0; i < d_fftsize; i++)
-		  d_xformed_taps[i] = out[i];
-	}
-	else {
-		// DTYPE_FLOAT
-
-		d_tail_float.resize(tailsize());
-		for(i = 0; i < tailsize(); i++)
-		  d_tail_float[i] = 0;
-
-		float tmpTaps[d_ntaps];
-
-		// Have to make sure we have d_fftsize inputs for the filter.
-		for (i=0;i<d_ntaps;i++)
-			tmpTaps[i] = taps[i] * scale;
-
-		for(i=d_ntaps; i < d_fftsize; i++)
-			tmpTaps[i] = 0.0f;
-
-		if (!USE_TIME_DOMAIN) {
-	    	cl::Buffer tapInput(
-	            *context,
-	            CL_MEM_READ_ONLY,
-				d_fftsize*dataSize,&tmpTaps[0]);
-
-	        cl::Buffer tapOutput(
-	            *context,
-	            CL_MEM_READ_WRITE,
-				d_fftsize*dataSize);
-
-	        int err;
-	        // Execute the plan.
-	       	err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(tapInput()), &(tapOutput()), NULL);
-
-	        // Wait for calculations to be finished.
-	        err = clFinish((*queue)());
-
-	        // and outputting FFTSize samples
-
-	        // Fetch results of calculations.
-	    	queue->enqueueReadBuffer(tapOutput,CL_TRUE,0,d_fftsize*dataSize,(void *)transformedTaps_float);
-		}
-	}
-
-	return d_nsamples;
-}
-
-// determine and set d_ntaps, d_nsamples, d_fftsize
-void
-clFilter_impl::compute_sizes(int ntaps)
-{
-	int old_fftsize = d_fftsize;
-	d_ntaps = ntaps;
-	d_fftsize = (int) (2 * pow(2.0, ceil(log(double(ntaps)) / log(2.0))));
-	d_nsamples = d_fftsize - d_ntaps + 1;
-	/*
-	if(VERBOSE) {
-	  std::cerr << "fft_filter_ccf: ntaps = " << d_ntaps
-			<< " fftsize = " << d_fftsize
-			<< " nsamples = " << d_nsamples << std::endl;
-	}
-	*/
-	// compute new plans
-	if(d_fftsize != old_fftsize) {
-		try {
-			if (d_fwdfft != NULL) {
-				delete d_fwdfft;
-				d_fwdfft=NULL;
-			}
-		}
-		catch (...) {
-			std::cout << "FFT_Filter_ccf::compute_sizes: exception deleting d_fwdfft" << std::endl;
-		}
-
-		try {
-			if (d_invfft) {
-				delete d_invfft;
-				d_invfft = NULL;
-			}
-		}
-		catch (...) {
-			std::cout << "FFT_Filter_ccf::compute_sizes: exception deleting d_invfft" << std::endl;
-		}
-
-		try {
-			if(d_xformed_taps != NULL) {
-				try {
-				// volk_free(d_xformed_taps);
-					delete[] d_xformed_taps;
-					d_xformed_taps = NULL;
-				}
-				catch (...) {
-
-				}
-			}
-		}
-		catch (...) {
-			std::cout << "FFT_Filter_ccf::compute_sizes: exception volk_free(d_xformed_taps)" << std::endl;
-		}
-
-		if (dataType==DTYPE_COMPLEX) {
-			d_fwdfft = new fft_complex(d_fftsize, true, d_nthreads);
-			d_invfft = new fft_complex(d_fftsize, false, d_nthreads);
-
-			// d_xformed_taps = (gr_complex*)volk_malloc(sizeof(gr_complex)*d_fftsize,volk_get_alignment());
-			d_xformed_taps = new gr_complex[d_fftsize];
-		}
-		else {
-			// DTYPE_FLOAT
-			if (transformedTaps_float)
-				delete[] transformedTaps_float;
-
-			transformedTaps_float = new float[d_fftsize];
-		}
-	}
-}
-
-
-int
-clFilter_impl::filterGPU(int ninput_items,
-        gr_vector_const_void_star &input_items,
-        gr_vector_void_star &output_items) {
-	if (USE_TIME_DOMAIN)
-		return filterGPUTimeDomain(ninput_items,input_items,output_items);
-	else
-		return filterGPUFrequencyDomain(ninput_items,input_items,output_items);
-
-}
     int
-	clFilter_impl::filterGPUTimeDomain(int ninput_items,
+	clFilter_impl::filterGPU(int ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
 
@@ -579,6 +381,25 @@ clFilter_impl::filterGPU(int ninput_items,
 			cl::NDRange(ninput_items),
 			cl::NullRange);
 
+		/*
+		try {
+		queue->enqueueNDRangeKernel(
+			*kernel,
+			cl::NullRange,
+			cl::NDRange(ninput_items),
+			cl::NullRange);
+		}
+		catch (cl::Error& err) {
+			if (err.err() == CL_OUT_OF_RESOURCES) {
+				std::cout << "EnqueueNDRangeKernel Error: -5 CL_OUT_OF_RESOURCES (failure to allocate resources required by implementation)" << std::endl;
+			}
+			else {
+				std::cout << "Error: " << err.what() << " " << err.err() << std::endl;
+			}
+		}
+		*/
+		// Map cBuffer to host pointer. This enforces a sync
+
 		cl_int err;
 		int retVal;
 
@@ -590,22 +411,25 @@ clFilter_impl::filterGPU(int ninput_items,
 			retVal = ninput_items;
 		}
 		else {
-
-			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
-
+			void * output = (void *) queue->enqueueMapBuffer(
+			*cBuffer,
+			CL_TRUE, // block
+			CL_MAP_READ,
+			0,
+			paddedBufferLengthBytes);
 			// copy results to output buffer and increment for decimation!
 			int j=0;
 			int i=0;
 			while(j < ninput_items) {
 				if (dataType==DTYPE_COMPLEX) {
 			        gr_complex *out = (gr_complex *)output_items[0];
-			        gr_complex *ResultPtr = (gr_complex *)tmpFFTBuff;
+			        gr_complex *ResultPtr = (gr_complex *)output;
 
 					out[i++] = ResultPtr[j];
 				}
 				else {
 			        float *out = (float *)output_items[0];
-			        float *ResultPtr = (float *)tmpFFTBuff;
+			        float *ResultPtr = (float *)output;
 
 					out[i++] = ResultPtr[j];
 				}
@@ -613,153 +437,16 @@ clFilter_impl::filterGPU(int ninput_items,
 				j += fft_filter_ccf::d_decimation;
 			}
 
+			err = queue->enqueueUnmapMemObject(
+			*cBuffer,
+			(void *) output);
+
 			retVal = i;
 		}
 
-    	return retVal;  // expecting nitems which is ninput_items/decimation
-    }
+		// Finally release our hold on accessing the memory
 
-    int
-	clFilter_impl::filterGPUFrequencyDomain(int ninput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items) {
-
-    	if (ninput_items > curBufferSize) {
-    		// This could get expensive if we have to rebuild kernels
-    		// in GNURadio min input items and max items should be
-    		// set to the same value to ensure consistency.
-    		setFilterVariables(ninput_items);
-    	}
-
-  	  gr_complex *output_complex = (gr_complex *) output_items[0];
-	  float *output_float = (float *) output_items[0];
-
-    	int dec_ctr = 0;
-    	int j = 0;
-    	int k;
-        int err;
-    	// already calculated
-//    	int ninput_items = nitems * d_decimation;
-        void *ifftBuff;
-        if (dataType == DTYPE_COMPLEX) {
-        	ifftBuff = new gr_complex[d_fftsize];
-        }
-        else {
-        	ifftBuff = new float[d_fftsize];
-        }
-
-    	for(int i = 0; i < ninput_items; i += d_nsamples) {
-			  // Move block of data to forward FFT buffer
-			  // memcpy(d_fwdfft->get_inbuf(), &input[i], d_nsamples * sizeof(gr_complex));
-
-			  if (dataType == DTYPE_COMPLEX) {
-				  const gr_complex *in = (const gr_complex *) input_items[0];
-				  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
-			  }
-			  else {
-				  const float *in = (const float *) input_items[0];
-				  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
-
-			  }
-			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
-
-			  // zero out any data past d_nsamples to fft_size
-			  // for(j = d_nsamples; j < d_fftsize; j++)
-				// d_fwdfft->get_inbuf()[j] = 0;
-
-			  // Run the transform
-			  // d_fwdfft->execute();	// compute fwd xform
-			  // Execute the plan.
-				err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
-
-			  // Wait for calculations to be finished.
-			  err = clFinish((*queue)());
-
-			  // and outputting FFTSize samples
-
-			  // Fetch results of calculations.
-			  // Get the fwd FFT data out
-	//    	  gr_complex *a = d_fwdfft->get_outbuf();
-
-			  if (dataType==DTYPE_COMPLEX) {
-				  gr_complex *b = d_xformed_taps;
-
-				  // THIS Volk Function just does complex multiplication.  c[i]=a[i]*b[i] in the complex domain.
-				  // volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
-
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
-				  gr_complex *a = (gr_complex *)tmpFFTBuff;
-
-				  for (k=0;k<d_fftsize;k++) {
-					  ((gr_complex *)ifftBuff)[k] = a[k] * b[k];
-				  }
-			  }
-			  else {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
-				  float *a = (float *)tmpFFTBuff;
-
-				  float *b = transformedTaps_float;
-
-				  for (k=0;k<d_fftsize;k++) {
-					  ((float *)ifftBuff)[k] = a[k] * b[k];
-				  }
-			  }
-
-			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)ifftBuff);
-
-			  // Run the inverse FFT
-	//    	  d_invfft->execute();	// compute inv xform
-			err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
-
-
-			err = clFinish((*queue)());
-
-			j = dec_ctr;
-			if (dataType==DTYPE_COMPLEX) {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)tmpFFTBuff);
-
-				  gr_complex * a=(gr_complex *)tmpFFTBuff;
-
-				  // add in the overlapping tail
-				  for(j = 0; j < tailsize(); j++)
-					a[j] += d_tail[j];
-
-				  // copy d_nsamples to output buffer and increment for decimation!
-				  while(j < d_nsamples) {
-					*output_complex++ = a[j];
-					j += decimation();
-				  }
-
-				  dec_ctr = (j - d_nsamples);
-
-				  // stash the tail
-				  memcpy(&d_tail[0], a + d_nsamples,
-					 tailsize() * dataSize);
-			}
-			else {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)tmpFFTBuff);
-
-				  float * a=(float *)tmpFFTBuff;
-
-				  // add in the overlapping tail
-				  for(j = 0; j < tailsize(); j++)
-					a[j] += d_tail_float[j];
-
-				  // copy d_nsamples to output buffer and increment for decimation!
-				  while(j < d_nsamples) {
-					*output_float++ = a[j];
-					j += decimation();
-				  }
-				  dec_ctr = (j - d_nsamples);
-
-				  // stash the tail
-				  memcpy(&d_tail_float[0], a + d_nsamples,
-					 tailsize() * dataSize);
-			}
-
-    	}  // end for
-
-    	return ninput_items / decimation();  // expecting nitems which is ninput_items/decimation
+		return retVal;  // Accounts for decimation.
     }
 
     int clFilter_impl::testCPU(int noutput_items,
@@ -771,7 +458,7 @@ clFilter_impl::filterGPU(int ninput_items,
     int clFilter_impl::testOpenCL(int noutput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
-    	return filterGPU(noutput_items,input_items,output_items);
+    	return filterGPU(noutput_items,input_items,output_items);;
     }
 
     int

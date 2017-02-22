@@ -59,7 +59,7 @@ namespace gr {
 		std::vector<float>       d_taps;            // stores time domain taps
 		gr_complex              *d_xformed_taps;    // Fourier xformed taps
 
-		void compute_sizes(int ntaps);
+		virtual void compute_sizes(int ntaps);
 		int tailsize() const { return d_ntaps - 1; }
 
 	  public:
@@ -85,7 +85,7 @@ namespace gr {
 		 * Sets new taps and resets the class properties to handle different sizes
 		 * \param taps       The filter taps (complex)
 		 */
-		int set_taps(const std::vector<float> &taps);
+		virtual int set_taps(const std::vector<float> &taps);
 
 		/*!
 		 * \brief Set number of threads to use.

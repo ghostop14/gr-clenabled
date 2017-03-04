@@ -293,12 +293,22 @@ namespace gr {
       }
 
       if (d_inbuf) {
+    	  try {
     	  volk_free (d_inbuf);
+    	  }
+    	  catch(...) {
+
+    	  }
     	  d_inbuf = NULL;
       }
 
       if (d_outbuf) {
+    	  try {
     	  volk_free (d_outbuf);
+    	  }
+    	  catch(...) {
+
+    	  }
     	  d_outbuf = NULL;
       }
     }

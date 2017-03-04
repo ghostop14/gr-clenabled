@@ -45,6 +45,8 @@ namespace gr {
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
+		int inputSize=0;
+
 		// clFFT
 		clfftPlanHandle planHandle;
 		clfftDim dim = CLFFT_1D;

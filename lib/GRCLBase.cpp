@@ -12,8 +12,10 @@
 namespace gr {
 namespace clenabled {
 
-GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
+GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug) {
 	// TODO Auto-generated constructor stub
+
+	debugMode=setDebug;
 
 	dataType=idataType;
 	platformMode=openCLPlatformType;
@@ -198,6 +200,32 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType) {
 		std::cout << "Error getting device constant memory size." << std::endl;
 	}
 
+
+	// see https://software.intel.com/sites/default/files/managed/9d/6d/TutorialSVMBasic.pdf on SVM
+
+	cl_device_svm_capabilities caps;
+	cl_int err;
+
+	err = clGetDeviceInfo(devices[0](),CL_DEVICE_SVM_CAPABILITIES,
+							sizeof(cl_device_svm_capabilities),&caps,0);
+	hasSharedVirtualMemory = (err == CL_SUCCESS);
+	hasSVMFineGrained = (err == CL_SUCCESS && (caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER));
+
+	/*
+	if (debugMode) {
+		if (hasSharedVirtualMemory) {
+			if (hasSVMFineGrained) {
+				std::cout <<"OpenCL Info: " << platformName << " supports fine-grained shared virtual memory (SVM)" << std::endl;
+			}
+			else {
+				std::cout <<"OpenCL Info: " << platformName << " supports shared virtual memory (SVM) but only coarse-grained." << std::endl;
+			}
+		}
+		else {
+			std::cout <<"OpenCL Info: " << platformName << " does not support shared virtual memory (SVM)" << std::endl;
+		}
+	}
+	*/
     // Create command queue
 	try {
 	    queue = new cl::CommandQueue(*context, devices[0], 0);

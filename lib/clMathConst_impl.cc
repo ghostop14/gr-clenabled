@@ -67,10 +67,8 @@ namespace gr {
       : gr::block("clMathConst",
               gr::io_signature::make(1, 1, dsize),
               gr::io_signature::make(1, 1, dsize)),
-			  GRCLBase(idataType, dsize,openCLPlatformType)
+			  GRCLBase(idataType, dsize,openCLPlatformType, setDebug)
 	{
-    debugMode = setDebug;
-
 	value = fValue;
 	mathOperatorType = operatorType;
 
@@ -154,8 +152,9 @@ namespace gr {
 		imaxItems=8192;
 
 	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize));
+	maxConstItems = maxItemsForConst;
 
-	if (maxItemsForConst < imaxItems || imaxItems == 0) {
+	if (maxItemsForConst < imaxItems) {
 		gr::block::set_max_noutput_items(maxItemsForConst);
 
 		imaxItems = maxItemsForConst;

@@ -23,79 +23,92 @@
 #endif
 
 #include <gnuradio/io_signature.h>
-#include "clQuadratureDemod_impl.h"
-#include "fast_atan2f.h"
+#include "clLog_impl.h"
 
 namespace gr {
   namespace clenabled {
 
-    clQuadratureDemod::sptr
-    clQuadratureDemod::make(float gain, int openCLPlatformType,int setDebug)
+    clLog::sptr
+    clLog::make(int openCLPlatformType,float nValue,float kValue,int setDebug)
     {
-      if (setDebug == 1)
-		  return gnuradio::get_initial_sptr
-			(new clQuadratureDemod_impl(gain, openCLPlatformType,true));
-      else
-		  return gnuradio::get_initial_sptr
-			(new clQuadratureDemod_impl(gain, openCLPlatformType,false));
+
+      	if (setDebug == 1) {
+            return gnuradio::get_initial_sptr
+              (new clLog_impl(openCLPlatformType,nValue,kValue,true));
+      	}
+      	else {
+            return gnuradio::get_initial_sptr
+              (new clLog_impl(openCLPlatformType,nValue,kValue,false));
+      	}
     }
 
     /*
      * The private constructor
      */
-    clQuadratureDemod_impl::clQuadratureDemod_impl(float gain, int openCLPlatformType, bool setDebug)
-      : gr::block("clQuadratureDemod",
-              gr::io_signature::make(1, 1, sizeof(gr_complex)),
+    clLog_impl::clLog_impl(int openCLPlatformType,float nValue,float kValue,bool setDebug)
+      : gr::block("clLog",
+              gr::io_signature::make(1, 1, sizeof(float)),
               gr::io_signature::make(1, 1, sizeof(float))),
-	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,setDebug)
-   {
-    	d_gain = gain;
+			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,setDebug)
 
-    	// Now we set up our OpenCL kernel
-        std::string srcStdStr="";
-        std::string fnName = "quadDemod";
+    {
+    	n_val = nValue;
+    	k_val = kValue;
 
-        srcStdStr += "#define GAIN " + std::to_string(d_gain) + "\n";
-    	srcStdStr += "struct ComplexStruct {\n";
-    	srcStdStr += "float real;\n";
-    	srcStdStr += "float imag; };\n";
-    	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-    	srcStdStr += "__kernel void quadDemod(__constant SComplex * a, __global float * restrict c) {\n";
+    	srcStdStr="";
+    	fnName = "op_log10";
+
+    	if (nValue != 1.0) {
+        	srcStdStr += "#define n_val " + std::to_string(nValue) + "\n";
+    	}
+
+    	if (kValue != 0.0) {
+    		srcStdStr += "#define k_val " + std::to_string(kValue) + "\n";
+    	}
+
+    	srcStdStr += "__kernel void op_log10(__constant float * a, __global float * restrict c) {\n";
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float a_r=a[index].real;\n";
-    	srcStdStr += "    float a_i=a[index].imag;\n";
-    	srcStdStr += "    float b_r=a[index].real;\n";
-    	srcStdStr += "    float b_i=-1.0 * a[index].imag;\n";
-    	srcStdStr += "    SComplex multCC;\n";
-    	srcStdStr += "    multCC.real = a_r * b_r - (a_i*b_i);\n";
-    	srcStdStr += "    multCC.imag = a_r * b_i + a_i * b_r;\n";
-    	srcStdStr += "    c[index] = GAIN * atan2(multCC.imag,multCC.real);\n";
+
+    	if (kValue != 0.0) {
+    		if (nValue != 1.0) {
+            	srcStdStr += "    c[index] = n_val * log10(a[index]) + k_val;\n";
+    		}
+    		else {
+            	srcStdStr += "    c[index] = log10(a[index]) + k_val;\n";
+    		}
+    	}
+    	else {
+    		// Don't even bother with the k math op.
+    		if (nValue != 1.0) {
+            	srcStdStr += "    c[index] = n_val * log10(a[index]);\n";
+    		}
+    		else {
+            	srcStdStr += "    c[index] = log10(a[index]);\n";
+    		}
+    	}
+
     	srcStdStr += "}\n";
 
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
 
-    	maxConstItems = (int)((float)maxConstMemSize / ((float)sizeof(gr_complex)));
+    	// Let's keep this efficient by restricting the number of items to how many we can put in a float
+        maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
 
-    	if (maxConstItems < imaxItems || imaxItems == 0) {
-    		gr::block::set_max_noutput_items(maxConstItems);
+    	if (maxConstItems < imaxItems) {
     		imaxItems = maxConstItems;
+    	}
 
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: Quadrature demod adjusting output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: Quadrature demod using default output buffer of " << imaxItems << "..." << std::endl;
-		}
+    	set_max_noutput_items(imaxItems);
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
         setBufferLength(imaxItems);
-    }
 
-    void clQuadratureDemod_impl::setBufferLength(int numItems) {
+}
+
+    void clLog_impl::setBufferLength(int numItems) {
     	if (aBuffer)
     		delete aBuffer;
 
@@ -105,12 +118,12 @@ namespace gr {
     	aBuffer = new cl::Buffer(
             *context,
             CL_MEM_READ_ONLY,
-			numItems * sizeof(gr_complex));
+			numItems * dataSize);
 
         cBuffer = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-			numItems * sizeof(float));
+			numItems * dataSize);
 
         curBufferSize=numItems;
     }
@@ -118,7 +131,7 @@ namespace gr {
     /*
      * Our virtual destructor.
      */
-    clQuadratureDemod_impl::~clQuadratureDemod_impl()
+    clLog_impl::~clLog_impl()
     {
     	if (aBuffer)
     		delete aBuffer;
@@ -127,31 +140,36 @@ namespace gr {
     		delete cBuffer;
     }
 
-    int clQuadratureDemod_impl::testCPU(int noutput_items,
+    void
+    clLog_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
+    {
+      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
+    }
+
+    int clLog_impl::testCPU(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     	{
-        gr_complex *in = (gr_complex*)input_items[0];
-        float *out = (float*)output_items[0];
 
-        std::vector<gr_complex> tmp(noutput_items);
-        volk_32fc_x2_multiply_conjugate_32fc(&tmp[0], &in[1], &in[0], noutput_items);
-        for(int i = 0; i < noutput_items; i++) {
-          out[i] = d_gain * gr::clenabled::fast_atan2f(imag(tmp[i]), real(tmp[i]));
-        }
+        const float *in1 = (const float *) input_items[0];
+        float *out = (float *) output_items[0];
 
-        return noutput_items;
+		for (int i=0;i<noutput_items;i++) {
+			out[i] = n_val * log10(in1[i]) + k_val;
+		}
+
+    	return noutput_items;
     }
 
-    int clQuadratureDemod_impl::testOpenCL(int noutput_items,
+    int clLog_impl::testOpenCL(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
     	return processOpenCL(noutput_items,ninput_items,input_items, output_items);
     }
 
-    int clQuadratureDemod_impl::processOpenCL(int noutput_items,
+    int clLog_impl::processOpenCL(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
@@ -165,7 +183,7 @@ namespace gr {
     		setBufferLength(noutput_items);
     	}
 
-    	int inputSize = noutput_items*sizeof(gr_complex);
+    	int inputSize = noutput_items*dataSize;
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
 
 		// Do the work
@@ -173,6 +191,7 @@ namespace gr {
 		// Set kernel args
 		kernel->setArg(0, *aBuffer);
 		kernel->setArg(1, *cBuffer);
+
 
 		cl::NDRange localWGSize=cl::NullRange;
 
@@ -192,8 +211,7 @@ namespace gr {
 
     // Map cBuffer to host pointer. This enforces a sync with
     // the host
-
-	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,noutput_items*sizeof(float),(void *)output_items[0]);
+	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
 
       // Tell runtime system how many output items we produced.
       return noutput_items;
@@ -201,25 +219,19 @@ namespace gr {
 
 
     int
-    clQuadratureDemod_impl::general_work (int noutput_items,
+    clLog_impl::general_work (int noutput_items,
                        gr_vector_int &ninput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
+        // Tell runtime system how many input items we consumed on
+        // each input stream.
+        consume_each (noutput_items);
 
-      consume_each (noutput_items);
-
-      // Tell runtime system how many output items we produced.
-      return retVal;
+        // Tell runtime system how many output items we produced.
+        return retVal;
     }
-
-    void
-    clQuadratureDemod_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
 
   } /* namespace clenabled */
 } /* namespace gr */

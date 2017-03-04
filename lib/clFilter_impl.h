@@ -70,10 +70,10 @@ namespace gr {
 
 		char *zeroBuff=NULL;
 		char *tmpFFTBuff=NULL;
+        void *ifftBuff=NULL;
 
 		int curBufferSize=0;
         void setBufferLength(int numItems);
-
 
 		void * paddedInputPtr = NULL;
 		void * paddedResultPtr = NULL;
@@ -106,6 +106,9 @@ namespace gr {
       int testOpenCL(int noutput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
+
+      int freqDomainSampleBlockSize() { return d_nsamples; };
+      int getCurrentBufferSize() { return curBufferSize; };
 
       void TestNotifyNewFilter(int noutput_items);
       virtual void set_taps2(const std::vector<float> &taps);

@@ -42,13 +42,484 @@
 #include "clMathOpTypes.h"
 #include "firdes.h"
 #include "clFFT_impl.h"
+#include "clLog_impl.h"
+#include "clSNR_impl.h"
 #include <iostream>
 #include <chrono>
 #include <ctime>
+#include "clComplexToMag_impl.h"
+#include "clComplexToMagPhase_impl.h"
+#include "clComplexToArg_impl.h"
+#include "clMagPhaseToComplex_impl.h"
 
 bool verbose=false;
 int largeBlockSize=8192;
 int opencltype=OCLTYPE_ANY;
+
+int d_vlen = 1;
+
+int ComplexToMagCPU(int noutput_items,
+        gr_vector_int &ninput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items)
+	{
+    const gr_complex *in = (const gr_complex *) input_items[0];
+    float *out = (float *) output_items[0];
+    int noi = noutput_items * d_vlen;
+
+    // turned out to be faster than aligned/unaligned switching
+    volk_32fc_magnitude_32f_u(out, in, noi);
+
+    return noutput_items;
+}
+
+bool testMagPhaseToComplex() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Mag and Phase to Complex" << std::endl;
+
+	gr::clenabled::clMagPhaseToComplex_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clMagPhaseToComplex_impl(opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array..." << std::endl;
+	}
+
+	std::vector<float> inputItems1;
+	std::vector<float> inputItems2;
+	std::vector<gr_complex> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		outputItems.push_back(gr_complex(1.0f,0.5f));
+		inputItems1.push_back(0.0);
+		inputItems2.push_back(0.0);
+	}
+
+	inputPointers.push_back((const void *)&inputItems1[0]);
+	inputPointers.push_back((const void *)&inputItems2[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	outputItems.clear();
+	inputItems1.clear();
+	inputItems2.clear();
+	ninitems.clear();
+
+	return true;
+}
+
+bool testComplexToMagPhase() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Complex to Mag and Phase" << std::endl;
+
+	gr::clenabled::clComplexToMagPhase_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clComplexToMagPhase_impl(opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array..." << std::endl;
+	}
+
+	std::vector<gr_complex> inputItems;
+	std::vector<float> outputItems1;
+	std::vector<float> outputItems2;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems1.push_back(0.0);
+		outputItems2.push_back(0.0);
+	}
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems1[0]);
+	outputPointers.push_back((void *)&outputItems2[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems.clear();
+	outputItems1.clear();
+	outputItems2.clear();
+	ninitems.clear();
+
+	return true;
+}
+
+bool testComplexToArg() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Complex to Arg" << std::endl;
+
+	gr::clenabled::clComplexToArg_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clComplexToArg_impl(opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array..." << std::endl;
+	}
+
+	std::vector<gr_complex> inputItems;
+	std::vector<float> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(0.0);
+	}
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
+}
+
+bool testComplexToMag() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Complex to mag" << std::endl;
+
+	gr::clenabled::clComplexToMag_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clComplexToMag_impl(opencltype,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	int iterations=100;
+	std::vector<int> ninitems;
+
+
+	if (verbose) {
+		std::cout << "building test array..." << std::endl;
+	}
+
+	std::vector<gr_complex> inputItems;
+	std::vector<float> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(0.0);
+	}
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+
+	int j;
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
+}
 
 bool test_complex() {
 	std::cout << "Testing complex number structure alignment..." << std::endl;
@@ -97,11 +568,15 @@ int testFn(int noutput_items,
 
 
 bool testFFT(bool runReverse) {
+	// Testing/profiling with CLFFT-client:
+	// clFFT-client -x 2048 -p 10 -c -o -b 4
+
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	std::cout << "Testing Forward FFT" << std::endl;
+	int fftSize=2048;
+	int fftDataSize=fftSize;
 
-	int fftSize=1024;
+	std::cout << "Testing Forward FFT size of " << fftSize << " and " << fftDataSize << " data points." << std::endl;
 
 	gr::clenabled::clFFT_impl *test=NULL;
 	try {
@@ -118,18 +593,18 @@ bool testFFT(bool runReverse) {
 	}
 
 	int i;
-	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	int iterations=100;
 	std::vector<int> ninitems;
 
 
 	if (verbose) {
-		std::cout << "building test array for 1024 point FFT..." << std::endl;
+		std::cout << "building test array for FFT..." << std::endl;
 	}
 
 	float frequency_signal = 10;
-	float frequency_sampling = largeBlockSize*frequency_signal;
+	float frequency_sampling = fftDataSize*frequency_signal;
 	float step = 1.0/frequency_sampling;
 
 	std::vector<gr_complex> inputItems;
@@ -142,7 +617,7 @@ bool testFFT(bool runReverse) {
 
 	float h=0.0;
 
-	for (i=0;i<largeBlockSize;i++) {
+	for (i=0;i<fftDataSize;i++) {
 		inputItems.push_back(gr_complex(sin(2*M_PI*frequency_signal*h),cos(2*M_PI*frequency_signal*h)));
 		outputItems.push_back(grZero);
 		h = h + step;
@@ -161,14 +636,14 @@ bool testFFT(bool runReverse) {
 	int noutputitems;
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -191,11 +666,11 @@ bool testFFT(bool runReverse) {
 
 	int j;
 
-	start = std::chrono::system_clock::now();
-	for (j=0;j<1;j++) {
-		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -217,13 +692,13 @@ bool testFFT(bool runReverse) {
 	inputItems.clear();
 
 	// Load previous output items into new input items
-	for (i=0;i<largeBlockSize*2;i++) {
+	for (i=0;i<fftDataSize;i++) {
 		inputItems.push_back(outputItems[i]);
 	}
 
 	outputItems.clear();
 	// There's a seg fault somewhere.  Give this output buffer more memory.
-	for (i=0;i<largeBlockSize*2;i++) {
+	for (i=0;i<fftDataSize;i++) {
 		outputItems.push_back(grZero);
 	}
 
@@ -233,14 +708,14 @@ bool testFFT(bool runReverse) {
 	outputPointers.push_back((void *)&outputItems[0]);
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	std::cout << "First few points of FWD->Rev FFT" << std::endl;
 
@@ -267,12 +742,13 @@ bool testFFT(bool runReverse) {
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
 
-	iterations = 50;  // way slower to run.
-	start = std::chrono::system_clock::now();
+	noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
-		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -317,7 +793,7 @@ bool testQuadDemod() {
 	test->setBufferLength(largeBlockSize);
 
 	int i;
-	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	int iterations=100;
 	std::vector<int> ninitems;
@@ -349,12 +825,12 @@ bool testQuadDemod() {
 	// Get a test run out of the way.
 	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
 		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -377,11 +853,11 @@ bool testQuadDemod() {
 
 	int j;
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
 		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -429,7 +905,7 @@ bool testMultiplyConst() {
 
 	int i;
 	int numItems=10;
-	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	int iterations=100;
 	std::vector<int> ninitems;
@@ -456,7 +932,7 @@ bool testMultiplyConst() {
 		inputItems.push_back(gr_complex(1.0f,0.5f));
 		outputItems.push_back(gr_complex(0.0,0.0));
 
-		inputFloats.push_back(0.0);
+		inputFloats.push_back((float)i+1.0);
 		outputFloats.push_back(0.0);
 	}
 
@@ -473,12 +949,12 @@ bool testMultiplyConst() {
 	// Get a test run out of the way.
 	noutputitems = test->testOpenCL(numItems,ninitems,inputPointers,outputPointers);
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
 		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -531,12 +1007,12 @@ bool testMultiplyConst() {
 		outputItems.clear();
 	}
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
 		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -560,11 +1036,11 @@ bool testMultiplyConst() {
 
 	int j;
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
 		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -576,18 +1052,22 @@ bool testMultiplyConst() {
 	// switch to Log10 of float
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	gr::clenabled::clMathOp_impl *testLog=NULL;
-	testLog = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,MATHOP_LOG10,true);
-	testLog->setBufferLength(largeBlockSize);
+	gr::clenabled::clLog_impl *testLog=NULL;
+	testLog = new gr::clenabled::clLog_impl(opencltype,20.0,0,true);
 
-	std::cout << "Testing Log10 float performance with " << largeBlockSize << " items..." << std::endl;
+	numItems = testLog->MaxConstItems();
 
-	start = std::chrono::system_clock::now();
+	if (numItems > largeBlockSize)
+		numItems = largeBlockSize;
+
+	std::cout << "Testing Log10 float performance with " << numItems << " items..." << std::endl;
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = testLog->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+		noutputitems = testLog->testOpenCL(numItems,ninitems,inputFloatPointers,outputFloatPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -609,17 +1089,81 @@ bool testMultiplyConst() {
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = testLog->testLog10(largeBlockSize,ninitems,inputPointers,outputPointers);
+		noutputitems = testLog->testCPU(numItems,ninitems,inputFloatPointers,outputFloatPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
 	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	delete testLog;
+
+	// switch to SNR Helper
+	std::cout << "----------------------------------------------------------" << std::endl;
+	std::vector<float> inputFloats2;
+
+	for (i=0;i<largeBlockSize;i++) {
+		inputFloats2.push_back(((float)i+1)/2.0);
+	}
+
+	inputFloatPointers.push_back((const void *)&inputFloats2[0]);
+
+
+	gr::clenabled::clSNR_impl *testSNR=NULL;
+	testSNR = new gr::clenabled::clSNR_impl(opencltype,20.0,0.0,true);
+
+	numItems = testSNR->MaxConstItems();
+
+	if (numItems > largeBlockSize)
+		numItems = largeBlockSize;
+
+	std::cout << "Testing SNR Helper float performance with " << numItems << " items..." << std::endl;
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testSNR->testOpenCL(numItems,ninitems,inputFloatPointers,outputFloatPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testSNR->testCPU(numItems,ninitems,inputFloatPointers,outputFloatPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	delete testSNR;
 
 	// ----------------------------------------------------------------------
 	// Clean up
@@ -694,17 +1238,18 @@ bool testMultiply() {
 
 	}
 
-	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
 
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems, inputPointers,outputPointers);
 
 	int iterations=100;
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
 		noutputitems = test->testOpenCL(largeBlockSize,ninitems, inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
 
@@ -727,11 +1272,11 @@ bool testMultiply() {
 
 	int j;
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
 		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
 
@@ -759,14 +1304,14 @@ bool testLowPassFilter() {
 	double gain=1.0;
 	double samp_rate=10000000;
 	double cutoff_freq=100000.0;
-	double transition_width = 15000.0;
+	double transition_width = cutoff_freq * 0.2;
 	try {
 		std::cout << "----------------------------------------------------------" << std::endl;
-		std::cout << "Testing filter performance with 10 MSPS sample rate and " << largeBlockSize << " items" << std::endl;
+		std::cout << "Testing filter performance with 10 MSPS sample rate" << std::endl;
+		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
 		test = new gr::clenabled::clFilter_impl(opencltype,1,
-				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
-		std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true);
 	}
 	catch(const std::runtime_error& re)
 	{
@@ -789,6 +1334,9 @@ bool testLowPassFilter() {
 		return false;
 	}
 
+	int fdBlockSize, tdBufferSize;
+	int optimalSize;
+
 	int i;
 
 	std::vector<gr_complex> inputItems;
@@ -799,7 +1347,8 @@ bool testLowPassFilter() {
 
 	int noutputitems;
 
-	for (i=1;i<=largeBlockSize;i++) {
+	// Need 12,000 for 5% CPU filter
+	for (i=1;i<=12000;i++) {
 		inputItems.push_back(gr_complex(1.0f,0.5f));
 		outputItems.push_back(gr_complex(0.0,0.0));
 	}
@@ -807,16 +1356,35 @@ bool testLowPassFilter() {
 	inputPointers.push_back((const void *)&inputItems[0]);
 	outputPointers.push_back((void *)&outputItems[0]);
 
-	std::chrono::time_point<std::chrono::system_clock> start, end;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	// So the number of samples used has to be a value that satisfies both of these
+
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	int iterations=100;
 
-	start = std::chrono::system_clock::now();
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	switch(test->GetContextType()) {
 	case CL_DEVICE_TYPE_GPU:
@@ -834,120 +1402,231 @@ bool testLowPassFilter() {
 	}
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
-	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+	std::cout << "OpenCL Run Time for 20% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
+
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.15);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 15% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
 	// Running with narrower filter:
 	transition_width = (int)(cutoff_freq*0.1);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
-	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
 
-	start = std::chrono::system_clock::now();
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 	elapsed_seconds = end-start;
-	std::cout << "OpenCL Run Time for 10% transition filter:   " << std::fixed << std::setw(11)
+	std::cout << "OpenCL Run Time for 10% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
-	/*
+
 	// Running with narrower filter:
 	transition_width = (int)(cutoff_freq*0.05);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
 
-	start = std::chrono::system_clock::now();
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 	elapsed_seconds = end-start;
-	std::cout << "OpenCL Run Time for 5% transition filter:   " << std::fixed << std::setw(11)
+	std::cout << "OpenCL Run Time for 5% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
-	if (test->ActiveContextType() == CL_DEVICE_TYPE_CPU) {
-		std::cout << std::endl << "Skipping 3% filter test on Open CPU configuration." << std::endl;
-	}
-	else {
-		// Running with narrower filter:
-		transition_width = (int)(cutoff_freq*0.03);
-		test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
-		test->TestNotifyNewFilter(largeBlockSize);
-		std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << std::endl;
 
-		start = std::chrono::system_clock::now();
-		// make iterations calls to get average.
-		for (i=0;i<iterations;i++) {
-			noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
-		}
-		end = std::chrono::system_clock::now();
-		elapsed_seconds = end-start;
-		std::cout << "OpenCL Run Time for 3% transition filter:   " << std::fixed << std::setw(11)
-	    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	// ---------------------------------------------------------------
+
+	// CPU
+	transition_width = (int)(cutoff_freq*0.20);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
 	}
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+	std::cout << "CPU-only Run Time for 20% filter with " << fdBlockSize << " samples: " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
-	*/
+
 	// CPU
 	transition_width = (int)(cutoff_freq*0.15);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
-	start = std::chrono::system_clock::now();
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
-	std::cout << "CPU-only Run Time for 15% filter: " << std::fixed << std::setw(11)
+	std::cout << "CPU-only Run Time for 15% filter with " << fdBlockSize << " samples: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
+
 	// CPU
 	transition_width = (int)(cutoff_freq*0.10);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
-	start = std::chrono::system_clock::now();
+
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
-	std::cout << "CPU-only Run Time for 10% filter: " << std::fixed << std::setw(11)
+	std::cout << "CPU-only Run Time for 10% filter with " << fdBlockSize << " samples: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
 
 	std::cout << std::endl;
-/*
-	// CPU
 
-	// NOTE: The fftw calls ARE NOT thread safe!  It works within gnuradio but
-	// seems to be seg faulting here.
-
-	transition_width = (int)(cutoff_freq*0.5);
+	transition_width = (int)(cutoff_freq*0.05);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
-	start = std::chrono::system_clock::now();
+
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 	}
-	end = std::chrono::system_clock::now();
+	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
-	std::cout << "CPU-only Run Time for 5% filter: " << std::fixed << std::setw(11)
+	std::cout << "CPU-only Run Time for 05% filter with a " << fdBlockSize << " samples: " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
-*/
 
+	std::cout << std::endl;
 
 	if (test != NULL) {
 		delete test;
@@ -1017,15 +1696,27 @@ main (int argc, char **argv)
 	was_successful = testMultiply();
 	std::cout << std::endl;
 
+	was_successful = testComplexToMag();
+	std::cout << std::endl;
+
+	was_successful = testComplexToMagPhase();
+	std::cout << std::endl;
+
+	was_successful = testComplexToArg();
+	std::cout << std::endl;
+
+	was_successful = testMagPhaseToComplex();
+	std::cout << std::endl;
+/*
 	was_successful = testQuadDemod();
 	std::cout << std::endl;
 
-	was_successful = testFFT(false);
+	was_successful = testFFT(true);
 	std::cout << std::endl;
 
 	was_successful = testLowPassFilter();
 	std::cout << std::endl;
-
+*/
 	return was_successful ? 0 : 1;
 }
 

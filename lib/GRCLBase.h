@@ -46,7 +46,11 @@ protected:
 	 int preferredWorkGroupSizeMultiple=1;
 	 int maxWorkGroupSize=1;
 	 int maxConstMemSize=0;
+	 bool hasSharedVirtualMemory;
+	 bool hasSVMFineGrained;
 	 int optimalBufferType = CL_MEM_USE_HOST_PTR;
+
+	 int maxConstItems = 0;
 
 	 bool debugMode = false;
 
@@ -72,13 +76,17 @@ protected:
     void CompileKernel(const char* kernelCode, const char* kernelFunctionName);
 
 public:
+    bool hasSVMAvailable() { return hasSharedVirtualMemory; };
+
+    int MaxConstItems() { return maxConstItems; };
+
     std::string debugDisplayName = "";
 
     void SetDebugMode(bool newMode) { debugMode = newMode; };
 
     int ActiveContextType() {return contextType;};
 
-	GRCLBase(int idataType, size_t dsize,int openCLPlatformType);
+	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false);
 	virtual ~GRCLBase();
 
 

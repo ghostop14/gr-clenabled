@@ -18,29 +18,34 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
-#define INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
+#ifndef INCLUDED_CLENABLED_CLLOG_IMPL_H
+#define INCLUDED_CLENABLED_CLLOG_IMPL_H
 
-#include <clenabled/clQuadratureDemod.h>
+#include <clenabled/clLog.h>
 #include "GRCLBase.h"
-#include <volk/volk.h>
 
 namespace gr {
   namespace clenabled {
 
-    class clQuadratureDemod_impl : public clQuadratureDemod, public GRCLBase
+    class clLog_impl : public clLog, public GRCLBase
     {
      private:
       // Nothing to declare in this block.
+        std::string srcStdStr;
+        std::string fnName = "";
 
-    	float d_gain;
+        float n_val;
+        float k_val;
+
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
+	      void setBufferLength(int numItems);
+
      public:
-      clQuadratureDemod_impl(float gain, int openCLPlatformType,bool setDebug=false);
-      ~clQuadratureDemod_impl();
+      clLog_impl(int openCLPlatformType,float nValue,float kValue,bool setDebug=false);
+      ~clLog_impl();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
@@ -54,8 +59,6 @@ namespace gr {
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
-
-      void setBufferLength(int numItems);
 
       int testOpenCL(int noutput_items,
               gr_vector_int &ninput_items,
@@ -71,5 +74,5 @@ namespace gr {
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H */
+#endif /* INCLUDED_CLENABLED_CLLOG_IMPL_H */
 

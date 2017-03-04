@@ -82,15 +82,37 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  fft_filter_ccf(decimation, taps,nthreads),
-			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform),
+			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform, setDebug),
 			  d_updated(false)
     {
     	prevTaps = d_ntaps;
-    	prevInputLength = 8192;
+    	// Buffer sizes need to match up with blocks based on the number of taps...
+    	// This matches up with FFT Size
+    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(taps.size())) / log(2.0))));;
     	d_taps = taps;
 
-    	// set up for initial 8192 sample input buffer
-    	setFilterVariables(prevInputLength);
+    	if (USE_TIME_DOMAIN) {
+        	int imaxItems=gr::block::max_noutput_items();
+        	if (imaxItems==0)
+        		imaxItems=8192;
+
+        	// So the amount of items we have for the constant space is:
+        	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
+        	// Since we can't control the n_taps, we can control the noutput_items.
+        	maxConstItems = (int)((float)(maxConstMemSize - d_taps.size()*sizeof(float))/(float)dataSize) - d_taps.size();
+
+        	if (maxConstItems < imaxItems) {
+        		imaxItems = maxConstItems;
+        	}
+
+        	set_max_noutput_items(imaxItems);
+			setFilterVariables(imaxItems);
+    	}
+    	else {
+			set_output_multiple(prevInputLength);
+
+			setFilterVariables(prevInputLength);
+    	}
 }
 
     /*
@@ -131,6 +153,14 @@ namespace gr {
             catch(...) {
             	// safety catch.
             }
+            if (ifftBuff) {
+				if (dataType == DTYPE_COMPLEX) {
+					delete[] (gr_complex *)ifftBuff;
+				}
+				else {
+					delete [] (float *)ifftBuff;
+				}
+            }
     	}
     }
 
@@ -140,6 +170,7 @@ namespace gr {
     	// This also fills d_xformed_taps which is a gr_complex vector of size d_fftsize
         set_taps(d_taps);
 
+        // These are setups for the time domain filtering
     	paddingLength = d_ntaps - 1;
 		paddingBytes = dataSize*paddingLength;
 
@@ -162,15 +193,14 @@ namespace gr {
     		kernelCode +="typedef struct ComplexStruct SComplex;\n";
 
     		kernelCode +="__kernel void td_FIR_complex\n";
-    		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
+//    		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
+    		kernelCode +="( __constant SComplex *restrict InputArray, // Length N\n";
     		kernelCode +="__global const float *restrict FilterArray, // Length K\n";
     		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
     		kernelCode +=")\n";
     		kernelCode +="{\n";
-
     		kernelCode +="	__local float local_copy_filter_array[K];\n";
     		kernelCode +="  size_t gid=get_global_id(0);\n";
-//			kernelCode +="  size_t lid = gId; // get_local_id(0);\n";
     		kernelCode +="	if (gid < K)\n";
     		kernelCode +="		local_copy_filter_array[gid] = FilterArray[gid];\n";
     		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
@@ -178,15 +208,9 @@ namespace gr {
     		kernelCode +="	SComplex result;\n";
     		kernelCode +="	result.real=0.0f;\n";
     		kernelCode +="	result.imag=0.0f;\n";
-//    		kernelCode +="	// Unroll the loop for speed.\n";
-    		// Too many taps to unroll this loop.  1000+ taps may decrease performance
-    		// due to increased instruction base.
-//			kernelCode +="	#pragma unroll\n";
     		kernelCode +="	for (int i=0; i<K; i++) {\n";
 			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[gid+i].real;\n";
 			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[gid+i].imag;\n";
-//			kernelCode +="		result.real += FilterArray[K-1-i]*InputArray[lid+i].real;\n";
-//			kernelCode +="		result.imag += FilterArray[K-1-i]*InputArray[lid+i].imag;\n";
     		kernelCode +="	}\n";
     		kernelCode +="	OutputArray[gid].real = result.real;\n";
     		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
@@ -200,7 +224,8 @@ namespace gr {
     		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
 
     		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
-    		kernelCodeWithConst +="( __global const SComplex *restrict InputArray, // Length N\n";
+//    		kernelCodeWithConst +="( __global const SComplex *restrict InputArray, // Length N\n";
+    		kernelCodeWithConst +="( __constant SComplex * InputArray, // Length N\n";
     		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
     		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
     		kernelCodeWithConst +=")\n";
@@ -277,7 +302,10 @@ namespace gr {
     	std::string tmpKernelCode;
     	if ((d_ntaps*sizeof(float)) < maxConstMemSize) {
     		tmpKernelCode = lbDefines + kernelCodeWithConst;
-
+/*
+    		std::cout << "Kernel Code: " << std::endl;
+    		std::cout << tmpKernelCode;
+*/
     		if (debugMode)
         		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
     	}
@@ -289,7 +317,38 @@ namespace gr {
 
     	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
 
-        setBufferLength(ninput_items);
+    	if (USE_TIME_DOMAIN) {
+        	int imaxItems=gr::block::max_noutput_items();
+        	if (imaxItems==0)
+        		imaxItems=8192;
+
+        	// So the amount of items we have for the constant space is:
+        	// maxConstMemSize >= noutput_items*datasize + n_taps*sizeof(float)
+        	// Since we can't control the n_taps, we can control the noutput_items.
+        	maxConstItems = (int)((float)(maxConstMemSize - d_taps.size()*sizeof(float))/(float)dataSize) - d_taps.size();
+
+        	if (maxConstItems < 0) {
+        		std::cout << "OpenCL Filter Error: the number of taps is too large for efficient processing.  Try making the filter transition at least 15% of the cutoff frequency." << std::endl;
+
+        	}
+
+        	if (debugMode) {
+        		std::cout << "OpenCL filter: max input items to use constant memory with the specified " << d_taps.size() << " taps: " << maxConstItems << std::endl;
+        	}
+
+        	if (maxConstItems < imaxItems) {
+        		imaxItems = maxConstItems;
+        	}
+
+        	setBufferLength(imaxItems);
+        	set_max_noutput_items(imaxItems);
+    	}
+    	else {
+        	setBufferLength(ninput_items);
+        	// Control how the scheduler feeds us data.
+        	set_output_multiple(d_fftsize);
+    	}
+
 
         if (!USE_TIME_DOMAIN) {
             int err;
@@ -334,7 +393,6 @@ void clFilter_impl::setBufferLength(int numItems) {
 	if (bBuffer)
 		delete bBuffer;
 
-
 	if (cBuffer)
 		delete cBuffer;
 
@@ -349,7 +407,7 @@ void clFilter_impl::setBufferLength(int numItems) {
 		aBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_WRITE,
-			paddedBufferLengthBytes);
+			(numItems+d_ntaps)*dataSize);
 
 		zeroBuff=new char[paddedBufferLengthBytes];
 		memset(zeroBuff,0x00,paddedBufferLengthBytes);
@@ -369,13 +427,22 @@ void clFilter_impl::setBufferLength(int numItems) {
 		tmpFFTBuff = new char[paddedBufferLengthBytes];
 	}
 	else {
-		zeroBuff=new char[(d_fftsize-d_nsamples)*dataSize];
+        if (ifftBuff) {
+			if (dataType == DTYPE_COMPLEX) {
+				delete[] (gr_complex *)ifftBuff;
+			}
+			else {
+				delete [] (float *)ifftBuff;
+			}
+        }
+
+        zeroBuff=new char[(d_fftsize-d_nsamples)*dataSize];
 		memset(zeroBuff,0x00,(d_fftsize-d_nsamples)*dataSize);
 
 		aBuffer = new cl::Buffer(
 			*context,
-			CL_MEM_READ_WRITE,
-			numItems*dataSize);
+			CL_MEM_READ_WRITE,  // needs to be read/write for clFFT
+			d_fftsize*dataSize);
 
 		cBuffer = new cl::Buffer(
 			*context,
@@ -383,6 +450,13 @@ void clFilter_impl::setBufferLength(int numItems) {
 			d_fftsize*dataSize);
 
 		tmpFFTBuff = new char[d_fftsize*dataSize];
+        if (dataType == DTYPE_COMPLEX) {
+        	ifftBuff = new gr_complex[d_fftsize];
+        }
+        else {
+        	ifftBuff = new float[d_fftsize];
+        }
+
 	}
 	curBufferSize = numItems;
 }
@@ -563,10 +637,12 @@ clFilter_impl::filterGPU(int ninput_items,
     	// See https://www.altera.com/support/support-resources/design-examples/design-software/opencl/td-fir.html
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
-        int remaining=paddedBufferLengthBytes - inputBytes;
+
+        int remaining=(curBufferSize+d_ntaps)*dataSize - inputBytes;
 
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
-        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
+        if (remaining > 0)
+        	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
 
 		kernel->setArg(0, *aBuffer);
 		kernel->setArg(1, *bBuffer);
@@ -624,32 +700,19 @@ clFilter_impl::filterGPU(int ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
 
-    	if (ninput_items > curBufferSize) {
-    		// This could get expensive if we have to rebuild kernels
-    		// in GNURadio min input items and max items should be
-    		// set to the same value to ensure consistency.
-    		setFilterVariables(ninput_items);
-    	}
-
-  	  gr_complex *output_complex = (gr_complex *) output_items[0];
+	  gr_complex *output_complex = (gr_complex *) output_items[0];
 	  float *output_float = (float *) output_items[0];
 
     	int dec_ctr = 0;
     	int j = 0;
     	int k;
         int err;
-    	// already calculated
-//    	int ninput_items = nitems * d_decimation;
-        void *ifftBuff;
-        if (dataType == DTYPE_COMPLEX) {
-        	ifftBuff = new gr_complex[d_fftsize];
-        }
-        else {
-        	ifftBuff = new float[d_fftsize];
-        }
 
     	for(int i = 0; i < ninput_items; i += d_nsamples) {
-			  // Move block of data to forward FFT buffer
+
+    		// ------------ Forward FFT ---------------- //
+
+    		// Move block of data to forward FFT buffer
 			  // memcpy(d_fwdfft->get_inbuf(), &input[i], d_nsamples * sizeof(gr_complex));
 
 			  if (dataType == DTYPE_COMPLEX) {
@@ -661,11 +724,12 @@ clFilter_impl::filterGPU(int ninput_items,
 				  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
 
 			  }
-			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
 
 			  // zero out any data past d_nsamples to fft_size
 			  // for(j = d_nsamples; j < d_fftsize; j++)
 				// d_fwdfft->get_inbuf()[j] = 0;
+			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
+
 
 			  // Run the transform
 			  // d_fwdfft->execute();	// compute fwd xform
@@ -675,19 +739,20 @@ clFilter_impl::filterGPU(int ninput_items,
 			  // Wait for calculations to be finished.
 			  err = clFinish((*queue)());
 
-			  // and outputting FFTSize samples
+	    		// ------------ Apply Filter ---------------- //
 
-			  // Fetch results of calculations.
-			  // Get the fwd FFT data out
-	//    	  gr_complex *a = d_fwdfft->get_outbuf();
+			  // and outputting FFTSize samples
 
 			  if (dataType==DTYPE_COMPLEX) {
 				  gr_complex *b = d_xformed_taps;
 
-				  // THIS Volk Function just does complex multiplication.  c[i]=a[i]*b[i] in the complex domain.
+				  // Fetch results of calculations.
+				  // Get the fwd FFT data out
+		//    	  gr_complex *a = d_fwdfft->get_outbuf();
+				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
+				  // THIS Volk Function just does complex multiplication to apply the filter.  c[i]=a[i]*b[i] in the complex domain.
 				  // volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
 
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
 				  gr_complex *a = (gr_complex *)tmpFFTBuff;
 
 				  for (k=0;k<d_fftsize;k++) {
@@ -695,8 +760,11 @@ clFilter_impl::filterGPU(int ninput_items,
 				  }
 			  }
 			  else {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
 				  float *a = (float *)tmpFFTBuff;
+				  // Fetch results of calculations.
+				  // Get the fwd FFT data out
+		//    	  gr_complex *a = d_fwdfft->get_outbuf();
+				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
 
 				  float *b = transformedTaps_float;
 
@@ -704,6 +772,8 @@ clFilter_impl::filterGPU(int ninput_items,
 					  ((float *)ifftBuff)[k] = a[k] * b[k];
 				  }
 			  }
+
+	    		// ------------ Reverse FFT ---------------- //
 
 			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)ifftBuff);
 

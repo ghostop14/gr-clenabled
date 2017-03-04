@@ -18,29 +18,26 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
-#define INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
+#ifndef INCLUDED_CLENABLED_CLCOMPLEXTOARG_IMPL_H
+#define INCLUDED_CLENABLED_CLCOMPLEXTOARG_IMPL_H
 
-#include <clenabled/clQuadratureDemod.h>
+#include <clenabled/clComplexToArg.h>
 #include "GRCLBase.h"
-#include <volk/volk.h>
 
 namespace gr {
   namespace clenabled {
 
-    class clQuadratureDemod_impl : public clQuadratureDemod, public GRCLBase
+    class clComplexToArg_impl : public clComplexToArg, public GRCLBase
     {
      private:
       // Nothing to declare in this block.
-
-    	float d_gain;
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
      public:
-      clQuadratureDemod_impl(float gain, int openCLPlatformType,bool setDebug=false);
-      ~clQuadratureDemod_impl();
+      clComplexToArg_impl(int openCLPlatformType,bool setDebug=false);
+      ~clComplexToArg_impl();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
@@ -71,5 +68,5 @@ namespace gr {
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H */
+#endif /* INCLUDED_CLENABLED_CLCOMPLEXTOARG_IMPL_H */
 

@@ -40,6 +40,12 @@ list(APPEND clenabled_sources
     clQuadratureDemod_impl.cc
     fast_atan2f.cc
     clFFT_impl.cc
+    clLog_impl.cc
+    clSNR_impl.cc
+    clComplexToArg_impl.cc
+    clComplexToMagPhase_impl.cc
+    clMagPhaseToComplex_impl.cc
+    clComplexToMag_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -74,6 +80,12 @@ include_directories(${CPPUNIT_INCLUDE_DIRS})
 list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test_clenabled.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clenabled.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clComplexToMag.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clMagPhaseToComplex.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clComplexToMagPhase.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clComplexToArg.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clSNR.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clLog.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clFFT.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clQuadratureDemod.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clFilter.cc
@@ -87,6 +99,12 @@ list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/fast_atan2f.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clFFT_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/window.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clLog_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clSNR_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToMag_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToArg_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToMagPhase_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clMagPhaseToComplex_impl.cc
 )
 
 add_executable(test-clenabled ${test_clenabled_sources})

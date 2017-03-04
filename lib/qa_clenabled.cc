@@ -31,6 +31,12 @@
 #include "qa_clFilter.h"
 #include "qa_clQuadratureDemod.h"
 #include "qa_clFFT.h"
+#include "qa_clLog.h"
+#include "qa_clSNR.h"
+#include "qa_clComplexToArg.h"
+#include "qa_clComplexToMagPhase.h"
+#include "qa_clMagPhaseToComplex.h"
+#include "qa_clComplexToMag.h"
 
 CppUnit::TestSuite *
 qa_clenabled::suite()
@@ -41,6 +47,12 @@ qa_clenabled::suite()
   s->addTest(gr::clenabled::qa_clFilter::suite());
   s->addTest(gr::clenabled::qa_clQuadratureDemod::suite());
   s->addTest(gr::clenabled::qa_clFFT::suite());
+  s->addTest(gr::clenabled::qa_clLog::suite());
+  s->addTest(gr::clenabled::qa_clSNR::suite());
+  s->addTest(gr::clenabled::qa_clComplexToArg::suite());
+  s->addTest(gr::clenabled::qa_clComplexToMagPhase::suite());
+  s->addTest(gr::clenabled::qa_clMagPhaseToComplex::suite());
+  s->addTest(gr::clenabled::qa_clComplexToMag::suite());
 
   return s;
 }

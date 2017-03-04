@@ -77,15 +77,6 @@ namespace gr {
     	else
     		fftDir = CLFFT_BACKWARD;
 
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
-
-    	// This block is a vector block.  We'll get FFT Size multiples in
-    	// but the total length could be greater.  For instance, with an
-    	// FFT size at 1024, we could still get 8192 (8 vectors) in to process.
-    	setBufferLength(imaxItems);
-
     	/* Create a default plan for a complex FFT. */
         size_t clLengths[1];
         clLengths[0]=(size_t)fftSize;
@@ -111,11 +102,13 @@ namespace gr {
         //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
         err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
 
-        //fftQueue = clCreateCommandQueueWithProperties((*context)(), devices[0](), 0, &err);
+    	set_output_multiple(fftSize);
 
         /* Bake the plan. */
         err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
-    }
+
+    	setBufferLength(fftSize);
+}
 
     void clFFT_impl::setBufferLength(int numItems) {
     	if (aBuffer)
@@ -124,17 +117,18 @@ namespace gr {
     	if (cBuffer)
     		delete cBuffer;
 
+        curBufferSize=numItems;
+    	inputSize = curBufferSize*dataSize; // curBufferSize will be fftSize
+
     	aBuffer = new cl::Buffer(
             *context,
-            CL_MEM_READ_ONLY,
-			numItems * dataSize);
+            CL_MEM_READ_ONLY,  // this has to be read/write of the clFFT enqueue transform call crashes.
+			inputSize);
 
         cBuffer = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-			numItems * dataSize);
-
-        curBufferSize=numItems;
+			inputSize);
     }
 
 
@@ -143,25 +137,20 @@ namespace gr {
      */
     clFFT_impl::~clFFT_impl()
     {
-    	if (aBuffer)
-    		delete aBuffer;
-
-    	if (cBuffer)
-    		delete cBuffer;
         /* Release the plan. */
     	int err;
 
         err = clfftDestroyPlan( &planHandle );
        /* Release clFFT library. */
-
-        try {
         clfftTeardown( );
-        }
-        catch(...) {
-        	// safety catch.
-        }
 
-        delete d_fft;
+    	if (aBuffer)
+    		delete aBuffer;
+
+    	if (cBuffer)
+    		delete cBuffer;
+
+    	delete d_fft;
     }
 
     void
@@ -178,55 +167,93 @@ namespace gr {
         const gr_complex *in = (const gr_complex *) input_items[0];
         gr_complex *out = (gr_complex *) output_items[0];
 
+        int count = 0;
+
+        while(count < noutput_items) {
+			// copy input into optimally aligned buffer
+            if(d_window.size()) {
+    			  gr_complex *dst = d_fft->get_inbuf();
+    			  if(!d_forward && d_shift) {
+    				unsigned int offset = (!d_forward && d_shift)?(d_fft_size/2):0;
+    				int fft_m_offset = d_fft_size - offset;
+    				volk_32fc_32f_multiply_32fc(&dst[fft_m_offset], in, &d_window[0], offset);
+    				volk_32fc_32f_multiply_32fc(&dst[0], &in[offset], &d_window[offset], d_fft_size-offset);
+    			  }
+    			  else {
+    					volk_32fc_32f_multiply_32fc(&dst[0], in, &d_window[0], d_fft_size);
+    			  }
+            }
+            else {
+    			  if(!d_forward && d_shift) {  // apply an ifft shift on the data
+    				gr_complex *dst = d_fft->get_inbuf();
+    				unsigned int len = (unsigned int)(floor(d_fft_size/2.0)); // half length of complex array
+    				memcpy(&dst[0], &in[len], sizeof(gr_complex)*(d_fft_size - len));
+    				memcpy(&dst[d_fft_size - len], &in[count], sizeof(gr_complex)*len);
+    			  }
+    			  else {
+    				memcpy(d_fft->get_inbuf(), &in[count], inputSize);
+    			  }
+            }  // if-else d_window.size();
+
+			// compute the fft
+			d_fft->execute();
+
+			// copy result to our output
+	        if(d_forward && d_shift) {  // apply a fft shift on the data
+	          unsigned int len = (unsigned int)(ceil(d_fft_size/2.0));
+	          memcpy(&out[0], &d_fft->get_outbuf()[len], sizeof(gr_complex)*(d_fft_size - len));
+	          memcpy(&out[d_fft_size - len], &d_fft->get_outbuf()[0], sizeof(gr_complex)*len);
+	        }
+	        else {
+				memcpy (out, d_fft->get_outbuf (), inputSize);
+	        }
+
+			in  += d_fft_size;
+			out += d_fft_size;
+			count += d_fft_size;
+        }
+
+        return noutput_items;
+    	}
+ /*
+    int clFFT_impl::testCPU(int noutput_items,
+            gr_vector_int &ninput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items)
+    	{
+        const gr_complex *in = (const gr_complex *) input_items[0];
+        gr_complex *out = (gr_complex *) output_items[0];
+
         unsigned int input_data_size = input_signature()->sizeof_stream_item (0);
         unsigned int output_data_size = output_signature()->sizeof_stream_item (0);
 
         int count = 0;
 
-        // int cmax = (int)((float)noutput_items / (float)d_fft_size);
-
         while(count++ < noutput_items) {
         // copy input into optimally aligned buffer
         if(d_window.size()) {
-          gr_complex *dst = d_fft->get_inbuf();
-          if(!d_forward && d_shift) {
-            unsigned int offset = (!d_forward && d_shift)?(d_fft_size/2):0;
-            int fft_m_offset = d_fft_size - offset;
-            volk_32fc_32f_multiply_32fc(&dst[fft_m_offset], &in[0], &d_window[0], offset);
-            volk_32fc_32f_multiply_32fc(&dst[0], &in[offset], &d_window[offset], d_fft_size-offset);
-          }
-          else {
-
-          		//volk_32fc_32f_multiply_32fc(&dst[0], in, &d_window[0], d_fft_size);
-
-        	    // Volk crashes.  Just getting performance metric here....
-        	  	void * cPtr = &dst[0];
-        	  	const void * aPtr = in;
-        	  	void * bPtr = &d_window[0];
-        	  	SComplex a,b,c;
-
-        	  	for (int number=0;number<d_fft_size;number++) {
-                	float a_r=a.real;
-                	float a_i=a.imag;
-                	float b_r=b.real;
-                	float b_i=b.imag;
-                	c.real = a_r * b_r - (a_i*b_i);
-                	c.imag = a_r * b_i + a_i * b_r;
-        	  	}
-
-          }
+			  gr_complex *dst = d_fft->get_inbuf();
+			  if(!d_forward && d_shift) {
+				unsigned int offset = (!d_forward && d_shift)?(d_fft_size/2):0;
+				int fft_m_offset = d_fft_size - offset;
+				volk_32fc_32f_multiply_32fc(&dst[fft_m_offset], &in[count], &d_window[0], offset);
+				volk_32fc_32f_multiply_32fc(&dst[0], &in[count+offset], &d_window[offset], d_fft_size-offset);
+			  }
+			  else {
+					volk_32fc_32f_multiply_32fc(&dst[0], &in[count], &d_window[0], d_fft_size);
+			  }
         }
         else {
-          if(!d_forward && d_shift) {  // apply an ifft shift on the data
-            gr_complex *dst = d_fft->get_inbuf();
-            unsigned int len = (unsigned int)(floor(d_fft_size/2.0)); // half length of complex array
-            memcpy(&dst[0], &in[len], sizeof(gr_complex)*(d_fft_size - len));
-            memcpy(&dst[d_fft_size - len], &in[0], sizeof(gr_complex)*len);
-          }
-          else {
-            memcpy(d_fft->get_inbuf(), in, input_data_size);
-          }
-        }
+			  if(!d_forward && d_shift) {  // apply an ifft shift on the data
+				gr_complex *dst = d_fft->get_inbuf();
+				unsigned int len = (unsigned int)(floor(d_fft_size/2.0)); // half length of complex array
+				memcpy(&dst[0], &in[len], sizeof(gr_complex)*(d_fft_size - len));
+				memcpy(&dst[d_fft_size - len], &in[count], sizeof(gr_complex)*len);
+			  }
+			  else {
+				memcpy(d_fft->get_inbuf(), &in[count], input_data_size);
+			  }
+        }  // if-else d_window.size();
 
         // compute the fft
         d_fft->execute();
@@ -238,18 +265,17 @@ namespace gr {
           memcpy(&out[d_fft_size - len], &d_fft->get_outbuf()[0], sizeof(gr_complex)*len);
         }
         else {
-        	// fix for crash
-        	char tmp[output_data_size];
-          // memcpy (out, d_fft->get_outbuf (), output_data_size);
-          memcpy (tmp, d_fft->get_outbuf (), output_data_size);
+           memcpy ((void *)&out[count], d_fft->get_outbuf (), output_data_size);
         }
 
-        in  += d_fft_size;
-        out += d_fft_size;
+//        in  += d_fft_size;
+//        out += d_fft_size;
+        count += d_fft_size;
         }
 
         return noutput_items;
     }
+*/
 
     int clFFT_impl::testOpenCL(int noutput_items,
             gr_vector_int &ninput_items,
@@ -263,29 +289,44 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     {
-		if (noutput_items > curBufferSize)
-			setBufferLength(noutput_items);
+    	// set_output_multiple guarantees that noutput_items will be a multiple of fftSize
+    	// Need to cycle through.
 
 		// only taking FFT size items
-    	int inputSize = curBufferSize*dataSize;
-        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
 
-		// Do the work
-
+        int count = 0;
         int err;
-        /* Execute the plan. */
-       	err = clfftEnqueueTransform(planHandle, fftDir, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
+        const gr_complex *in_complex = (const gr_complex *) input_items[0];
+        gr_complex *out_complex = (gr_complex *) output_items[0];
+        const float *in_float = (const float *) input_items[0];
+        float *out_float = (float *) output_items[0];
 
-        /* Wait for calculations to be finished. */
-        err = clFinish((*queue)());
+        while(count < noutput_items) {
+            // Load the data
+        	if (dataType==DTYPE_COMPLEX) {
+                queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_complex[count]);
+        	}
+        	else {
+                queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_float[count]);
+        	}
 
-        // and outputting FFTSize samples
+            // Execute the plan.
+           	err = clfftEnqueueTransform(planHandle, fftDir, 1, &((*queue)()), 0, NULL, NULL, &((*aBuffer)()), &((*cBuffer)()), NULL);
+            // Wait for calculations to be finished.
+            err = clFinish((*queue)());
+            // Fetch results of calculations.
+        	if (dataType==DTYPE_COMPLEX) {
+            	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)&out_complex[count]);
+        	}
+        	else {
+            	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)&out_float[count]);
+        	}
 
-        /* Fetch results of calculations. */
-    	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
+        	count += curBufferSize; // this will be fftsize*batchsize
+        }
 
       // Tell runtime system how many output items we produced.
-      return curBufferSize; // will always return FFTSize*2 items.
+      return noutput_items; // will always return FFTSize*2 items.
     }
 
 

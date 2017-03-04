@@ -63,10 +63,8 @@ namespace gr {
       : gr::block("clMathOp",
               gr::io_signature::make(2, 2, dsize),
               gr::io_signature::make(1, 1, dsize)),
-			  GRCLBase(idataType, dsize,openCLPlatformType)
+			  GRCLBase(idataType, dsize,openCLPlatformType,setDebug)
     {
-    	debugMode=setDebug;
-
     	// Now we set up our OpenCL kernel
 
         numParams = 2;
@@ -114,6 +112,13 @@ namespace gr {
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index] = log10(a[index]);\n";
             	numConstParams = 1;
+        	break;
+
+        	case MATHOP_SNR_HELPER:
+            	srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
+            	srcStdStr += "    size_t index =  get_global_id(0);\n";
+            	srcStdStr += "    float tmpVal =  a[index] / b[index];\n";
+            	srcStdStr += "    c[index] = abs(log10(tmpVal));\n";
         	break;
         	}
         	srcStdStr += "}\n";
@@ -202,8 +207,9 @@ namespace gr {
     		imaxItems=8192;
 
     	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
+    	maxConstItems = maxItemsForConst;
 
-    	if (maxItemsForConst < imaxItems || imaxItems == 0) {
+    	if (maxItemsForConst < imaxItems) {
     		gr::block::set_max_noutput_items(maxItemsForConst);
 
     		imaxItems = maxItemsForConst;
@@ -249,16 +255,13 @@ namespace gr {
 
         if (d_operatorType == MATHOP_LOG || d_operatorType == MATHOP_LOG10)
         	numConstParams = 1;
-        	else
-        		numConstParams = 2;
+        else
+        	numConstParams = 2;
 
         // Now if we change the buffer size larger than __constant can handle, we need to remove constant from the kernel...
     	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
 
-    	if (maxItemsForConst < imaxItems) {
-    		// Asking for a buffer larger than __constant can handle.
-    		std::cout << "WARNING: MathOp OpenCL is requesting a buffer larger than __constant memory space.  forcing smaller buffer." << std::endl;
-		}
+    	set_max_noutput_items(maxItemsForConst/2);
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 

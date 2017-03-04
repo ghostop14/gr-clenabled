@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <block>
-  <name>OpenCL Log10</name>
-  <key>clenabled_clLog10</key>
+  <name>OpenCL Mag Phase To Complex</name>
+  <key>clenabled_magphasetocomplex</key>
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
-  <make>clenabled.clLog($openCLPlatform,$n_val,$k_val,$setDebug)</make>
+  <make>clenabled.clMagPhaseToComplex($openCLPlatform,$setDebug)</make>
 	<param>
 		<name>OpenCL Platform</name>
 		<key>openCLPlatform</key>
@@ -27,18 +27,6 @@
 		</option>
 	</param>
 	<param>
-			<name>n</name>
-			<key>n_val</key>
-			<value>1</value>
-			<type>float</type>
-	</param>
-	<param>
-			<name>k</name>
-			<key>k_val</key>
-			<value>0</value>
-			<type>float</type>
-	</param>
-	<param>
 		<name>Debug</name>
 		<key>setDebug</key>
 		<type>enum</type>
@@ -52,15 +40,18 @@
 		</option>
 	</param>
   <sink>
-    <name>in</name>
+    <name>mag</name>
+    <type>float</type>
+  </sink>
+  <sink>
+    <name>phase</name>
     <type>float</type>
   </sink>
   <source>
     <name>out</name>
-    <type>float</type>
+    <type>complex</type>
   </source>
 	<doc>
-This block is an OpenCL enabled version of the built-in Log10 block.
-Calculation is out = n * log10(in) + k.
+This block is an OpenCL enabled version of the built-in Mag Phase To Complex block.
 	</doc>
 </block>

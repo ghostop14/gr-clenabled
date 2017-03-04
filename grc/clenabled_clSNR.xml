@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <block>
-  <name>OpenCL Log10</name>
-  <key>clenabled_clLog10</key>
+  <name>OpenCL SNR Helper</name>
+  <key>clenabled_clsnr</key>
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
-  <make>clenabled.clLog($openCLPlatform,$n_val,$k_val,$setDebug)</make>
+  <make>clenabled.clSNR($openCLPlatform,$n_val,$k_val,$setDebug)</make>
 	<param>
 		<name>OpenCL Platform</name>
 		<key>openCLPlatform</key>
@@ -52,7 +52,11 @@
 		</option>
 	</param>
   <sink>
-    <name>in</name>
+    <name>signal</name>
+    <type>float</type>
+  </sink>
+  <sink>
+    <name>noise</name>
     <type>float</type>
   </sink>
   <source>
@@ -60,7 +64,8 @@
     <type>float</type>
   </source>
 	<doc>
-This block is an OpenCL enabled version of the built-in Log10 block.
-Calculation is out = n * log10(in) + k.
+This block is an OpenCL enabled block that rolls up a divide, log10, and abs calculation in one OpenCL accelerated block:
+Calculation is out = abs(n * log10(signal/noise) + k).
+
 	</doc>
 </block>

@@ -13,6 +13,12 @@
 #include "clenabled/clFilter.h"
 #include "clenabled/clQuadratureDemod.h"
 #include "clenabled/clFFT.h"
+#include "clenabled/clLog.h"
+#include "clenabled/clSNR.h"
+#include "clenabled/clComplexToArg.h"
+#include "clenabled/clComplexToMagPhase.h"
+#include "clenabled/clMagPhaseToComplex.h"
+#include "clenabled/clComplexToMag.h"
 %}
 
 
@@ -26,3 +32,15 @@ GR_SWIG_BLOCK_MAGIC2(clenabled, clFilter);
 GR_SWIG_BLOCK_MAGIC2(clenabled, clQuadratureDemod);
 %include "clenabled/clFFT.h"
 GR_SWIG_BLOCK_MAGIC2(clenabled, clFFT);
+%include "clenabled/clLog.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clLog);
+%include "clenabled/clSNR.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clSNR);
+%include "clenabled/clComplexToArg.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexToArg);
+%include "clenabled/clComplexToMagPhase.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexToMagPhase);
+%include "clenabled/clMagPhaseToComplex.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clMagPhaseToComplex);
+%include "clenabled/clComplexToMag.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexToMag);

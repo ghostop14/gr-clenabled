@@ -26,5 +26,11 @@ install(FILES
     clMathOp.h
     clFilter.h
     clQuadratureDemod.h
-    clFFT.h DESTINATION include/clenabled
+    clFFT.h
+    clLog.h
+    clSNR.h
+    clComplexToArg.h
+    clComplexToMagPhase.h
+    clMagPhaseToComplex.h
+    clComplexToMag.h DESTINATION include/clenabled
 )

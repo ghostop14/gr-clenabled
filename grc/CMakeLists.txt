@@ -33,5 +33,11 @@ install(FILES
     clenabled_clRootRaisedCosine.xml
     clenabled_clLowPassFilter.xml
     clenabled_clQuadratureDemod.xml
-    clenabled_clFFT.xml DESTINATION share/gnuradio/grc/blocks
+    clenabled_clFFT.xml
+    clenabled_clSNR.xml
+    clenabled_clComplexToArg.xml
+    clenabled_clComplexToMagPhase.xml
+    clenabled_clMagPhaseToComplex.xml
+    clenabled_clComplexToMag.xml 
+    DESTINATION share/gnuradio/grc/blocks
 )

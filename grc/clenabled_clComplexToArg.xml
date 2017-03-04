@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <block>
-  <name>OpenCL Log10</name>
-  <key>clenabled_clLog10</key>
+  <name>OpenCL ComplexToArg</name>
+  <key>clenabled_complextoarg</key>
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
-  <make>clenabled.clLog($openCLPlatform,$n_val,$k_val,$setDebug)</make>
+  <make>clenabled.clComplexToArg($openCLPlatform,$setDebug)</make>
 	<param>
 		<name>OpenCL Platform</name>
 		<key>openCLPlatform</key>
@@ -27,18 +27,6 @@
 		</option>
 	</param>
 	<param>
-			<name>n</name>
-			<key>n_val</key>
-			<value>1</value>
-			<type>float</type>
-	</param>
-	<param>
-			<name>k</name>
-			<key>k_val</key>
-			<value>0</value>
-			<type>float</type>
-	</param>
-	<param>
 		<name>Debug</name>
 		<key>setDebug</key>
 		<type>enum</type>
@@ -53,14 +41,13 @@
 	</param>
   <sink>
     <name>in</name>
-    <type>float</type>
+    <type>complex</type>
   </sink>
   <source>
     <name>out</name>
     <type>float</type>
   </source>
 	<doc>
-This block is an OpenCL enabled version of the built-in Log10 block.
-Calculation is out = n * log10(in) + k.
+This block is an OpenCL enabled version of the built-in Complex To Arg block.
 	</doc>
 </block>

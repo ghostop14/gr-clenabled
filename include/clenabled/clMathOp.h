@@ -48,6 +48,7 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int idataType, int openCLPlatformType,int operatorType,int setDebug=0);
+      static sptr make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId, int operatorType,int setDebug=0);
     };
 
   } // namespace clenabled

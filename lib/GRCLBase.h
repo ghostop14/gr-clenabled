@@ -35,6 +35,8 @@
 #define OCLTYPE_CPU 3
 #define OCLTYPE_ANY 4
 
+#define OCLDEVICESELECTOR_FIRST 1
+#define OCLDEVICESELECTOR_SPECIFIC 2
 
 namespace gr {
 namespace clenabled {
@@ -75,6 +77,8 @@ protected:
 
     void CompileKernel(const char* kernelCode, const char* kernelFunctionName);
 
+	virtual void InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
+
 public:
     bool hasSVMAvailable() { return hasSharedVirtualMemory; };
 
@@ -86,9 +90,9 @@ public:
 
     int ActiveContextType() {return contextType;};
 
-	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false);
+	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false); // selects First of specified type
+	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
 	virtual ~GRCLBase();
-
 
     cl_device_type GetContextType();
 

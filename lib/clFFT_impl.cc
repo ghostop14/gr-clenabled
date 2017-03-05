@@ -102,7 +102,8 @@ namespace gr {
         //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
         err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
 
-    	set_output_multiple(fftSize);
+        // using vectors we don't want to change the output multiple since 1 item will be an fft worth of data.
+        //    	set_output_multiple(fftSize);
 
         /* Bake the plan. */
         err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
@@ -289,7 +290,7 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     {
-    	// set_output_multiple guarantees that noutput_items will be a multiple of fftSize
+    	// using input vectors guarantees that noutput_items will be a multiple of fftSize
     	// Need to cycle through.
 
 		// only taking FFT size items
@@ -322,7 +323,7 @@ namespace gr {
             	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)&out_float[count]);
         	}
 
-        	count += curBufferSize; // this will be fftsize*batchsize
+        	count += curBufferSize; // this will be fftsize*batchsize which for now is 1, so curBufferSize = fftsize
         }
 
       // Tell runtime system how many output items we produced.
@@ -336,7 +337,12 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
-      int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
+      // for vectors coming in, noutput_items will be the number of vectors.
+      // So for the calculation we need to multiply # of vectors * fft_size to get the # of data points
+
+      int inputSize = noutput_items * d_fft_size;
+
+      int retVal = processOpenCL(inputSize,ninput_items,input_items,output_items);
 
       consume_each (noutput_items);
 

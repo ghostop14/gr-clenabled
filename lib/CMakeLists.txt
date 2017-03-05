@@ -125,6 +125,18 @@ target_link_libraries(
 GR_ADD_TEST(test_clenabled test-clenabled)
 
 ########################################################################
+# Build and register clview
+########################################################################
+add_executable(clview clview.cc)
+
+target_link_libraries(
+  clview
+  OpenCL
+)
+
+install(TARGETS clview DESTINATION /usr/bin RUNTIME)
+
+########################################################################
 # Print summary
 ########################################################################
 message(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")

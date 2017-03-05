@@ -975,6 +975,47 @@ bool testMultiplyConst() {
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
 
+	// switch to empty with copy
+	std::cout << "----------------------------------------------------------" << std::endl;
+	delete test;
+
+	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,2.0,MATHOP_EMPTY_W_COPY,true);
+	test->setBufferLength(largeBlockSize);
+	test->set_k(2.0);
+
+	std::cout << "Testing kernel that simply copies in[index]->out[index] " << largeBlockSize << " items..." << std::endl;
+
+	noutputitems = test->testOpenCL(numItems,ninitems,inputPointers,outputPointers);
+
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
 	// switch to multiply
 	std::cout << "----------------------------------------------------------" << std::endl;
 	delete test;
@@ -1186,7 +1227,7 @@ bool testMultiply() {
 
 	gr::clenabled::clMathOp_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,MATHOP_MULTIPLY,true);
+		test = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,MATHOP_MULTIPLY,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -1302,16 +1343,21 @@ bool testMultiply() {
 bool testLowPassFilter() {
 	gr::clenabled::clFilter_impl *test=NULL;
 	double gain=1.0;
-	double samp_rate=10000000;
-	double cutoff_freq=100000.0;
-	double transition_width = cutoff_freq * 0.2;
+	double samp_rate;
+	double cutoff_freq;
+	double transition_width;
+
+	// -------------------------  TIME DOMAIN FILTER -------------------------------------------------
+	samp_rate=10000000;
+	cutoff_freq=100000.0;
+	transition_width = cutoff_freq * 0.2;
 	try {
-		std::cout << "----------------------------------------------------------" << std::endl;
-		std::cout << "Testing filter performance with 10 MSPS sample rate" << std::endl;
+		std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
+		std::cout << "Testing TIME DOMAIN OpenCL filter performance with 10 MSPS sample rate" << std::endl;
 		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
 		test = new gr::clenabled::clFilter_impl(opencltype,1,
-				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true);
+				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
 	}
 	catch(const std::runtime_error& re)
 	{
@@ -1500,15 +1546,189 @@ bool testLowPassFilter() {
 
 	std::cout << std::endl;
 
-	// ---------------------------------------------------------------
+	// -------------------------  FREQUENCY DOMAIN FILTER -------------------------------------------------
+	samp_rate=10000000;
+	cutoff_freq=100000.0;
+	transition_width = cutoff_freq * 0.2;
+	try {
+		std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
+		std::cout << "Testing FREQUENCY DOMAIN OpenCL filter performance with 10 MSPS sample rate" << std::endl;
+		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
-	// CPU
+		delete test;
+
+		test = new gr::clenabled::clFilter_impl(opencltype,1,
+				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
+	}
+	catch(const std::runtime_error& re)
+	{
+	    // speciffic handling for runtime_error
+	    std::cerr << "Runtime error: " << re.what() << std::endl;
+	}
+	catch(const std::exception& ex)
+	{
+	    // speciffic handling for all exceptions extending std::exception, except
+	    // std::runtime_error which is handled explicitly
+	    std::cerr << "Error occurred: " << ex.what() << std::endl;
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up filter OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	// So the number of samples used has to be a value that satisfies both of these
+
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 20% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.15);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 15% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.1);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 10% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// Running with narrower filter:
+	transition_width = (int)(cutoff_freq*0.05);
+	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
+	test->TestNotifyNewFilter(largeBlockSize);
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	fdBlockSize = test->freqDomainSampleBlockSize();
+	tdBufferSize = test->getCurrentBufferSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
+
+	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
+	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
+	if (optimalSize > 0) {
+		tdBufferSize = optimalSize;
+		fdBlockSize = optimalSize;
+	}
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+	elapsed_seconds = end-start;
+	std::cout << "OpenCL Run Time for 5% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+
+	std::cout << std::endl;
+
+	// ---------------------- CPU TESTS -----------------------------------------
 	transition_width = (int)(cutoff_freq*0.20);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 	fdBlockSize = test->freqDomainSampleBlockSize();
 	tdBufferSize = test->getCurrentBufferSize();
 
+	std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
 	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
 
@@ -1643,9 +1863,10 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any]" << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--2048] [--4096] [--6144]" << std::endl;
 			std::cout << "where gpu, cpu, accel[erator], or any defines the type of OpenCL device opened." << std::endl;
 			std::cout << "It is recomended that the size be a multiple of the 'Preferred work group size multiple' visible from the clinfo command." << std::endl;
+			std::cout << "[--2048/4096/6144] indicates buffer size to be passed to each kernel.  The default is 8192." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -1662,6 +1883,15 @@ main (int argc, char **argv)
 			}
 			else if (strcmp(argv[i],"--any")==0) {
 				opencltype=OCLTYPE_ANY;
+			}
+			else if (strcmp(argv[i],"--2048")==0) {
+				largeBlockSize=2048;
+			}
+			else if (strcmp(argv[i],"--4096")==0) {
+				largeBlockSize=4096;
+			}
+			else if (strcmp(argv[i],"--6144")==0) {
+				largeBlockSize=6144;
 			}
 			else {
 				std::cout << "ERROR: Unknown parameter." << std::endl;
@@ -1707,7 +1937,7 @@ main (int argc, char **argv)
 
 	was_successful = testMagPhaseToComplex();
 	std::cout << std::endl;
-/*
+
 	was_successful = testQuadDemod();
 	std::cout << std::endl;
 
@@ -1716,7 +1946,7 @@ main (int argc, char **argv)
 
 	was_successful = testLowPassFilter();
 	std::cout << std::endl;
-*/
+
 	return was_successful ? 0 : 1;
 }
 

@@ -48,22 +48,49 @@ namespace gr {
 
   	if (setDebug == 1) {
         return gnuradio::get_initial_sptr
-          (new clMathOp_impl(idataType,dsize,openCLPlatformType,operatorType,true));
+          (new clMathOp_impl(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,operatorType,true));
   	}
   	else {
         return gnuradio::get_initial_sptr
-          (new clMathOp_impl(idataType,dsize,openCLPlatformType,operatorType,false));
+          (new clMathOp_impl(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,operatorType,false));
+  	}
+}
+
+    clMathOp::sptr
+    clMathOp::make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType,int setDebug)
+    {
+      int dsize=sizeof(float);
+
+      switch(idataType) {
+      case DTYPE_FLOAT:
+    	  dsize=sizeof(float);
+      break;
+      case DTYPE_INT:
+    	  dsize=sizeof(int);
+      break;
+      case DTYPE_COMPLEX:
+    	  dsize=sizeof(gr_complex);
+      break;
+      }
+
+  	if (setDebug == 1) {
+        return gnuradio::get_initial_sptr
+          (new clMathOp_impl(idataType,dsize,openCLPlatformType,devSelector,platformId,devId,operatorType,true));
+  	}
+  	else {
+        return gnuradio::get_initial_sptr
+          (new clMathOp_impl(idataType,dsize,openCLPlatformType,devSelector,platformId,devId,operatorType,false));
   	}
 }
 
     /*
      * The private constructor
      */
-    clMathOp_impl::clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType,int operatorType, bool setDebug)
+    clMathOp_impl::clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType, bool setDebug)
       : gr::block("clMathOp",
               gr::io_signature::make(2, 2, dsize),
               gr::io_signature::make(1, 1, dsize)),
-			  GRCLBase(idataType, dsize,openCLPlatformType,setDebug)
+			  GRCLBase(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
     	// Now we set up our OpenCL kernel
 
@@ -223,6 +250,15 @@ namespace gr {
 		}
 
         setBufferLength(imaxItems);
+
+        // And finally optimize the data we get based on the preferred workgroup size.
+        // Note: We can't do this until the kernel is compiled and since it's in the block class
+        // it has to be done here.
+        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+        // For GPU's setting it to the preferred size seems to have the best performance.
+        if (contextType != CL_DEVICE_TYPE_CPU) {
+        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+        }
     }
 
     void clMathOp_impl::setBufferLength(int numItems) {

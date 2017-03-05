@@ -1,0 +1,139 @@
+
+// Use CPP exception handling.
+// Note: If you include cl.hpp, the compiler just won't find cl::Error class.
+// You have to use cl2.hpp to get it to go away
+#define __CL_ENABLE_EXCEPTIONS
+// Disable the deprecated functions warning.  If you want to keep support for 1.2 devices
+// You need to use the deprecated functions.  This #define makes the warning go away.
+// #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_VERSION_1_2
+
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.hpp>
+#else
+#include <CL/cl.hpp>
+#endif
+
+#include <iostream>
+#include <boost/algorithm/string.hpp>
+
+int
+main (int argc, char **argv)
+{
+    // opencl variables
+    cl::Context *context=NULL;
+    std::vector<cl::Device> devices;
+
+    cl_device_type contextType;
+
+    std::string platformName="";
+    std::string platformVendor="";
+    std::string deviceName;
+    std::string deviceType;
+
+
+    std::vector<cl::Platform> platformList;
+
+    // Pick platform
+    try {
+        cl::Platform::get(&platformList);
+    }
+    catch(...) {
+    	std::cout << "OpenCL Error: Unable to get platform list." << std::endl;
+    	return 1;
+    }
+
+    context = NULL;
+
+	cl_context_properties cprops[] = {
+		CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
+
+    std::string kernelCode="";
+    kernelCode += "kernel void test(__constant int * a, const int multiplier, __global int * restrict c) {\n";
+    kernelCode += "return;\n";
+    kernelCode += "}\n";
+
+	std::vector<cl::Device> curDev;
+
+	// Pick first platform
+    for (int i=0;i<platformList.size();i++) {
+    	try {
+    		// Find the first platform that has devices of the type we want.
+            cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[i])(), 0};
+            platformName=platformList[i].getInfo<CL_PLATFORM_NAME>();
+            platformVendor=platformList[i].getInfo<CL_PLATFORM_VENDOR>();
+            context= new cl::Context(CL_DEVICE_TYPE_ALL, cprops);
+
+            devices = context->getInfo<CL_CONTEXT_DEVICES>();
+
+            for (int j=0;j<devices.size();j++) {
+            	deviceName = devices[j].getInfo<CL_DEVICE_NAME>();
+
+            	boost::trim(deviceName);
+
+                switch (devices[j].getInfo<CL_DEVICE_TYPE>()) {
+                case CL_DEVICE_TYPE_GPU:
+                deviceType = "GPU";
+        		break;
+                case CL_DEVICE_TYPE_CPU:
+                deviceType = "CPU";
+        		break;
+                case CL_DEVICE_TYPE_ACCELERATOR:
+                deviceType = "Accelerator";
+        		break;
+                case CL_DEVICE_TYPE_ALL:
+                deviceType = "ALL";
+        		break;
+                case CL_DEVICE_TYPE_CUSTOM:
+                deviceType = "CUSTOM";
+        		break;
+                }
+
+            	cl_int err;
+            	cl_device_svm_capabilities caps;
+
+            	err = clGetDeviceInfo(devices[j](),CL_DEVICE_SVM_CAPABILITIES,
+            							sizeof(cl_device_svm_capabilities),&caps,0);
+            	bool hasSharedVirtualMemory = (err == CL_SUCCESS);
+            	bool hasSVMFineGrained = (err == CL_SUCCESS && (caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER));
+        		cl_int maxConstMemSize = devices[j].getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>();
+        		cl_int localMemSize = devices[j].getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
+        		cl_int memInK=(int)((float)maxConstMemSize / 1024.0);
+        		cl_int localMemInK=(int)((float)localMemSize / 1024.0);
+
+            	std::string Ocl2Caps="[OpenCL 2.0 Capabilities]";
+
+            	std::cout << "Platform Id: " << i << std::endl;
+            	std::cout << "Device Id: " << j << std::endl;
+            	std::cout << "Platform Name: " << platformName << std::endl;
+            	std::cout << "Device Name: " << deviceName << std::endl;
+            	std::cout << "Device Type: " << deviceType << std::endl;
+            	std::cout << "Constant Memory: " << memInK << "K (" << (maxConstMemSize/4) << " floats)" << std::endl;
+            	std::cout << "Local Memory: " << localMemInK << "K (" << (localMemSize/4) << " floats)" << std::endl;
+            	std::cout << "OpenCL 2.0 Capabilities:" << std::endl;
+            	if (hasSharedVirtualMemory) {
+            		std::cout << "Shared Virtual Memory (SVM): Yes" << std::endl;
+            	}
+            	else {
+            		std::cout << "Shared Virtual Memory (SVM): No" << std::endl;
+            	}
+
+            	if (hasSVMFineGrained) {
+            		std::cout << "Fine-grained SVM: Yes" << std::endl;
+            	}
+            	else {
+            		std::cout << "Fine-grained SVM: No" << std::endl;
+            	}
+
+            	std::cout << std::endl;
+            }
+
+    	}
+    	catch (...) {
+        	std::cout << "OpenCL Error: Unable to get platform list." << std::endl;
+        	return 2;
+    	}
+    }
+
+    return 0;
+}

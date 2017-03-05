@@ -33,7 +33,7 @@ namespace gr {
     {
      private:
         bool d_updated;
-
+        bool USE_TIME_DOMAIN=true;
 
         std::vector<float> d_new_taps;
 
@@ -97,7 +97,7 @@ namespace gr {
      public:
     	clFilter_impl(int openclPlatform, int decimation,
               const std::vector<float> &taps,
-              int nthreads=1, bool setDebug=false);
+              int nthreads=1, bool setDebug=false,bool bUseTimeDomain=false);
       virtual ~clFilter_impl();
 
       int testCPU(int noutput_items,

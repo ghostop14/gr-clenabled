@@ -130,6 +130,9 @@ namespace gr {
     		srcStdStr += "return;\n";
 
 		switch (mathOperatorType) {
+		case MATHOP_EMPTY_W_COPY:
+			srcStdStr += "    c[index].real = a[index].real;\n";
+			srcStdStr += "    c[index].imag = a[index].imag;\n";
 		case MATHOP_MULTIPLY:
 		srcStdStr += "    c[index].real = a[index].real * multiplier;\n";
 		srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
@@ -170,7 +173,16 @@ namespace gr {
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
 	setBufferLength(imaxItems);
-	}
+
+    // And finally optimize the data we get based on the preferred workgroup size.
+    // Note: We can't do this until the kernel is compiled and since it's in the block class
+    // it has to be done here.
+    // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+    // For GPU's setting it to the preferred size seems to have the best performance.
+    if (contextType != CL_DEVICE_TYPE_CPU) {
+    	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+    }
+}
 
 
     void clMathConst_impl::setBufferLength(int numItems) {
@@ -222,10 +234,21 @@ namespace gr {
         const SComplex *in = (const SComplex *) input_items[0];
         SComplex *out = (SComplex *) output_items[0];
 
-		for (int i=0;i<noutput_items;i++) {
-			out[i].real = in[i].real * value;
-			out[i].imag = in[i].imag * value;
+		switch (mathOperatorType) {
+		case MATHOP_EMPTY_W_COPY:
+			for (int i=0;i<noutput_items;i++) {
+				out[i].real = in[i].real;
+				out[i].imag = in[i].imag;
+			}
+		break;
+		case MATHOP_MULTIPLY:
+			for (int i=0;i<noutput_items;i++) {
+				out[i].real = in[i].real * value;
+				out[i].imag = in[i].imag * value;
+			}
+		break;
 		}
+
 
     	return noutput_items;
     }

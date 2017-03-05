@@ -42,7 +42,7 @@ namespace gr {
 		int curBufferSize=0;
 
      public:
-      clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType,int operatorType, bool setDebug=false);
+      clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType, bool setDebug=false);
       ~clMathOp_impl();
 
       // Where all the action really happens

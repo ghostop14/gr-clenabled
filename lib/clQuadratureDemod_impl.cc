@@ -93,7 +93,15 @@ namespace gr {
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
         setBufferLength(imaxItems);
-    }
+        // And finally optimize the data we get based on the preferred workgroup size.
+        // Note: We can't do this until the kernel is compiled and since it's in the block class
+        // it has to be done here.
+        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+        // For GPU's setting it to the preferred size seems to have the best performance.
+        if (contextType != CL_DEVICE_TYPE_CPU) {
+        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+        }
+}
 
     void clQuadratureDemod_impl::setBufferLength(int numItems) {
     	if (aBuffer)

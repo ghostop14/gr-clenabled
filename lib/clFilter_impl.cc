@@ -25,8 +25,6 @@
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
 
-const bool USE_TIME_DOMAIN=true;
-
 namespace gr {
   namespace clenabled {
     clFilter::sptr
@@ -34,7 +32,6 @@ namespace gr {
             const std::vector<float> &taps,
             int nthreads,int setDebug)
     {
-
       	if (setDebug == 1) {
             return gnuradio::get_initial_sptr
               (new clFilter_impl(openclPlatform,decimation,taps,nthreads,true));
@@ -43,7 +40,6 @@ namespace gr {
             return gnuradio::get_initial_sptr
               (new clFilter_impl(openclPlatform,decimation,taps,nthreads,false));
       	}
-
     }
 
     void
@@ -77,7 +73,7 @@ namespace gr {
     /*
      * The private constructor
      */
-    clFilter_impl::clFilter_impl(int openclPlatform, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug)
+    clFilter_impl::clFilter_impl(int openclPlatform, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug,bool bUseTimeDomain)
       : gr::sync_decimator("clLowPassFilter",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
@@ -180,144 +176,120 @@ namespace gr {
 
 		filterLengthBytes=d_ntaps * sizeof(float);
 
-    	kernelCode = "";
-    	kernelCodeWithConst = "";
-        std::string fnName = "";
-
-    	if (dataType==DTYPE_COMPLEX) {
-    		fnName = "td_FIR_complex";
-    		kernelCode +="struct ComplexStruct {\n";
-    		kernelCode +="	float real;\n";
-    		kernelCode +="	float imag;\n";
-    		kernelCode +="};\n";
-    		kernelCode +="typedef struct ComplexStruct SComplex;\n";
-
-    		kernelCode +="__kernel void td_FIR_complex\n";
-//    		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
-    		kernelCode +="( __constant SComplex *restrict InputArray, // Length N\n";
-    		kernelCode +="__global const float *restrict FilterArray, // Length K\n";
-    		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
-    		kernelCode +=")\n";
-    		kernelCode +="{\n";
-    		kernelCode +="	__local float local_copy_filter_array[K];\n";
-    		kernelCode +="  size_t gid=get_global_id(0);\n";
-    		kernelCode +="	if (gid < K)\n";
-    		kernelCode +="		local_copy_filter_array[gid] = FilterArray[gid];\n";
-    		kernelCode +="	barrier(CLK_LOCAL_MEM_FENCE);\n";
-    		kernelCode +="	// Perform Compute\n";
-    		kernelCode +="	SComplex result;\n";
-    		kernelCode +="	result.real=0.0f;\n";
-    		kernelCode +="	result.imag=0.0f;\n";
-    		kernelCode +="	for (int i=0; i<K; i++) {\n";
-			kernelCode +="		result.real += local_copy_filter_array[K-1-i]*InputArray[gid+i].real;\n";
-			kernelCode +="		result.imag += local_copy_filter_array[K-1-i]*InputArray[gid+i].imag;\n";
-    		kernelCode +="	}\n";
-    		kernelCode +="	OutputArray[gid].real = result.real;\n";
-    		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
-    		kernelCode +="}\n";
-
-    		// If the filter array is < constant memory, this approach is faster:
-    		kernelCodeWithConst +="struct ComplexStruct {\n";
-    		kernelCodeWithConst +="	float real;\n";
-    		kernelCodeWithConst +="	float imag;\n";
-    		kernelCodeWithConst +="};\n";
-    		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
-
-    		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
-//    		kernelCodeWithConst +="( __global const SComplex *restrict InputArray, // Length N\n";
-    		kernelCodeWithConst +="( __constant SComplex * InputArray, // Length N\n";
-    		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
-    		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
-    		kernelCodeWithConst +=")\n";
-    		kernelCodeWithConst +="{\n";
-    		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
-    		kernelCodeWithConst +="	// Perform Compute\n";
-    		kernelCodeWithConst +="	SComplex result;\n";
-    		kernelCodeWithConst +="	result.real=0.0f;\n";
-    		kernelCodeWithConst +="	result.imag=0.0f;\n";
-    		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
-			kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
-			kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
-    		kernelCodeWithConst +="	}\n";
-    		kernelCodeWithConst +="	OutputArray[gid].real = result.real;\n";
-    		kernelCodeWithConst +="	OutputArray[gid].imag = result.imag;\n";
-    		kernelCodeWithConst +="}\n";
-    	}
-    	else {
-    		fnName = "td_FIR_float";
-    		kernelCode += "__kernel void td_FIR_float\n";
-    		kernelCode += "( __global const float *restrict InputArray, // Length N\n";
-    		kernelCode += "__global const float *restrict FilterArray, // Length K\n";
-    		kernelCode += "__global float *restrict OutputArray // Length N+K-1\n";
-    		kernelCode += ")\n";
-    		kernelCode += "{\n";
-    		kernelCode += "	__local float local_copy_input_array[2*K+N];\n";
-    		kernelCode += "	__local float local_copy_filter_array[K];\n";
-    		kernelCode += "	InputArray += get_group_id(0) * N;\n";
-    		kernelCode += "	FilterArray += get_group_id(0) * K;\n";
-    		kernelCode += "	OutputArray += get_group_id(0) * (N+K);\n";
-    		kernelCode += "	// Copy from global to local\n";
-    		kernelCode += "	local_copy_input_array[get_local_id(0)] = InputArray[get_local_id(0)];\n";
-    		kernelCode += "	if (get_local_id(0) < K)\n";
-    		kernelCode += "		local_copy_filter_array[get_local_id(0)] = FilterArray[get_local_id(0)];\n";
-    		kernelCode += "	barrier(CLK_LOCAL_MEM_FENCE);\n";
-    		kernelCode += "	// Perform Compute\n";
-    		kernelCode += "	float result=0.0f;\n";
-    		kernelCode += "	for (int i=0; i<K; i++) {\n";
-    		kernelCode += "		result += local_copy_filter_array[K-1-i]*local_copy_input_array[get_local_id(0)+i];\n";
-    		kernelCode += "	}\n";
-    		kernelCode += "	OutputArray[get_local_id(0)] = result;\n";
-    		kernelCode += "}\n";
-
-    		kernelCodeWithConst += "__kernel void td_FIR_float\n";
-    		kernelCodeWithConst += "( __global const float *restrict InputArray, // Length N\n";
-    		kernelCodeWithConst += "__global const float *restrict FilterArray, // Length K\n";
-    		kernelCodeWithConst += "__global float *restrict OutputArray // Length N+K-1\n";
-    		kernelCodeWithConst += ")\n";
-    		kernelCodeWithConst += "{\n";
-    		kernelCodeWithConst += "	__local float local_copy_input_array[2*K+N];\n";
-    		kernelCodeWithConst += "	__local float local_copy_filter_array[K];\n";
-    		kernelCodeWithConst += "	InputArray += get_group_id(0) * N;\n";
-    		kernelCodeWithConst += "	FilterArray += get_group_id(0) * K;\n";
-    		kernelCodeWithConst += "	OutputArray += get_group_id(0) * (N+K);\n";
-    		kernelCodeWithConst += "	// Copy from global to local\n";
-    		kernelCodeWithConst += "	local_copy_input_array[get_local_id(0)] = InputArray[get_local_id(0)];\n";
-    		kernelCodeWithConst += "	if (get_local_id(0) < K)\n";
-    		kernelCodeWithConst += "		local_copy_filter_array[get_local_id(0)] = FilterArray[get_local_id(0)];\n";
-    		kernelCodeWithConst += "	barrier(CLK_LOCAL_MEM_FENCE);\n";
-    		kernelCodeWithConst += "	// Perform Compute\n";
-    		kernelCodeWithConst += "	float result=0.0f;\n";
-    		kernelCodeWithConst += "	for (int i=0; i<K; i++) {\n";
-    		kernelCodeWithConst += "		result += local_copy_filter_array[K-1-i]*local_copy_input_array[get_local_id(0)+i];\n";
-    		kernelCodeWithConst += "	}\n";
-    		kernelCodeWithConst += "	OutputArray[get_local_id(0)] = result;\n";
-    		kernelCodeWithConst += "}\n";
-
-    	}
-
-    	std::string lbDefines;
-    	lbDefines = "#define N " + std::to_string(ninput_items) + "\n";
-    	lbDefines += "#define K "+ std::to_string(d_ntaps) + "\n";
-
-    	std::string tmpKernelCode;
-    	if ((d_ntaps*sizeof(float)) < maxConstMemSize) {
-    		tmpKernelCode = lbDefines + kernelCodeWithConst;
-/*
-    		std::cout << "Kernel Code: " << std::endl;
-    		std::cout << tmpKernelCode;
-*/
-    		if (debugMode)
-        		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
-    	}
-    	else {
-    		tmpKernelCode = lbDefines + kernelCode;
-    		if (debugMode)
-        		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
-    	}
-
-    	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
-
     	if (USE_TIME_DOMAIN) {
+        	kernelCode = "";
+        	kernelCodeWithConst = "";
+            std::string fnName = "";
+
+        	if (dataType==DTYPE_COMPLEX) {
+        		fnName = "td_FIR_complex";
+        		kernelCode +="struct ComplexStruct {\n";
+        		kernelCode +="	float real;\n";
+        		kernelCode +="	float imag;\n";
+        		kernelCode +="};\n";
+        		kernelCode +="typedef struct ComplexStruct SComplex;\n";
+
+        		// This version of code is for data points that exceed the constant memory size.
+        		// This performance won't be very good.
+        		kernelCode +="__kernel void td_FIR_complex\n";
+        		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
+        		kernelCode +="__constant float * FilterArray, // Length K\n";
+        		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
+        		kernelCode +=")\n";
+        		kernelCode +="{\n";
+        		kernelCode +="  size_t gid=get_global_id(0);\n";
+        		kernelCode +="	// Perform Compute\n";
+        		kernelCode +="	SComplex result;\n";
+        		kernelCode +="	result.real=0.0f;\n";
+        		kernelCode +="	result.imag=0.0f;\n";
+        		kernelCode +="	for (int i=0; i<K; i++) {\n";
+        		kernelCode +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
+        		kernelCode +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+        		kernelCode +="	}\n";
+        		kernelCode +="	OutputArray[gid].real = result.real;\n";
+        		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
+        		kernelCode +="}\n";
+
+        		// If the filter array is < constant memory, this approach is faster:
+        		kernelCodeWithConst +="struct ComplexStruct {\n";
+        		kernelCodeWithConst +="	float real;\n";
+        		kernelCodeWithConst +="	float imag;\n";
+        		kernelCodeWithConst +="};\n";
+        		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
+
+        		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
+        		kernelCodeWithConst +="( __constant SComplex * InputArray, // Length N\n";
+        		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
+        		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
+        		kernelCodeWithConst +=")\n";
+        		kernelCodeWithConst +="{\n";
+        		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
+        		kernelCodeWithConst +="	// Perform Compute\n";
+        		kernelCodeWithConst +="	SComplex result;\n";
+        		kernelCodeWithConst +="	result.real=0.0f;\n";
+        		kernelCodeWithConst +="	result.imag=0.0f;\n";
+        		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
+    			kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
+    			kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+        		kernelCodeWithConst +="	}\n";
+        		kernelCodeWithConst +="	OutputArray[gid].real = result.real;\n";
+        		kernelCodeWithConst +="	OutputArray[gid].imag = result.imag;\n";
+        		kernelCodeWithConst +="}\n";
+        	}
+        	else {
+        		// This version of code is for data points that exceed the constant memory size.
+        		// This performance won't be very good.
+        		fnName = "td_FIR_float";
+        		kernelCode +="__kernel void td_FIR_float\n";
+        		kernelCode +="( __global const float *restrict InputArray, // Length N\n";
+        		kernelCode +="__constant float * FilterArray, // Length K\n";
+        		kernelCode +="__global float *restrict OutputArray // Length N+K-1\n";
+        		kernelCode +=")\n";
+        		kernelCode +="{\n";
+        		kernelCode +="  size_t gid=get_global_id(0);\n";
+        		kernelCode +="	// Perform Compute\n";
+        		kernelCode +="	float result=0.0f;\n";
+        		kernelCode +="	for (int i=0; i<K; i++) {\n";
+        		kernelCode +="		result += FilterArray[K-1-i]*InputArray[gid+i];\n";
+        		kernelCode +="	}\n";
+        		kernelCode +="	OutputArray[gid] = result;\n";
+        		kernelCode +="}\n";
+
+        		kernelCodeWithConst +="__kernel void td_FIR_float\n";
+        		kernelCodeWithConst +="( __constant float * InputArray, // Length N\n";
+        		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
+        		kernelCodeWithConst +="__global float *restrict OutputArray // Length N+K-1\n";
+        		kernelCodeWithConst +=")\n";
+        		kernelCodeWithConst +="{\n";
+        		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
+        		kernelCodeWithConst +="	// Perform Compute\n";
+        		kernelCodeWithConst +="	float result=0.0f;\n";
+        		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
+    			kernelCodeWithConst +="		result += FilterArray[K-1-i]*InputArray[gid+i];\n";
+        		kernelCodeWithConst +="	}\n";
+        		kernelCodeWithConst +="	OutputArray[gid] = result;\n";
+        		kernelCodeWithConst +="}\n";
+        	}
+
+        	std::string lbDefines;
+        	lbDefines = "#define N " + std::to_string(ninput_items) + "\n";
+        	lbDefines += "#define K "+ std::to_string(d_ntaps) + "\n";
+
+        	std::string tmpKernelCode;
+        	int requiredConstMemSize = ninput_items*dataSize + d_ntaps*sizeof(float);
+
+        	if (requiredConstMemSize < maxConstMemSize) {
+        		tmpKernelCode = lbDefines + kernelCodeWithConst;
+        		if (debugMode)
+            		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
+        	}
+        	else {
+        		tmpKernelCode = lbDefines + kernelCode;
+        		if (debugMode)
+            		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
+        	}
+
+        	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
         	int imaxItems=gr::block::max_noutput_items();
         	if (imaxItems==0)
         		imaxItems=8192;

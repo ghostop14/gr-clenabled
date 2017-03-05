@@ -12,30 +12,33 @@
 namespace gr {
 namespace clenabled {
 
-GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug) {
-	// TODO Auto-generated constructor stub
+void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug) {
 
 	debugMode=setDebug;
 
 	dataType=idataType;
 	platformMode=openCLPlatformType;
 
+    int devIndex = 0;
+
+    std::vector<cl::Platform> platformList;
+
+    // Get the list of all platforms in the system
+    try {
+        cl::Platform::get(&platformList);
+    }
+    catch(...) {
+    	std::string errMsg = "OpenCL Error: Unable to get platform list.";
+    	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+    }
+
 	// Now we set up our OpenCL space
     try {
-        std::vector<cl::Platform> platformList;
-
-        // Pick platform
-        try {
-            cl::Platform::get(&platformList);
-        }
-        catch(...) {
-        	std::string errMsg = "OpenCL Error: Unable to get platform list.";
-        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
-        }
-
+    	// Set default to GPU
         std::string openclString="GPU";
-
         cl_device_type clType=CL_DEVICE_TYPE_GPU;
+
+        // See if we have to adjust anything.
         switch(platformMode) {
         case OCLTYPE_CPU:
         	clType=CL_DEVICE_TYPE_CPU;
@@ -47,6 +50,8 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
         break;
         case OCLTYPE_ANY:
 			try {
+				// Any means any so we're really taking first available.
+
 				// Test for GPU first...
 				cl_context_properties cprops[] = {
 					CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[0])(), 0};
@@ -96,28 +101,69 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
 
         context = NULL;
 
-        // Pick first platform
-        for (int i=0;i<platformList.size();i++) {
-        	try {
-        		// Find the first platform that has devices of the type we want.
-                cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[i])(), 0};
+        // So here we have a list of platforms and if we've selected ANY we know if we have GPU or CPU in platform[0]
+
+        // Given the type we want now we have to make some choices.
+        // If we asked for a specific platform and device Id we set that up
+        // else:
+        // We first need to find a platform that has devices of the type we asked for
+        // If we asked for the first device, we need to take just 1 device from its list of type-specific devices
+        // If we asked for ALL then we leave the list as is.
+
+        if (devSelector==OCLDEVICESELECTOR_SPECIFIC) {
+        	// Let's make sure that device number is present.
+
+        	if ((platformId + 1) > platformList.size()) {
+            	std::string errMsg = "The requested platform Id " + std::to_string(platformId) + " does not exist.";
+            	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+        	}
+
+            cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[platformId])(), 0};
+            try {
                 context= new cl::Context(clType, cprops);
-                platformName=platformList[i].getInfo<CL_PLATFORM_NAME>();
-                platformVendor=platformList[i].getInfo<CL_PLATFORM_VENDOR>();
-                break;
-        	}
-        	catch (...) {
-        		context = NULL;
-        	}
+            }
+            catch(...){
+            	std::string errMsg = "The requested platform Id " + std::to_string(platformId) + " does not have a device of the requested type (" + openclString + ")";
+            	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+            }
+
+            platformName=platformList[platformId].getInfo<CL_PLATFORM_NAME>();
+            platformVendor=platformList[platformId].getInfo<CL_PLATFORM_VENDOR>();
+        }
+        else {
+        	// Find the first platform that has the requested device type.
+        	// Note this is the first platform, not the first device.  So if the system has 2 NVIDIA cards,
+        	// The platform would be NVIDIA.  The specific cards would be the devices under that platform.
+            for (int i=0;i<platformList.size();i++) {
+            	try {
+        			try {
+        				cl_context_properties cprops[] = {
+        					CL_CONTEXT_PLATFORM, (cl_context_properties)(platformList[i])(), 0};
+                        context= new cl::Context(clType, cprops);
+        				// If we didn't throw an exception, we're good here
+                        platformName=platformList[i].getInfo<CL_PLATFORM_NAME>();
+                        platformVendor=platformList[i].getInfo<CL_PLATFORM_VENDOR>();
+                        break;
+        			}
+        			catch (cl::Error& err) {
+        				// doesn't have this type.  Continue
+        			}
+            	}
+            	catch (...) {
+            		context = NULL;
+            	}
+            }
+
+        }
+
+        if (context == NULL) {
+        	std::string errMsg = "No OpenCL devices of type " + openclString;
+        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
         }
 
         // Use this link as a reference to get other platform info:
         // https://gist.github.com/dogukancagatay/8419284
 
-        if (context == NULL) {
-        	std::string errMsg = "No OpenCL devices of type " + openclString + " found.";
-        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
-        }
         // Query the set of devices attached to the context
         try {
             devices = context->getInfo<CL_CONTEXT_DEVICES>();
@@ -127,16 +173,28 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
         	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
         }
 
-        try {
-        	deviceNames.push_back(devices[0].getInfo<CL_DEVICE_NAME>());
-        }
-        catch (...) {
-        	std::cout << "GRCLBase: Error getting CL_DEVICE_NAME" << std::endl;
-        	exit(0);
+        // Okay so we have a platform selected with devices of the type we requested, or a specific context
+        // Now we have to decide if we need a specific device, the first device, or ALL devices.
+
+        if (devSelector==OCLDEVICESELECTOR_SPECIFIC) {
+        	if ((devId + 1) > devices.size()) {
+            	std::string errMsg = "The requested device Id " + std::to_string(devId) + " does not exist.";
+            	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+        	}
+
+        	devIndex = devId;
         }
 
         try {
-            switch (devices[0].getInfo<CL_DEVICE_TYPE>()) {
+        	deviceNames.push_back(devices[devIndex].getInfo<CL_DEVICE_NAME>());
+        }
+        catch (...) {
+        	std::string errMsg = "Error getting device info for " + openclString;
+        	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
+        }
+
+        try {
+            switch (devices[devIndex].getInfo<CL_DEVICE_TYPE>()) {
             case CL_DEVICE_TYPE_GPU:
             deviceTypes.push_back("GPU");
     		break;
@@ -194,7 +252,7 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
     }
 
 	try {
-		maxConstMemSize = devices[0].getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>();
+		maxConstMemSize = devices[devIndex].getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>();
 	}
 	catch(cl::Error& e) {
 		std::cout << "Error getting device constant memory size." << std::endl;
@@ -206,7 +264,7 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
 	cl_device_svm_capabilities caps;
 	cl_int err;
 
-	err = clGetDeviceInfo(devices[0](),CL_DEVICE_SVM_CAPABILITIES,
+	err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_SVM_CAPABILITIES,
 							sizeof(cl_device_svm_capabilities),&caps,0);
 	hasSharedVirtualMemory = (err == CL_SUCCESS);
 	hasSVMFineGrained = (err == CL_SUCCESS && (caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER));
@@ -228,12 +286,21 @@ GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setD
 	*/
     // Create command queue
 	try {
-	    queue = new cl::CommandQueue(*context, devices[0], 0);
+		// devIndex will either be 0 or if a specific platform and device id were specified, that one.
+	    queue = new cl::CommandQueue(*context, devices[devIndex], 0);
 	}
 	catch(...) {
     	std::string errMsg = "OpenCL Error: Unable to create OpenCL command queue on " + platformName;
     	throw cl::Error(CL_DEVICE_NOT_FOUND,(const char *)errMsg.c_str());
 	}
+}
+
+GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug) {
+	InitOpenCL(idataType,dsize,openCLPlatformType,devSelector,platformId,devId,setDebug);
+}
+
+GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug) {
+	InitOpenCL(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,setDebug);
 }
 
 cl_device_type GRCLBase::GetContextType() {
@@ -279,6 +346,7 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
 	}
 }
+
 void GRCLBase::cleanup() {
 	// Cleanup order:
 	// Memory

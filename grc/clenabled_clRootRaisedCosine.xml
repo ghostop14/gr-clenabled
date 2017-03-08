@@ -4,11 +4,17 @@
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
   <import>from gnuradio.filter import firdes</import>
-  <make>clenabled.clLowPassFilter($openCLPlatform,$decimation,firdes.root_raised_cosine(
-	$gain, $samp_rate, $sym_rate, $alpha, $ntaps),1)</make>
+  <make>#if $devices == 1
+  clenabled.clFilter($openCLPlatform,1,0,0,$decimation,firdes.root_raised_cosine(
+	$gain, $samp_rate, $sym_rate, $alpha, $ntaps),1)
+	#else
+  clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,firdes.root_raised_cosine(
+	$gain, $samp_rate, $sym_rate, $alpha, $ntaps),1)
+	#end if
+	</make>
 	<callback>set_taps2(clenabled.firdes.root_raised_cosine($gain, $samp_rate, $sym_rate, $alpha, $ntaps))</callback>
 	<param>
-		<name>OpenCL Platform</name>
+		<name>OpenCL Platform Type</name>
 		<key>openCLPlatform</key>
 		<type>enum</type>
 		<option>
@@ -26,6 +32,78 @@
 		<option>
 			<name>Any</name>
 			<key>4</key>
+		</option>
+	</param>
+	<param>
+		<name>OpenCL Device</name>
+		<key>devices</key>
+		<type>enum</type>
+		<option>
+			<name>Any</name>
+			<key>1</key>
+			<opt>hide_specific:all</opt>
+		</option>
+		<option>
+			<name>Specific</name>
+			<key>2</key>
+			<opt>hide_specific:</opt>
+		</option>
+	</param>
+	<param>
+		<name>Platform Id</name>
+		<key>platformId</key>
+		<type>enum</type>
+		<hide>$devices.hide_specific</hide>
+		<option>
+			<name>0</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>1</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>2</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>3</name>
+			<key>3</key>
+		</option>
+	</param>
+	<param>
+		<name>Device Id</name>
+		<key>deviceId</key>
+		<type>enum</type>
+		<hide>$devices.hide_specific</hide>
+		<option>
+			<name>0</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>1</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>2</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>3</name>
+			<key>3</key>
+		</option>
+	</param>
+	<param>
+		<name>Debug</name>
+		<key>setDebug</key>
+		<type>enum</type>
+		<option>
+			<name>Off</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>On</name>
+			<key>1</key>
 		</option>
 	</param>
 	<param>

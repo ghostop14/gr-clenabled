@@ -46,7 +46,7 @@ namespace gr {
        * class. clenabled::clLog::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int openCLPlatformType,float nValue,float kValue,int setDebug=0);
+      static sptr make(int openCLPlatformType, int devSelector,int platformId, int devId,float nValue,float kValue,int setDebug=0);
     };
 
   } // namespace clenabled

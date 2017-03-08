@@ -47,7 +47,7 @@ namespace gr {
        * class. clenabled::clFilter::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int openclPlatform, int decimation,
+      static sptr make(int openclPlatform, int devSelector,int platformId, int devId, int decimation,
               const std::vector<float> &taps,int nthreads=1,int setDebug=0);
 
   	virtual void set_taps2(const std::vector<float> &taps)=0;

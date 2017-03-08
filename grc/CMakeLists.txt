@@ -18,26 +18,24 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    clenabled_clMultConst.xml
-    clenabled_clAddConst.xml
     clenabled_clAdd.xml 
-    clenabled_clMultiply.xml
-    clenabled_clSubtract.xml
-    clenabled_clLog.xml
-    clenabled_clLog10.xml
-    clenabled_clComplexConjugate.xml
-    clenabled_clMultiplyConjugate.xml
-    clenabled_clHighPassFilter.xml
+    clenabled_clAddConst.xml
     clenabled_clBandPassFilter.xml
     clenabled_clBandRejectFilter.xml
-    clenabled_clRootRaisedCosine.xml
-    clenabled_clLowPassFilter.xml
-    clenabled_clQuadratureDemod.xml
-    clenabled_clFFT.xml
-    clenabled_clSNR.xml
+    clenabled_clComplexConjugate.xml
     clenabled_clComplexToArg.xml
-    clenabled_clComplexToMagPhase.xml
-    clenabled_clMagPhaseToComplex.xml
     clenabled_clComplexToMag.xml 
+    clenabled_clComplexToMagPhase.xml
+    clenabled_clFFT.xml
+    clenabled_clHighPassFilter.xml
+    clenabled_clLog10.xml
+    clenabled_clLowPassFilter.xml
+    clenabled_clMagPhaseToComplex.xml
+    clenabled_clMultiply.xml
+    clenabled_clMultiplyConjugate.xml
+    clenabled_clQuadratureDemod.xml
+    clenabled_clRootRaisedCosine.xml
+    clenabled_clSNR.xml
+    clenabled_clSubtract.xml
     DESTINATION share/gnuradio/grc/blocks
 )

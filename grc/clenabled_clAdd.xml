@@ -5,7 +5,7 @@
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
 	<make>#if $devices == 1
-clenabled.clMathOp($type.datatype,$openCLPlatform,2,$setDebug)
+clenabled.clMathOp($type.datatype,$openCLPlatform,1,0,0,2,$setDebug)
 #else
 clenabled.clMathOp($type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,2,setDebug)
 #end if</make>

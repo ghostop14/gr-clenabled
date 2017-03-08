@@ -34,7 +34,7 @@ namespace gr {
   namespace clenabled {
 
     clMathConst::sptr
-    clMathConst::make(int idataType,int openCLPlatformType,float fValue,int operatorType,int setDebug)
+    clMathConst::make(int idataType,int openCLPlatformType, int devSelector,int platformId, int devId,float fValue,int operatorType,int setDebug)
     {
     	size_t dsize = sizeof(float);
 
@@ -52,127 +52,27 @@ namespace gr {
 
     	if (setDebug == 1) {
   	      return gnuradio::get_initial_sptr
-  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,fValue,operatorType,true));
+  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,fValue,operatorType,true));
     	}
     	else {
   	      return gnuradio::get_initial_sptr
-  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,fValue,operatorType,false));
+  	        (new clMathConst_impl(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,fValue,operatorType,false));
     	}
     }
 
     /*
      * The private constructor
      */
-    clMathConst_impl::clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType,bool setDebug)
+    clMathConst_impl::clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,float fValue,int operatorType,bool setDebug)
       : gr::block("clMathConst",
               gr::io_signature::make(1, 1, dsize),
               gr::io_signature::make(1, 1, dsize)),
-			  GRCLBase(idataType, dsize,openCLPlatformType, setDebug)
+			  GRCLBase(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,setDebug)
 	{
 	value = fValue;
 	mathOperatorType = operatorType;
 
-	// Now we set up our OpenCL kernel
-	std::string srcStdStr;
-	std::string fnName = "";
-
-	switch(dataType) {
-	case DTYPE_FLOAT:
-		switch (mathOperatorType) {
-		fnName = "opconst_float";
-		srcStdStr = "__kernel void opconst_float(__constant float * a, const float multiplier, __global float * restrict c) {\n";
-    	if (operatorType != MATHOP_EMPTY)
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-		case MATHOP_MULTIPLY:
-		srcStdStr += "    c[index] = a[index] * multiplier;\n";
-		break;
-
-		case MATHOP_ADD:
-		srcStdStr += "    c[index] = a[index] + multiplier;\n";
-		break;
-		case MATHOP_SUBTRACT:
-		srcStdStr += "    c[index] = a[index] - multiplier;\n";
-		break;
-		}
-		srcStdStr += "}\n";
-	break;
-	case DTYPE_INT:
-		fnName = "opconst_int";
-		srcStdStr = "__kernel void opconst_int(__constant int * a, const int multiplier, __global int * restrict c) {\n";
-    	if (operatorType != MATHOP_EMPTY)
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-		switch (mathOperatorType) {
-		case MATHOP_MULTIPLY:
-		srcStdStr += "    c[index] = a[index] * multiplier;\n";
-		break;
-
-		case MATHOP_ADD:
-		srcStdStr += "    c[index] = a[index] + multiplier;\n";
-		break;
-
-		case MATHOP_SUBTRACT:
-		srcStdStr += "    c[index] = a[index] - multiplier;\n";
-		break;
-		}
-		srcStdStr += "}\n";
-	break;
-	case DTYPE_COMPLEX:
-		fnName = "opconst_complex";
-		srcStdStr = "struct ComplexStruct {\n";
-		srcStdStr += "float real;\n";
-		srcStdStr += "float imag; };\n";
-		srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-
-		srcStdStr += "__kernel void opconst_complex(__constant SComplex * a, const float multiplier, __global SComplex * restrict c) {\n";
-    	if (operatorType != MATHOP_EMPTY)
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	else
-    		srcStdStr += "return;\n";
-
-		switch (mathOperatorType) {
-		case MATHOP_EMPTY_W_COPY:
-			srcStdStr += "    c[index].real = a[index].real;\n";
-			srcStdStr += "    c[index].imag = a[index].imag;\n";
-		case MATHOP_MULTIPLY:
-		srcStdStr += "    c[index].real = a[index].real * multiplier;\n";
-		srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
-		break;
-		case MATHOP_ADD:
-		srcStdStr += "    c[index].real = a[index].real + val.real;\n";
-		srcStdStr += "    c[index].imag = a[index].imag + val.imag;\n";
-		break;
-		case MATHOP_SUBTRACT:
-		srcStdStr += "    c[index].real = a[index].real - val.real;\n";
-		srcStdStr += "    c[index].imag = a[index].imag - val.imag;\n";
-		break;
-		}
-		srcStdStr += "}\n";
-	break;
-	}
-
-	int imaxItems=gr::block::max_noutput_items();
-	if (imaxItems==0)
-		imaxItems=8192;
-
-	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize));
-	maxConstItems = maxItemsForConst;
-
-	if (maxItemsForConst < imaxItems) {
-		gr::block::set_max_noutput_items(maxItemsForConst);
-
-		imaxItems = maxItemsForConst;
-
-		if (debugMode)
-			std::cout << "OpenCL INFO: Math Op Const adjusting output buffer for " << maxItemsForConst << " due to OpenCL constant memory restrictions" << std::endl;
-	}
-	else {
-		if (debugMode)
-			std::cout << "OpenCL INFO: Math Op Const using default output buffer of " << imaxItems << "..." << std::endl;
-	}
-
-	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
-
-	setBufferLength(imaxItems);
+	setBufferLength(8192);
 
     // And finally optimize the data we get based on the preferred workgroup size.
     // Note: We can't do this until the kernel is compiled and since it's in the block class
@@ -183,6 +83,136 @@ namespace gr {
     	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
     }
 }
+
+    void clMathConst_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: Math Op Const adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: Math Op Const using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: Math Op Const building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: Math Op Const - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
+		// Now we set up our OpenCL kernel
+		srcStdStr = "";
+		fnName = "";
+
+		switch(dataType) {
+		case DTYPE_FLOAT:
+			switch (mathOperatorType) {
+			fnName = "opconst_float";
+			if (useConst)
+				srcStdStr = "__kernel void opconst_float(__constant float * a, const float multiplier, __global float * restrict c) {\n";
+			else
+				srcStdStr = "__kernel void opconst_float(__global float * restrict a, const float multiplier, __global float * restrict c) {\n";
+
+	    	if (mathOperatorType != MATHOP_EMPTY)
+	    		srcStdStr += "    size_t index =  get_global_id(0);\n";
+			case MATHOP_MULTIPLY:
+			srcStdStr += "    c[index] = a[index] * multiplier;\n";
+			break;
+
+			case MATHOP_ADD:
+			srcStdStr += "    c[index] = a[index] + multiplier;\n";
+			break;
+			case MATHOP_SUBTRACT:
+			srcStdStr += "    c[index] = a[index] - multiplier;\n";
+			break;
+			}
+			srcStdStr += "}\n";
+		break;
+		case DTYPE_INT:
+			fnName = "opconst_int";
+			if (useConst)
+				srcStdStr = "__kernel void opconst_int(__constant int * a, const int multiplier, __global int * restrict c) {\n";
+			else
+				srcStdStr = "__kernel void opconst_int(__global int * restrict a, const int multiplier, __global int * restrict c) {\n";
+
+	    	if (mathOperatorType != MATHOP_EMPTY)
+	    		srcStdStr += "    size_t index =  get_global_id(0);\n";
+			switch (mathOperatorType) {
+			case MATHOP_MULTIPLY:
+			srcStdStr += "    c[index] = a[index] * multiplier;\n";
+			break;
+
+			case MATHOP_ADD:
+			srcStdStr += "    c[index] = a[index] + multiplier;\n";
+			break;
+
+			case MATHOP_SUBTRACT:
+			srcStdStr += "    c[index] = a[index] - multiplier;\n";
+			break;
+			}
+			srcStdStr += "}\n";
+		break;
+		case DTYPE_COMPLEX:
+			fnName = "opconst_complex";
+			srcStdStr = "struct ComplexStruct {\n";
+			srcStdStr += "float real;\n";
+			srcStdStr += "float imag; };\n";
+			srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+			if (useConst)
+				srcStdStr += "__kernel void opconst_complex(__constant SComplex * a, const float multiplier, __global SComplex * restrict c) {\n";
+			else
+				srcStdStr += "__kernel void opconst_complex(__global SComplex * restrict a, const float multiplier, __global SComplex * restrict c) {\n";
+
+	    	if (mathOperatorType != MATHOP_EMPTY)
+	    		srcStdStr += "    size_t index =  get_global_id(0);\n";
+	    	else
+	    		srcStdStr += "return;\n";
+
+			switch (mathOperatorType) {
+			case MATHOP_EMPTY_W_COPY:
+				srcStdStr += "    c[index].real = a[index].real;\n";
+				srcStdStr += "    c[index].imag = a[index].imag;\n";
+			case MATHOP_MULTIPLY:
+			srcStdStr += "    c[index].real = a[index].real * multiplier;\n";
+			srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
+			break;
+			case MATHOP_ADD:
+			srcStdStr += "    c[index].real = a[index].real + val.real;\n";
+			srcStdStr += "    c[index].imag = a[index].imag + val.imag;\n";
+			break;
+			case MATHOP_SUBTRACT:
+			srcStdStr += "    c[index].real = a[index].real - val.real;\n";
+			srcStdStr += "    c[index].imag = a[index].imag - val.imag;\n";
+			break;
+			}
+			srcStdStr += "}\n";
+		break;
+		}
+
+    }
 
 
     void clMathConst_impl::setBufferLength(int numItems) {
@@ -201,6 +231,9 @@ namespace gr {
             *context,
             CL_MEM_READ_WRITE,
 			numItems * dataSize);
+
+    	buildKernel(numItems);
+    	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
         curBufferSize = numItems;
     }

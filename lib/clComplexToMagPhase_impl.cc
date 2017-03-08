@@ -31,24 +31,24 @@ namespace gr {
   namespace clenabled {
 
     clComplexToMagPhase::sptr
-    clComplexToMagPhase::make(int openCLPlatformType,int setDebug)
+    clComplexToMagPhase::make(int openCLPlatformType,int devSelector,int platformId, int devId,int setDebug)
     {
     	if (setDebug == 1)
 		  return gnuradio::get_initial_sptr
-			(new clComplexToMagPhase_impl(openCLPlatformType,true));
+			(new clComplexToMagPhase_impl(openCLPlatformType,devSelector,platformId,devId,true));
     	else
   		  return gnuradio::get_initial_sptr
-  			(new clComplexToMagPhase_impl(openCLPlatformType,false));
+  			(new clComplexToMagPhase_impl(openCLPlatformType,devSelector,platformId,devId,false));
     }
 
     /*
      * The private constructor
      */
-    clComplexToMagPhase_impl::clComplexToMagPhase_impl(int openCLPlatformType,bool setDebug)
+    clComplexToMagPhase_impl::clComplexToMagPhase_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
       : gr::block("clComplexToMagPhase",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(2, 2, sizeof(float))),
-			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,setDebug)
+			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
     	// Now we set up our OpenCL kernel
         std::string srcStdStr="";

@@ -95,19 +95,79 @@ namespace gr {
     	// Now we set up our OpenCL kernel
 
         numParams = 2;
+        numConstParams = 2;
         d_operatorType = operatorType;
+        curBufferSize = 0;
 
-        int numConstParams = 2;
+        setBufferLength(8192);
+
+        // And finally optimize the data we get based on the preferred workgroup size.
+        // Note: We can't do this until the kernel is compiled and since it's in the block class
+        // it has to be done here.
+        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+        // For GPU's setting it to the preferred size seems to have the best performance.
+        if (contextType != CL_DEVICE_TYPE_CPU) {
+        	try {
+            	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+        	}
+        	catch(...) {
+
+        	}
+        }
+    }
+
+    void clMathOp_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
+    	bool useConst;
+
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: Math Op adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: Math Op using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: Math Op building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: Math Op - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
 
         switch(dataType) {
         case DTYPE_FLOAT:
         	// Float data type
         	fnName = "op_float";
-        	srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
-        	if (operatorType != MATHOP_EMPTY)
+
+        	if (useConst)
+        		srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
+        	else
+        		srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict b, __global float * restrict c) {\n";
+
+        	if (d_operatorType != MATHOP_EMPTY)
         		srcStdStr += "    size_t index =  get_global_id(0);\n";
 
-        	switch (operatorType) {
+        	switch (d_operatorType) {
         	case MATHOP_MULTIPLY:
             	srcStdStr += "    c[index] = a[index] * b[index];\n";
         	break;
@@ -125,7 +185,11 @@ namespace gr {
         	case MATHOP_LOG:
                 numParams = 1;
         		// restart function... only have 1 param
-            	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
+            	if (useConst)
+                	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
+            	else
+                	srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict c) {\n";
+
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index] = log(a[index]);\n";
             	numConstParams = 1;
@@ -135,14 +199,22 @@ namespace gr {
                 numParams = 1;
 
         		// restart function... only have 1 param
-            	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
+            	if (useConst)
+                	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
+            	else
+                	srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict c) {\n";
+
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index] = log10(a[index]);\n";
             	numConstParams = 1;
         	break;
 
         	case MATHOP_SNR_HELPER:
-            	srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
+            	if (useConst)
+            		srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
+            	else
+            		srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict b, __global float * restrict c) {\n";
+
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    float tmpVal =  a[index] / b[index];\n";
             	srcStdStr += "    c[index] = abs(log10(tmpVal));\n";
@@ -154,11 +226,16 @@ namespace gr {
 
         case DTYPE_INT:
         	fnName = "op_int";
-        	srcStdStr = "__kernel void op_int(__constant int * a, __constant * b, __global int * restrict c) {\n";
-        	if (operatorType != MATHOP_EMPTY)
+
+        	if (useConst)
+        		srcStdStr = "__kernel void op_int(__constant int * a, __constant * b, __global int * restrict c) {\n";
+        	else
+        		srcStdStr = "__kernel void op_int(__global int * restrict a, __global * restrict b, __global int * restrict c) {\n";
+
+        	if (d_operatorType != MATHOP_EMPTY)
         		srcStdStr += "    size_t index =  get_global_id(0);\n";
 
-        	switch (operatorType) {
+        	switch (d_operatorType) {
         	// MATHOP_EMPTY will just fall through
 
         	case MATHOP_MULTIPLY:
@@ -180,10 +257,15 @@ namespace gr {
         	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
         	fnName = "op_complex";
-        	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __constant SComplex * b, __global SComplex * restrict c) {\n";
-        	if (operatorType != MATHOP_EMPTY)
+
+        	if (useConst)
+        		srcStdStr += "__kernel void op_complex(__constant SComplex * a, __constant SComplex * b, __global SComplex * restrict c) {\n";
+        	else
+        		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict b, __global SComplex * restrict c) {\n";
+
+        	if (d_operatorType != MATHOP_EMPTY)
         		srcStdStr += "    size_t index =  get_global_id(0);\n";
-        	switch (operatorType) {
+        	switch (d_operatorType) {
         	case MATHOP_MULTIPLY:
             	srcStdStr += "    float a_r=a[index].real;\n";
             	srcStdStr += "    float a_i=a[index].imag;\n";
@@ -203,7 +285,12 @@ namespace gr {
 
         	case MATHOP_COMPLEX_CONJUGATE:
                 numParams = 1;
-            	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+
+                if (useConst)
+                	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+                else
+                	srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
+
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index].real = a[index].real;\n";
             	srcStdStr += "    c[index].imag = -1.0 * a[index].imag;\n";
@@ -212,7 +299,11 @@ namespace gr {
 
         	case MATHOP_MULTIPLY_CONJUGATE:
                 numParams = 1;
-            	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+                if (useConst)
+                	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+                else
+                	srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
+
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index].real = a[index].real;\n";
             	srcStdStr += "    c[index].imag = -1.0 * a[index].imag;\n";
@@ -227,37 +318,6 @@ namespace gr {
         	}
         	srcStdStr += "}\n";
         break;
-        }
-
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
-
-    	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
-    	maxConstItems = maxItemsForConst;
-
-    	if (maxItemsForConst < imaxItems) {
-    		gr::block::set_max_noutput_items(maxItemsForConst);
-
-    		imaxItems = maxItemsForConst;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: Math Op adjusting output buffer for " << maxItemsForConst << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: Math Op using default output buffer of " << imaxItems << "..." << std::endl;
-		}
-
-        setBufferLength(imaxItems);
-
-        // And finally optimize the data we get based on the preferred workgroup size.
-        // Note: We can't do this until the kernel is compiled and since it's in the block class
-        // it has to be done here.
-        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
-        // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
         }
     }
 
@@ -286,19 +346,26 @@ namespace gr {
             CL_MEM_READ_WRITE,
 			numItems * dataSize);
 
-        int numConstParams;
         int imaxItems = numItems;
 
-        if (d_operatorType == MATHOP_LOG || d_operatorType == MATHOP_LOG10)
+        if (d_operatorType == MATHOP_LOG || d_operatorType == MATHOP_LOG10 ||
+        		d_operatorType == MATHOP_COMPLEX_CONJUGATE || d_operatorType == MATHOP_MULTIPLY_CONJUGATE )
         	numConstParams = 1;
         else
         	numConstParams = 2;
 
-        // Now if we change the buffer size larger than __constant can handle, we need to remove constant from the kernel...
-    	int maxItemsForConst = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
+        if (curBufferSize==0) {
+        	// when curBufferSize==0 we're in the constructor so do this.
+        	// If we call it multiple times it'll keep halfing the output buffer
+            try {
+            	set_max_noutput_items(maxConstItems/numConstParams);
+            }
+            catch(...) {
 
-    	set_max_noutput_items(maxItemsForConst/2);
+            }
+        }
 
+    	buildKernel(numItems);
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
         curBufferSize=numItems;
@@ -335,8 +402,6 @@ namespace gr {
 
         const float *in = (const float *) input_items[0];
         float *out = (float *) output_items[0];
-        float n = 1.0;
-        float k = 0.0;
 
 		for (int i=0;i<noutput_items;i++) {
 			out[i] = n * log10(std::max(in[i], (float) 1e-18)) + k;

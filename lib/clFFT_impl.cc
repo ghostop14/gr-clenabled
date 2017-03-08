@@ -32,7 +32,7 @@ namespace gr {
   namespace clenabled {
 
     clFFT::sptr
-    clFFT::make(int fftSize, int clFFTDir,int idataType, int openCLPlatformType,int setDebug)
+    clFFT::make(int fftSize, int clFFTDir,int idataType, int openCLPlatformType,int devSelector,int platformId, int devId,int setDebug)
     {
         int dsize=sizeof(float);
 
@@ -48,28 +48,28 @@ namespace gr {
         break;
         }
 
-      return gnuradio::get_initial_sptr
-        (new clFFT_impl(fftSize, clFFTDir,dsize,openCLPlatformType,setDebug));
+      if (setDebug == 1) {
+		  return gnuradio::get_initial_sptr
+			(new clFFT_impl(fftSize, clFFTDir,dsize,openCLPlatformType,devSelector,platformId,devId,true));
+      }
+      else {
+          return gnuradio::get_initial_sptr
+            (new clFFT_impl(fftSize, clFFTDir,dsize,openCLPlatformType,devSelector,platformId,devId,false));
+      }
     }
 
     /*
      * The private constructor
      */
-    clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int setDebug)
+    clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
       : gr::block("clFFT",
               gr::io_signature::make(1, 1, dSize),
               gr::io_signature::make(1, 1, dSize)),
-	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType),
+	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug),
 			  d_fft_size(fftSize), d_forward(true), d_shift(false)
     {
         d_fft = new fft_complex(d_fft_size, d_forward, 1);
         d_window=gr::clenabled::window::blackmanharris(fftSize);
-
-    	if (setDebug == 1)
-    		debugMode = true;
-    	else
-    		debugMode = false;
-
 
     	// Move type to enum var
     	if (clFFTDir == CLFFT_FORWARD)

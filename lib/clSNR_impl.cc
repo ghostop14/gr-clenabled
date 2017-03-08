@@ -29,26 +29,26 @@ namespace gr {
   namespace clenabled {
 
     clSNR::sptr
-    clSNR::make(int openCLPlatformType,float nValue,float kValue,int setDebug)
+    clSNR::make(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,int setDebug)
     {
       	if (setDebug == 1) {
             return gnuradio::get_initial_sptr
-              (new clSNR_impl(openCLPlatformType,nValue,kValue,true));
+              (new clSNR_impl(openCLPlatformType,devSelector,platformId,devId,nValue,kValue,true));
       	}
       	else {
             return gnuradio::get_initial_sptr
-              (new clSNR_impl(openCLPlatformType,nValue,kValue,false));
+              (new clSNR_impl(openCLPlatformType,devSelector,platformId,devId,nValue,kValue,false));
       	}
     }
 
     /*
      * The private constructor
      */
-    clSNR_impl::clSNR_impl(int openCLPlatformType,float nValue,float kValue,bool setDebug)
+    clSNR_impl::clSNR_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug)
       : gr::block("clSNR",
               gr::io_signature::make(2, 2, sizeof(float)),
               gr::io_signature::make(1, 1, sizeof(float))),
-			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,setDebug)
+			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
     	srcStdStr="";
     	fnName = "op_snr";
@@ -133,6 +133,7 @@ namespace gr {
 
     	if (cBuffer)
     		delete cBuffer;
+
     }
 
     void
@@ -151,12 +152,19 @@ namespace gr {
         const float *in2 = (const float *) input_items[1];
         float *out = (float *) output_items[0];
 
-        float tmpVal;
+
+        // mimicking 3 blocks each processing in sequence
 
 		for (int i=0;i<noutput_items;i++) {
-	    	tmpVal = in1[i] / in2[i];
-	    	tmpVal = n_val * log10(tmpVal) + k_val;
-	    	out[i] = fabs(tmpVal);
+	    	out[i] = in1[i] / in2[i];
+		}
+
+		for (int i=0;i<noutput_items;i++) {
+	    	out[i] = n_val * log10(std::max(out[i],(float)1e-18)) + k_val;
+		}
+
+		for (int i=0;i<noutput_items;i++) {
+	    	out[i] = fabs(out[i]);
 		}
 
     	return noutput_items;

@@ -30,24 +30,24 @@ namespace gr {
   namespace clenabled {
 
     clQuadratureDemod::sptr
-    clQuadratureDemod::make(float gain, int openCLPlatformType,int setDebug)
+    clQuadratureDemod::make(float gain, int openCLPlatformType,int devSelector,int platformId, int devId,int setDebug)
     {
       if (setDebug == 1)
 		  return gnuradio::get_initial_sptr
-			(new clQuadratureDemod_impl(gain, openCLPlatformType,true));
+			(new clQuadratureDemod_impl(gain, openCLPlatformType,devSelector,platformId,devId,true));
       else
 		  return gnuradio::get_initial_sptr
-			(new clQuadratureDemod_impl(gain, openCLPlatformType,false));
+			(new clQuadratureDemod_impl(gain, openCLPlatformType,devSelector,platformId,devId,false));
     }
 
     /*
      * The private constructor
      */
-    clQuadratureDemod_impl::clQuadratureDemod_impl(float gain, int openCLPlatformType, bool setDebug)
+    clQuadratureDemod_impl::clQuadratureDemod_impl(float gain, int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug)
       : gr::block("clQuadratureDemod",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(float))),
-	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,setDebug)
+	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug)
    {
     	d_gain = gain;
 

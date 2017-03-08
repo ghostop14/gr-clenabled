@@ -70,7 +70,7 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items);
 
-      clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int setDebug=0);
+      clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       virtual ~clFFT_impl();
 
       // Where all the action really happens

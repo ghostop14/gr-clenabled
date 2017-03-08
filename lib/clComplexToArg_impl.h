@@ -36,7 +36,7 @@ namespace gr {
 		int curBufferSize=0;
 
      public:
-      clComplexToArg_impl(int openCLPlatformType,bool setDebug=false);
+      clComplexToArg_impl(int openCLPlatformType, int devSelector,int platformId, int devId,bool setDebug=false);
       ~clComplexToArg_impl();
 
       // Where all the action really happens

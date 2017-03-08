@@ -44,7 +44,7 @@ namespace gr {
 	      void setBufferLength(int numItems);
 
      public:
-      clLog_impl(int openCLPlatformType,float nValue,float kValue,bool setDebug=false);
+      clLog_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug=false);
       ~clLog_impl();
 
       // Where all the action really happens

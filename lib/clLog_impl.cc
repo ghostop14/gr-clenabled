@@ -29,27 +29,27 @@ namespace gr {
   namespace clenabled {
 
     clLog::sptr
-    clLog::make(int openCLPlatformType,float nValue,float kValue,int setDebug)
+    clLog::make(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,int setDebug)
     {
 
       	if (setDebug == 1) {
             return gnuradio::get_initial_sptr
-              (new clLog_impl(openCLPlatformType,nValue,kValue,true));
+              (new clLog_impl(openCLPlatformType,devSelector,platformId,devId,nValue,kValue,true));
       	}
       	else {
             return gnuradio::get_initial_sptr
-              (new clLog_impl(openCLPlatformType,nValue,kValue,false));
+              (new clLog_impl(openCLPlatformType,devSelector,platformId,devId,nValue,kValue,false));
       	}
     }
 
     /*
      * The private constructor
      */
-    clLog_impl::clLog_impl(int openCLPlatformType,float nValue,float kValue,bool setDebug)
+    clLog_impl::clLog_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug)
       : gr::block("clLog",
               gr::io_signature::make(1, 1, sizeof(float)),
               gr::io_signature::make(1, 1, sizeof(float))),
-			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,setDebug)
+			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
 
     {
     	n_val = nValue;

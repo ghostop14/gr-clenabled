@@ -124,6 +124,8 @@ target_link_libraries(
 
 GR_ADD_TEST(test_clenabled test-clenabled)
 
+install(TARGETS test-clenabled DESTINATION /usr/bin RUNTIME)
+
 ########################################################################
 # Build and register clview
 ########################################################################

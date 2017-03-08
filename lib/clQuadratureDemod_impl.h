@@ -39,7 +39,7 @@ namespace gr {
 		int curBufferSize=0;
 
      public:
-      clQuadratureDemod_impl(float gain, int openCLPlatformType,bool setDebug=false);
+      clQuadratureDemod_impl(float gain, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       ~clQuadratureDemod_impl();
 
       // Where all the action really happens

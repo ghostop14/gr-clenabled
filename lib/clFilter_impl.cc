@@ -28,17 +28,17 @@
 namespace gr {
   namespace clenabled {
     clFilter::sptr
-    clFilter::make(int openclPlatform, int decimation,
+    clFilter::make(int openclPlatform,int devSelector,int platformId, int devId, int decimation,
             const std::vector<float> &taps,
             int nthreads,int setDebug)
     {
       	if (setDebug == 1) {
             return gnuradio::get_initial_sptr
-              (new clFilter_impl(openclPlatform,decimation,taps,nthreads,true));
+              (new clFilter_impl(openclPlatform,devSelector,platformId,devId,decimation,taps,nthreads,true));
       	}
       	else {
             return gnuradio::get_initial_sptr
-              (new clFilter_impl(openclPlatform,decimation,taps,nthreads,false));
+              (new clFilter_impl(openclPlatform,devSelector,platformId,devId,decimation,taps,nthreads,false));
       	}
     }
 
@@ -73,12 +73,12 @@ namespace gr {
     /*
      * The private constructor
      */
-    clFilter_impl::clFilter_impl(int openclPlatform, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug,bool bUseTimeDomain)
+    clFilter_impl::clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug,bool bUseTimeDomain)
       : gr::sync_decimator("clLowPassFilter",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  fft_filter_ccf(decimation, taps,nthreads),
-			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform, setDebug),
+			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),
 			  d_updated(false)
     {
     	prevTaps = d_ntaps;

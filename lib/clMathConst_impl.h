@@ -33,12 +33,17 @@ namespace gr {
 		float value;
 		int mathOperatorType;
 
+        std::string srcStdStr;
+        std::string fnName = "";
+
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
+		void buildKernel(int numItems);
+
      public:
-      clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType,float fValue,int operatorType, bool setDebug=false);
+      clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,float fValue,int operatorType, bool setDebug=false);
       ~clMathConst_impl();
 
       void setup_rpc();

@@ -95,7 +95,7 @@ namespace gr {
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
      public:
-    	clFilter_impl(int openclPlatform, int decimation,
+    	clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation,
               const std::vector<float> &taps,
               int nthreads=1, bool setDebug=false,bool bUseTimeDomain=false);
       virtual ~clFilter_impl();

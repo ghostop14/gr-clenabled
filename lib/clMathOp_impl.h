@@ -32,6 +32,7 @@ namespace gr {
      private:
       // Nothing to declare in this block.
     	int numParams=2;
+    	int numConstParams;
     	int d_operatorType;
         std::string srcStdStr;
         std::string fnName = "";
@@ -40,6 +41,12 @@ namespace gr {
 		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
+
+		// used for log10 testCPU
+        float n = 1.0;
+        float k = 0.0;
+
+		void buildKernel(int numItems);
 
      public:
       clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType, bool setDebug=false);

@@ -80,7 +80,7 @@ bool testMagPhaseToComplex() {
 
 	gr::clenabled::clMagPhaseToComplex_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMagPhaseToComplex_impl(opencltype,true);
+		test = new gr::clenabled::clMagPhaseToComplex_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -153,8 +153,14 @@ bool testMagPhaseToComplex() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -166,8 +172,11 @@ bool testMagPhaseToComplex() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -194,7 +203,7 @@ bool testComplexToMagPhase() {
 
 	gr::clenabled::clComplexToMagPhase_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToMagPhase_impl(opencltype,true);
+		test = new gr::clenabled::clComplexToMagPhase_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -267,8 +276,14 @@ bool testComplexToMagPhase() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -280,8 +295,11 @@ bool testComplexToMagPhase() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -308,7 +326,7 @@ bool testComplexToArg() {
 
 	gr::clenabled::clComplexToArg_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToArg_impl(opencltype,true);
+		test = new gr::clenabled::clComplexToArg_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -378,8 +396,13 @@ bool testComplexToArg() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -391,8 +414,11 @@ bool testComplexToArg() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -418,7 +444,7 @@ bool testComplexToMag() {
 
 	gr::clenabled::clComplexToMag_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToMag_impl(opencltype,true);
+		test = new gr::clenabled::clComplexToMag_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -488,8 +514,13 @@ bool testComplexToMag() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -501,8 +532,11 @@ bool testComplexToMag() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -580,7 +614,7 @@ bool testFFT(bool runReverse) {
 
 	gr::clenabled::clFFT_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,true);
+		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -661,8 +695,13 @@ bool testFFT(bool runReverse) {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -674,8 +713,11 @@ bool testFFT(bool runReverse) {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -687,7 +729,7 @@ bool testFFT(bool runReverse) {
 
 	std::cout << "Testing Reverse FFT" << std::endl;
 	delete test;
-	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,true);
+	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 
 	inputItems.clear();
 
@@ -739,8 +781,12 @@ bool testFFT(bool runReverse) {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
 
@@ -752,8 +798,11 @@ bool testFFT(bool runReverse) {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 	// ----------------------------------------------------------------------
@@ -778,7 +827,7 @@ bool testQuadDemod() {
 
 	gr::clenabled::clQuadratureDemod_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clQuadratureDemod_impl(2.0,opencltype,true);
+		test = new gr::clenabled::clQuadratureDemod_impl(2.0,opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -848,8 +897,13 @@ bool testQuadDemod() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -861,8 +915,11 @@ bool testQuadDemod() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -886,10 +943,9 @@ bool testMultiplyConst() {
 
 	std::cout << "Testing no-action kernel (return only) constant operation to measure OpenCL overhead" << std::endl;
 	std::cout << "This value represent the 'floor' on the selected platform.  Any CPU operations have to be slower than this to even be worthy of OpenCL consideration unless you're just looking to offload." << std::endl;
-
 	gr::clenabled::clMathConst_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,2.0,MATHOP_EMPTY,true);
+		test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_EMPTY,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -901,6 +957,7 @@ bool testMultiplyConst() {
 		return false;
 	}
 
+	std::cout << "Max constant items: " << test->MaxConstItems() << std::endl;
 	test->setBufferLength(largeBlockSize);
 
 	int i;
@@ -972,14 +1029,21 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time;
+	float throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	// switch to empty with copy
 	std::cout << "----------------------------------------------------------" << std::endl;
 	delete test;
 
-	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,2.0,MATHOP_EMPTY_W_COPY,true);
+	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_EMPTY_W_COPY,true);
+	std::cout << "Max constant items: " << test->MaxConstItems() << std::endl;
 	test->setBufferLength(largeBlockSize);
 	test->set_k(2.0);
 
@@ -1011,8 +1075,11 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1020,7 +1087,7 @@ bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 	delete test;
 
-	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,2.0,MATHOP_MULTIPLY,true);
+	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_MULTIPLY,true);
 	test->setBufferLength(largeBlockSize);
 	test->set_k(2.0);
 
@@ -1071,8 +1138,11 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 
 	int j;
@@ -1085,8 +1155,11 @@ bool testMultiplyConst() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-Only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1094,7 +1167,7 @@ bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	gr::clenabled::clLog_impl *testLog=NULL;
-	testLog = new gr::clenabled::clLog_impl(opencltype,20.0,0,true);
+	testLog = new gr::clenabled::clLog_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,20.0,0,true);
 
 	numItems = testLog->MaxConstItems();
 
@@ -1102,7 +1175,8 @@ bool testMultiplyConst() {
 		numItems = largeBlockSize;
 
 	std::cout << "Testing Log10 float performance with " << numItems << " items..." << std::endl;
-
+	std::cout << "Note: gnuradio log10 uses the following calculation: 'out[i] = n * log10(std::max(in[i], (float) 1e-18)) + k';" << std::endl;
+	std::cout << "the extra max() function adds extra time to the call versus a straight log10." << std::endl;
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
@@ -1126,8 +1200,11 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 
 	start = std::chrono::steady_clock::now();
@@ -1139,8 +1216,11 @@ bool testMultiplyConst() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	delete testLog;
 
@@ -1156,7 +1236,7 @@ bool testMultiplyConst() {
 
 
 	gr::clenabled::clSNR_impl *testSNR=NULL;
-	testSNR = new gr::clenabled::clSNR_impl(opencltype,20.0,0.0,true);
+	testSNR = new gr::clenabled::clSNR_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,20.0,0.0,true);
 
 	numItems = testSNR->MaxConstItems();
 
@@ -1188,9 +1268,15 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
-	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
 
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+
+
+	// Call CPU to initialize buffer
+	noutputitems = testSNR->testCPU(numItems,ninitems,inputFloatPointers,outputFloatPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
@@ -1201,8 +1287,11 @@ bool testMultiplyConst() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	delete testSNR;
 
@@ -1239,6 +1328,7 @@ bool testMultiply() {
 		return false;
 	}
 
+	std::cout << "Max constant items: " << test->MaxConstItems() << std::endl;
 	test->setBufferLength(largeBlockSize);
 
 	int i;
@@ -1308,8 +1398,14 @@ bool testMultiply() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	float elapsed_time,throughput;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -1321,8 +1417,11 @@ bool testMultiply() {
 
 	elapsed_seconds = end-start;
 
-	std::cout << "CPU-only Run Time: " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_seconds.count()/(float)iterations << " s" << std::endl;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1356,7 +1455,7 @@ bool testLowPassFilter() {
 		std::cout << "Testing TIME DOMAIN OpenCL filter performance with 10 MSPS sample rate" << std::endl;
 		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
-		test = new gr::clenabled::clFilter_impl(opencltype,1,
+		test = new gr::clenabled::clFilter_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,1,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
 	}
 	catch(const std::runtime_error& re)
@@ -1557,7 +1656,7 @@ bool testLowPassFilter() {
 
 		delete test;
 
-		test = new gr::clenabled::clFilter_impl(opencltype,1,
+		test = new gr::clenabled::clFilter_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,1,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
 	}
 	catch(const std::runtime_error& re)
@@ -1863,10 +1962,10 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--2048] [--4096] [--6144]" << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [number of samples (default is 8192)]" << std::endl;
 			std::cout << "where gpu, cpu, accel[erator], or any defines the type of OpenCL device opened." << std::endl;
 			std::cout << "It is recomended that the size be a multiple of the 'Preferred work group size multiple' visible from the clinfo command." << std::endl;
-			std::cout << "[--2048/4096/6144] indicates buffer size to be passed to each kernel.  The default is 8192." << std::endl;
+			std::cout << "[--2048/4096/6144/...] indicates buffer size to be passed to each kernel.  The default is 8192." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -1883,26 +1982,16 @@ main (int argc, char **argv)
 			}
 			else if (strcmp(argv[i],"--any")==0) {
 				opencltype=OCLTYPE_ANY;
-			}
-			else if (strcmp(argv[i],"--2048")==0) {
-				largeBlockSize=2048;
-			}
-			else if (strcmp(argv[i],"--4096")==0) {
-				largeBlockSize=4096;
-			}
-			else if (strcmp(argv[i],"--6144")==0) {
-				largeBlockSize=6144;
+			}else if (atoi(argv[i]) > 0) {
+				int newVal=atoi(argv[i]);
+
+				largeBlockSize=newVal;
+				std::cout << "Running with user-defined test buffer size of " << largeBlockSize << std::endl;
 			}
 			else {
 				std::cout << "ERROR: Unknown parameter." << std::endl;
 				exit(1);
 
-				int newVal=atoi(argv[i]);
-
-				if (newVal > 0) {
-					largeBlockSize=newVal;
-					std::cout << "Running with user-defined test buffer size of " << largeBlockSize << std::endl;
-				}
 			}
 		}
 	}

@@ -37,7 +37,7 @@ namespace gr {
 		int curBufferSize=0;
 
      public:
-      clComplexToMagPhase_impl(int openCLPlatformType,bool setDebug=false);
+      clComplexToMagPhase_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       ~clComplexToMagPhase_impl();
 
       // Where all the action really happens

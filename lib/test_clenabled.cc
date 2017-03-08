@@ -32,6 +32,7 @@
 #include "qa_clenabled.h"
 #include <iostream>
 #include <fstream>
+#include <boost/algorithm/string/replace.hpp>
 
 #include "clSComplex.h"
 #include "clMathConst_impl.h"
@@ -55,7 +56,9 @@
 bool verbose=false;
 int largeBlockSize=8192;
 int opencltype=OCLTYPE_ANY;
-
+int selectorType=OCLDEVICESELECTOR_FIRST;
+int platformId=0;
+int devId=0;
 int d_vlen = 1;
 
 int ComplexToMagCPU(int noutput_items,
@@ -80,7 +83,7 @@ bool testMagPhaseToComplex() {
 
 	gr::clenabled::clMagPhaseToComplex_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMagPhaseToComplex_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clMagPhaseToComplex_impl(opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -203,7 +206,7 @@ bool testComplexToMagPhase() {
 
 	gr::clenabled::clComplexToMagPhase_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToMagPhase_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clComplexToMagPhase_impl(opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -326,7 +329,7 @@ bool testComplexToArg() {
 
 	gr::clenabled::clComplexToArg_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToArg_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clComplexToArg_impl(opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -444,7 +447,7 @@ bool testComplexToMag() {
 
 	gr::clenabled::clComplexToMag_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clComplexToMag_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clComplexToMag_impl(opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -614,7 +617,7 @@ bool testFFT(bool runReverse) {
 
 	gr::clenabled::clFFT_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -729,7 +732,7 @@ bool testFFT(bool runReverse) {
 
 	std::cout << "Testing Reverse FFT" << std::endl;
 	delete test;
-	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 
 	inputItems.clear();
 
@@ -827,7 +830,7 @@ bool testQuadDemod() {
 
 	gr::clenabled::clQuadratureDemod_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clQuadratureDemod_impl(2.0,opencltype,OCLDEVICESELECTOR_FIRST,0,0,true);
+		test = new gr::clenabled::clQuadratureDemod_impl(2.0,opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -945,7 +948,7 @@ bool testMultiplyConst() {
 	std::cout << "This value represent the 'floor' on the selected platform.  Any CPU operations have to be slower than this to even be worthy of OpenCL consideration unless you're just looking to offload." << std::endl;
 	gr::clenabled::clMathConst_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_EMPTY,true);
+		test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,selectorType,platformId,devId,2.0,MATHOP_EMPTY,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -1042,7 +1045,7 @@ bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 	delete test;
 
-	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_EMPTY_W_COPY,true);
+	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,selectorType,platformId,devId,2.0,MATHOP_EMPTY_W_COPY,true);
 	std::cout << "Max constant items: " << test->MaxConstItems() << std::endl;
 	test->setBufferLength(largeBlockSize);
 	test->set_k(2.0);
@@ -1087,7 +1090,7 @@ bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 	delete test;
 
-	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,2.0,MATHOP_MULTIPLY,true);
+	test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,selectorType,platformId,devId,2.0,MATHOP_MULTIPLY,true);
 	test->setBufferLength(largeBlockSize);
 	test->set_k(2.0);
 
@@ -1167,7 +1170,7 @@ bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	gr::clenabled::clLog_impl *testLog=NULL;
-	testLog = new gr::clenabled::clLog_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,20.0,0,true);
+	testLog = new gr::clenabled::clLog_impl(opencltype,selectorType,platformId,devId,20.0,0,true);
 
 	numItems = testLog->MaxConstItems();
 
@@ -1236,7 +1239,7 @@ bool testMultiplyConst() {
 
 
 	gr::clenabled::clSNR_impl *testSNR=NULL;
-	testSNR = new gr::clenabled::clSNR_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,20.0,0.0,true);
+	testSNR = new gr::clenabled::clSNR_impl(opencltype,selectorType,platformId,devId,20.0,0.0,true);
 
 	numItems = testSNR->MaxConstItems();
 
@@ -1316,7 +1319,7 @@ bool testMultiply() {
 
 	gr::clenabled::clMathOp_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,OCLDEVICESELECTOR_FIRST,0,0,MATHOP_MULTIPLY,true);
+		test = new gr::clenabled::clMathOp_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,selectorType,platformId,devId,MATHOP_MULTIPLY,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -1455,7 +1458,7 @@ bool testLowPassFilter() {
 		std::cout << "Testing TIME DOMAIN OpenCL filter performance with 10 MSPS sample rate" << std::endl;
 		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
-		test = new gr::clenabled::clFilter_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,1,
+		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,1,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
 	}
 	catch(const std::runtime_error& re)
@@ -1656,7 +1659,7 @@ bool testLowPassFilter() {
 
 		delete test;
 
-		test = new gr::clenabled::clFilter_impl(opencltype,OCLDEVICESELECTOR_FIRST,0,0,1,
+		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,1,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,false);
 	}
 	catch(const std::runtime_error& re)
@@ -1962,15 +1965,16 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [number of samples (default is 8192)]" << std::endl;
-			std::cout << "where gpu, cpu, accel[erator], or any defines the type of OpenCL device opened." << std::endl;
-			std::cout << "It is recomended that the size be a multiple of the 'Preferred work group size multiple' visible from the clinfo command." << std::endl;
-			std::cout << "[--2048/4096/6144/...] indicates buffer size to be passed to each kernel.  The default is 8192." << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [number of samples (default is 8192)]" << std::endl;
+			std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
+			std::cout << "The optional --device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
 
 		for (int i=1;i<argc;i++) {
+			std::string param = argv[i];
+
 			if (strcmp(argv[i],"--gpu")==0) {
 				opencltype=OCLTYPE_GPU;
 			}
@@ -1979,6 +1983,19 @@ main (int argc, char **argv)
 			}
 			else if (strcmp(argv[i],"--accel")==0) {
 				opencltype=OCLTYPE_ACCELERATOR;
+			}
+			else if (param.find("--device") != std::string::npos) {
+				if (param.find("--device") == std::string::npos) {
+					std::cout<< "Error: device format should be <platform id>:<device id>" << std::endl;
+					exit(2);
+				}
+
+				selectorType = OCLDEVICESELECTOR_SPECIFIC;
+				boost::replace_all(param,"--device=","");
+				int posColon = param.find(":");
+				platformId=atoi(param.substr(0,1).c_str());
+				devId=atoi(param.substr(posColon+1,1).c_str());
+
 			}
 			else if (strcmp(argv[i],"--any")==0) {
 				opencltype=OCLTYPE_ANY;

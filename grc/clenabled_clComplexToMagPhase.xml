@@ -2,7 +2,7 @@
 <block>
   <name>OpenCL Complex To Mag Phase</name>
   <key>clenabled_complextomagphase</key>
-  <category>[OpenCL-Enabled]</category>
+  <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <make>#if $devices == 1
 	clenabled.clComplexToMagPhase($openCLPlatform,1,0,0,$setDebug)

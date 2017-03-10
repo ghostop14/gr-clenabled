@@ -2,7 +2,7 @@
 <block>
   <name>OpenCL SNR Helper</name>
   <key>clenabled_clsnr</key>
-  <category>[OpenCL-Enabled]</category>
+  <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <make>#if $devices == 1
 	clenabled.clSNR($openCLPlatform,1,0,0,$n_val,$k_val,$setDebug)

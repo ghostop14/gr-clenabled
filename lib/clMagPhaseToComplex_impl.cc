@@ -48,45 +48,24 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
   	  	  	  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
-    	// Now we set up our OpenCL kernel
-        std::string srcStdStr="";
-        std::string fnName = "magphasetocomplex";
-
-    	srcStdStr += "struct ComplexStruct {\n";
-    	srcStdStr += "float real;\n";
-    	srcStdStr += "float imag; };\n";
-    	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-    	srcStdStr += "__kernel void magphasetocomplex(__constant float * a, __constant float * b, __global SComplex * restrict c) {\n";
-    	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float mag = a[index];\n";
-    	srcStdStr += "    float phase = b[index];\n";
-    	srcStdStr += "    float real = mag*cos(phase);\n";
-    	srcStdStr += "    float imag = mag*sin(phase);\n";
-    	srcStdStr += "    c[index].real = real;\n";
-    	srcStdStr += "    c[index].imag = imag;\n";
-    	srcStdStr += "}\n";
-
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
 
-    	maxConstItems = (int)((float)maxConstMemSize / ((float)sizeof(float)*2.0));
-
-    	if (maxConstItems < imaxItems || imaxItems == 0) {
-    		gr::block::set_max_noutput_items(maxConstItems);
+    	if (imaxItems > maxConstItems) {
     		imaxItems = maxConstItems;
+    	}
 
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: MagPhaseToComplex adjusting output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		try {
+			// optimize for constant memory space
+			gr::block::set_max_noutput_items(imaxItems);
 		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: MagPhaseToComplex using default output buffer of " << imaxItems << "..." << std::endl;
-		}
+		catch(...) {
 
-        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+		}
 
         setBufferLength(imaxItems);
+
         // And finally optimize the data we get based on the preferred workgroup size.
         // Note: We can't do this until the kernel is compiled and since it's in the block class
         // it has to be done here.
@@ -110,6 +89,69 @@ namespace gr {
 
     	if (cBuffer)
     		delete cBuffer;
+    }
+
+    void clMagPhaseToComplex_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+/*
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: MagPhaseToComplex adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: MagPhaseToComplex using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+*/
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: MagPhaseToComplex building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: MagPhaseToComplex - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
+        // Now we set up our OpenCL kernel
+        std::string srcStdStr="";
+        std::string fnName = "magphasetocomplex";
+
+    	srcStdStr += "struct ComplexStruct {\n";
+    	srcStdStr += "float real;\n";
+    	srcStdStr += "float imag; };\n";
+    	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+    	if (useConst)
+    		srcStdStr += "__kernel void magphasetocomplex(__constant float * a, __constant float * b, __global SComplex * restrict c) {\n";
+    	else
+    		srcStdStr += "__kernel void magphasetocomplex(__global float * restrict a, __constant float * b, __global SComplex * restrict c) {\n";
+
+    	srcStdStr += "    size_t index =  get_global_id(0);\n";
+    	srcStdStr += "    float mag = a[index];\n";
+    	srcStdStr += "    float phase = b[index];\n";
+    	srcStdStr += "    float real = mag*cos(phase);\n";
+    	srcStdStr += "    float imag = mag*sin(phase);\n";
+    	srcStdStr += "    c[index].real = real;\n";
+    	srcStdStr += "    c[index].imag = imag;\n";
+    	srcStdStr += "}\n";
+
+        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
     }
 
     void clMagPhaseToComplex_impl::setBufferLength(int numItems) {
@@ -136,6 +178,8 @@ namespace gr {
             *context,
             CL_MEM_READ_WRITE,
 			numItems * sizeof(gr_complex));
+
+        buildKernel(numItems);
 
         curBufferSize=numItems;
     }
@@ -230,17 +274,12 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
-      const float *mag = (const float *) input_items[0];
-      const float *phase = (const float *) input_items[1];
-      gr_complex *out = (gr_complex *) output_items[0];
+        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
 
-      // Do <+signal processing+>
-      // Tell runtime system how many input items we consumed on
-      // each input stream.
       consume_each (noutput_items);
 
       // Tell runtime system how many output items we produced.
-      return noutput_items;
+      return retVal;
     }
 
   } /* namespace clenabled */

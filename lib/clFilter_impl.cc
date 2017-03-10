@@ -81,6 +81,7 @@ namespace gr {
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),
 			  d_updated(false)
     {
+    	USE_TIME_DOMAIN = bUseTimeDomain;
     	prevTaps = d_ntaps;
     	// Buffer sizes need to match up with blocks based on the number of taps...
     	// This matches up with FFT Size

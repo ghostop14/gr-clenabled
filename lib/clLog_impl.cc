@@ -55,54 +55,21 @@ namespace gr {
     	n_val = nValue;
     	k_val = kValue;
 
-    	srcStdStr="";
-    	fnName = "op_log10";
-
-    	if (nValue != 1.0) {
-        	srcStdStr += "#define n_val " + std::to_string(nValue) + "\n";
-    	}
-
-    	if (kValue != 0.0) {
-    		srcStdStr += "#define k_val " + std::to_string(kValue) + "\n";
-    	}
-
-    	srcStdStr += "__kernel void op_log10(__constant float * a, __global float * restrict c) {\n";
-    	srcStdStr += "    size_t index =  get_global_id(0);\n";
-
-    	if (kValue != 0.0) {
-    		if (nValue != 1.0) {
-            	srcStdStr += "    c[index] = n_val * log10(a[index]) + k_val;\n";
-    		}
-    		else {
-            	srcStdStr += "    c[index] = log10(a[index]) + k_val;\n";
-    		}
-    	}
-    	else {
-    		// Don't even bother with the k math op.
-    		if (nValue != 1.0) {
-            	srcStdStr += "    c[index] = n_val * log10(a[index]);\n";
-    		}
-    		else {
-            	srcStdStr += "    c[index] = log10(a[index]);\n";
-    		}
-    	}
-
-    	srcStdStr += "}\n";
-
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
 
-    	// Let's keep this efficient by restricting the number of items to how many we can put in a float
-        maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
-
-    	if (maxConstItems < imaxItems) {
+    	if (imaxItems > maxConstItems) {
     		imaxItems = maxConstItems;
     	}
 
-    	set_max_noutput_items(imaxItems);
+		try {
+			// optimize for constant memory space
+			gr::block::set_max_noutput_items(imaxItems);
+		}
+		catch(...) {
 
-        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+		}
 
         setBufferLength(imaxItems);
 
@@ -115,6 +82,85 @@ namespace gr {
         	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
         }
 }
+
+    void clLog_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+/*
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: ComplexToMag adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: ComplexToMag using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+*/
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: ComplexToMag Const building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: ComplexToMag - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
+    	srcStdStr="";
+    	fnName = "op_log10";
+
+    	if (n_val != 1.0) {
+        	srcStdStr += "#define n_val " + std::to_string(n_val) + "\n";
+    	}
+
+    	if (k_val != 0.0) {
+    		srcStdStr += "#define k_val " + std::to_string(k_val) + "\n";
+    	}
+
+    	if (useConst)
+    		srcStdStr += "__kernel void op_log10(__constant float * a, __global float * restrict c) {\n";
+    	else
+    		srcStdStr += "__kernel void op_log10(__global float * restrict a, __global float * restrict c) {\n";
+
+    	srcStdStr += "    size_t index =  get_global_id(0);\n";
+
+    	if (k_val != 0.0) {
+    		if (n_val != 1.0) {
+            	srcStdStr += "    c[index] = n_val * log10(a[index]) + k_val;\n";
+    		}
+    		else {
+            	srcStdStr += "    c[index] = log10(a[index]) + k_val;\n";
+    		}
+    	}
+    	else {
+    		// Don't even bother with the k math op.
+    		if (n_val != 1.0) {
+            	srcStdStr += "    c[index] = n_val * log10(a[index]);\n";
+    		}
+    		else {
+            	srcStdStr += "    c[index] = log10(a[index]);\n";
+    		}
+    	}
+
+    	srcStdStr += "}\n";
+
+        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+    }
 
     void clLog_impl::setBufferLength(int numItems) {
     	if (aBuffer)
@@ -132,6 +178,8 @@ namespace gr {
             *context,
             CL_MEM_READ_WRITE,
 			numItems * dataSize);
+
+        buildKernel(numItems);
 
         curBufferSize=numItems;
     }

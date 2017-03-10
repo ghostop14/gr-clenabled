@@ -101,6 +101,26 @@ namespace gr {
 
         setBufferLength(8192);
 
+        // for this module we have to do this calculation after setBufferLength
+        // because some streams have 1 param and others have 2.
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
+
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (imaxItems > maxConstItems) {
+    		imaxItems = maxConstItems;
+    	}
+
+    	try {
+    		// optimize for constant memory space
+    		gr::block::set_max_noutput_items(imaxItems);
+    	}
+    	catch(...) {
+
+    	}
+
         // And finally optimize the data we get based on the preferred workgroup size.
         // Note: We can't do this until the kernel is compiled and since it's in the block class
         // it has to be done here.
@@ -117,9 +137,8 @@ namespace gr {
     }
 
     void clMathOp_impl::buildKernel(int numItems) {
-    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize*numConstParams));
     	bool useConst;
-
+/*
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
@@ -141,7 +160,7 @@ namespace gr {
 			if (debugMode)
 				std::cout << "OpenCL INFO: Math Op using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
 		}
-
+*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else

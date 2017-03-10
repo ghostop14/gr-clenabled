@@ -41,11 +41,14 @@ namespace gr {
 		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
-        void setBufferLength(int numItems);
+
+		void buildKernel(int numItems);
 
      public:
       clSNR_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug=false);
       ~clSNR_impl();
+
+      void setBufferLength(int numItems);
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

@@ -49,6 +49,80 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(float))),
 	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug)
 {
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (imaxItems > maxConstItems) {
+    		imaxItems = maxConstItems;
+    	}
+
+		try {
+			// optimize for constant memory space
+			gr::block::set_max_noutput_items(imaxItems);
+		}
+		catch(...) {
+
+		}
+
+		setBufferLength(imaxItems);
+
+        // And finally optimize the data we get based on the preferred workgroup size.
+        // Note: We can't do this until the kernel is compiled and since it's in the block class
+        // it has to be done here.
+        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+        // For GPU's setting it to the preferred size seems to have the best performance.
+        if (contextType != CL_DEVICE_TYPE_CPU) {
+        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+        }
+}
+    clComplexToArg_impl::~clComplexToArg_impl()
+    {
+    	if (aBuffer)
+    		delete aBuffer;
+
+    	if (cBuffer)
+    		delete cBuffer;
+    }
+
+    void clComplexToArg_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+/*
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: ComplexToArg adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: ComplexToArg using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+*/
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: MComplexToArg building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: ComplexToArg - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
     	// Now we set up our OpenCL kernel
         std::string srcStdStr="";
         std::string fnName = "complextoarg";
@@ -57,7 +131,11 @@ namespace gr {
     	srcStdStr += "float real;\n";
     	srcStdStr += "float imag; };\n";
     	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-    	srcStdStr += "__kernel void complextoarg(__constant SComplex * a, __global float * restrict c) {\n";
+    	if (useConst)
+    		srcStdStr += "__kernel void complextoarg(__constant SComplex * a, __global float * restrict c) {\n";
+    	else
+    		srcStdStr += "__kernel void complextoarg(__global SComplex * restrict a, __global float * restrict c) {\n";
+
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    c[index] = atan2(a[index].imag,a[index].real);\n";
     	srcStdStr += "}\n";
@@ -81,25 +159,6 @@ namespace gr {
 		}
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
-
-        setBufferLength(imaxItems);
-
-        // And finally optimize the data we get based on the preferred workgroup size.
-        // Note: We can't do this until the kernel is compiled and since it's in the block class
-        // it has to be done here.
-        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
-        // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
-        }
-}
-    clComplexToArg_impl::~clComplexToArg_impl()
-    {
-    	if (aBuffer)
-    		delete aBuffer;
-
-    	if (cBuffer)
-    		delete cBuffer;
     }
 
     void clComplexToArg_impl::setBufferLength(int numItems) {
@@ -118,6 +177,8 @@ namespace gr {
             *context,
             CL_MEM_READ_WRITE,
 			numItems * sizeof(float));
+
+        buildKernel(numItems);
 
         curBufferSize=numItems;
     }

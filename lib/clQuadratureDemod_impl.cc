@@ -51,7 +51,73 @@ namespace gr {
    {
     	d_gain = gain;
 
-    	// Now we set up our OpenCL kernel
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (imaxItems > maxConstItems) {
+    		imaxItems = maxConstItems;
+    	}
+
+		try {
+			// optimize for constant memory space
+			gr::block::set_max_noutput_items(imaxItems);
+		}
+		catch(...) {
+
+		}
+
+		setBufferLength(imaxItems);
+
+        // And finally optimize the data we get based on the preferred workgroup size.
+        // Note: We can't do this until the kernel is compiled and since it's in the block class
+        // it has to be done here.
+        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
+        // For GPU's setting it to the preferred size seems to have the best performance.
+        if (contextType != CL_DEVICE_TYPE_CPU) {
+        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+        }
+}
+
+    void clQuadratureDemod_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+/*
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: QuadratureDemod adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: QuadratureDemod using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+*/
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: QuadratureDemod building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: QuadratureDemod - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
+        // Now we set up our OpenCL kernel
         std::string srcStdStr="";
         std::string fnName = "quadDemod";
 
@@ -60,7 +126,12 @@ namespace gr {
     	srcStdStr += "float real;\n";
     	srcStdStr += "float imag; };\n";
     	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-    	srcStdStr += "__kernel void quadDemod(__constant SComplex * a, __global float * restrict c) {\n";
+
+    	if (useConst)
+    		srcStdStr += "__kernel void quadDemod(__constant SComplex * a, __global float * restrict c) {\n";
+    	else
+    		srcStdStr += "__kernel void quadDemod(__global SComplex * restrict a, __global float * restrict c) {\n";
+
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float a_r=a[index].real;\n";
     	srcStdStr += "    float a_i=a[index].imag;\n";
@@ -72,36 +143,9 @@ namespace gr {
     	srcStdStr += "    c[index] = GAIN * atan2(multCC.imag,multCC.real);\n";
     	srcStdStr += "}\n";
 
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
-
-    	maxConstItems = (int)((float)maxConstMemSize / ((float)sizeof(gr_complex)));
-
-    	if (maxConstItems < imaxItems || imaxItems == 0) {
-    		gr::block::set_max_noutput_items(maxConstItems);
-    		imaxItems = maxConstItems;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: Quadrature demod adjusting output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: Quadrature demod using default output buffer of " << imaxItems << "..." << std::endl;
-		}
-
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 
-        setBufferLength(imaxItems);
-        // And finally optimize the data we get based on the preferred workgroup size.
-        // Note: We can't do this until the kernel is compiled and since it's in the block class
-        // it has to be done here.
-        // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
-        // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
-        }
-}
+    }
 
     void clQuadratureDemod_impl::setBufferLength(int numItems) {
     	if (aBuffer)
@@ -120,6 +164,7 @@ namespace gr {
             CL_MEM_READ_WRITE,
 			numItems * sizeof(float));
 
+        buildKernel(numItems);
         curBufferSize=numItems;
     }
 

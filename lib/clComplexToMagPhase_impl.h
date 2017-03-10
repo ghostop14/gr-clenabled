@@ -36,6 +36,8 @@ namespace gr {
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
+		void buildKernel(int numItems);
+
      public:
       clComplexToMagPhase_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       ~clComplexToMagPhase_impl();

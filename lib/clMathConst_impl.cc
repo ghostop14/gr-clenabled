@@ -72,6 +72,22 @@ namespace gr {
 	value = fValue;
 	mathOperatorType = operatorType;
 
+	int imaxItems=gr::block::max_noutput_items();
+	if (imaxItems==0)
+		imaxItems=8192;
+
+	if (imaxItems > maxConstItems) {
+		imaxItems = maxConstItems;
+	}
+
+	try {
+		// optimize for constant memory space
+		gr::block::set_max_noutput_items(imaxItems);
+	}
+	catch(...) {
+
+	}
+
 	setBufferLength(8192);
 
     // And finally optimize the data we get based on the preferred workgroup size.
@@ -87,7 +103,7 @@ namespace gr {
     void clMathConst_impl::buildKernel(int numItems) {
     	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
     	bool useConst;
-
+/*
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
@@ -109,7 +125,7 @@ namespace gr {
 			if (debugMode)
 				std::cout << "OpenCL INFO: Math Op Const using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
 		}
-
+*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else

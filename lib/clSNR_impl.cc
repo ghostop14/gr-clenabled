@@ -50,38 +50,29 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(float))),
 			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
-    	srcStdStr="";
-    	fnName = "op_snr";
-
-    	n_val = nValue;
-    	k_val = kValue;
-
-    	srcStdStr += "#define n_val " + std::to_string(nValue) + "\n";
-		srcStdStr += "#define k_val " + std::to_string(kValue) + "\n";
-    	srcStdStr += "__kernel void op_snr(__constant float * a, __constant float * b, __global float * restrict c) {\n";
-    	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float tmpVal = a[index] / b[index];\n";
-    	srcStdStr += "    tmpVal = n_val * log10(tmpVal) + k_val;\n";
-    	srcStdStr += "    c[index] = fabs(tmpVal);\n";
-    	srcStdStr += "}\n";
-
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
 
-    	// Let's keep this efficient by restricting the number of items to how many we can put in a float
-        maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
-        maxConstItems = maxConstItems / 2; // 2 inputs
-
-    	if (maxConstItems < imaxItems) {
+    	if (imaxItems > maxConstItems) {
     		imaxItems = maxConstItems;
     	}
 
-    	set_max_noutput_items(imaxItems);
+		try {
+			// optimize for constant memory space
+			gr::block::set_max_noutput_items(imaxItems);
+		}
+		catch(...) {
 
-        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+		}
+
+		setBufferLength(imaxItems);
+
+    	n_val = nValue;
+    	k_val = kValue;
 
         setBufferLength(imaxItems);
+
         // And finally optimize the data we get based on the preferred workgroup size.
         // Note: We can't do this until the kernel is compiled and since it's in the block class
         // it has to be done here.
@@ -91,6 +82,66 @@ namespace gr {
         	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
         }
 }
+
+
+    void clSNR_impl::buildKernel(int numItems) {
+    	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+    	bool useConst;
+/*
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	if (maxConstItems < imaxItems) {
+    		try {
+    			gr::block::set_max_noutput_items(maxConstItems);
+    		}
+    		catch(...) {
+
+    		}
+
+    		imaxItems = maxConstItems;
+
+    		if (debugMode)
+    			std::cout << "OpenCL INFO: SNR Helper adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
+		}
+		else {
+			if (debugMode)
+				std::cout << "OpenCL INFO: SNR Helper using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
+		}
+*/
+    	if (numItems > maxConstItems)
+    		useConst = false;
+    	else
+    		useConst = true;
+
+		if (debugMode) {
+			if (useConst)
+				std::cout << "OpenCL INFO: SNR Helper building kernel with __constant params..." << std::endl;
+			else
+				std::cout << "OpenCL INFO: SNR Helper - too many items for constant memory.  Building kernel with __global params..." << std::endl;
+		}
+
+    	srcStdStr="";
+    	fnName = "op_snr";
+
+    	srcStdStr += "#define n_val " + std::to_string(n_val) + "\n";
+		srcStdStr += "#define k_val " + std::to_string(k_val) + "\n";
+
+		if (useConst)
+			srcStdStr += "__kernel void op_snr(__constant float * a, __constant float * b, __global float * restrict c) {\n";
+		else
+			srcStdStr += "__kernel void op_snr(__global float * restrict a, __constant float * b, __global float * restrict c) {\n";
+
+    	srcStdStr += "    size_t index =  get_global_id(0);\n";
+    	srcStdStr += "    float tmpVal = a[index] / b[index];\n";
+    	srcStdStr += "    tmpVal = n_val * log10(tmpVal) + k_val;\n";
+    	srcStdStr += "    c[index] = fabs(tmpVal);\n";
+    	srcStdStr += "}\n";
+
+        GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+    }
+
 
     void clSNR_impl::setBufferLength(int numItems) {
     	if (aBuffer)
@@ -116,6 +167,8 @@ namespace gr {
             *context,
             CL_MEM_READ_WRITE,
 			numItems * dataSize);
+
+        buildKernel(numItems);
 
         curBufferSize=numItems;
     }

@@ -38,6 +38,8 @@ namespace gr {
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
+		void buildKernel(int numItems);
+
      public:
       clQuadratureDemod_impl(float gain, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       ~clQuadratureDemod_impl();

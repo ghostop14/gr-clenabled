@@ -258,6 +258,9 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 		std::cout << "Error getting device constant memory size." << std::endl;
 	}
 
+	// This can be overridden in derived classes.
+	// This calculation assumes only a single input stream.
+	maxConstItems = maxConstMemSize / dataSize;
 
 	// see https://software.intel.com/sites/default/files/managed/9d/6d/TutorialSVMBasic.pdf on SVM
 

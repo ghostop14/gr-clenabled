@@ -6,7 +6,7 @@
 	<make>#if $devices == 1
 clenabled.clMathConst($type.datatype,$openCLPlatform,1,0,0,2,$setDebug)
 #else
-clenabled.clMathConst($type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$const,2,setDebug)
+clenabled.clMathConst($type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$const,2,$setDebug)
 #end if</make>
 	<callback>set_k($const)</callback>
 	<param>
@@ -143,7 +143,7 @@ clenabled.clMathConst($type.datatype,$openCLPlatform,$devices,$platformId,$devic
     <type>$type.output</type>
   </source>
 	<doc>
-This filter is an OpenCL enabled version of the built-in Multiply Const block.
+This filter is an OpenCL enabled version of the built-in Add Const block.
 
 Note that due to the low number of computes per data point, a pure CPU
 

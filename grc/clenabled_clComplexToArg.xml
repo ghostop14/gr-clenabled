@@ -7,7 +7,7 @@
 	<make>#if $devices == 1
 	clenabled.clComplexToArg($openCLPlatform,1,0,0,$setDebug)
 	#else
-	clenabled.clComplexToArg($openCLPlatform,$devices,$platformId,$deviceId,setDebug)
+	clenabled.clComplexToArg($openCLPlatform,$devices,$platformId,$deviceId,$setDebug)
 	#end if</make>
 	<param>
 		<name>OpenCL Platform Type</name>

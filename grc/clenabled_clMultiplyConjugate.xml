@@ -7,7 +7,7 @@
   <make>#if $devices == 1
 	clenabled.clMathOp($openCLPlatform,1,0,0,5,$setDebug)
 	#else
-	clenabled.clMathOp($openCLPlatform,$devices,$platformId,$deviceId,5,setDebug)
+	clenabled.clMathOp($openCLPlatform,$devices,$platformId,$deviceId,5,$setDebug)
 	#end if</make>
 	<param>
 		<name>OpenCL Platform Type</name>

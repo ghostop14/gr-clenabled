@@ -7,7 +7,7 @@
   <make>#if $devices == 1
 	clenabled.clLog($openCLPlatform,1,0,0,$n_val,$k_val,$setDebug)
 	#else
-	clenabled.clLog($openCLPlatform,$devices,$platformId,$deviceId,$n_val,$k_val,setDebug)
+	clenabled.clLog($openCLPlatform,$devices,$platformId,$deviceId,$n_val,$k_val,$setDebug)
 	#end if</make>
 	<param>
 		<name>OpenCL Platform Type</name>

@@ -6,7 +6,7 @@
   <make>#if $devices == 1
 	clenabled.clQuadratureDemod($gain,$openCLPlatform,1,0,0,$setDebug)
 	#else
-	clenabled.clQuadratureDemod($gain,$openCLPlatform,$devices,$platformId,$deviceId,setDebug)
+	clenabled.clQuadratureDemod($gain,$openCLPlatform,$devices,$platformId,$deviceId,$setDebug)
 	#end if</make>
 	<param>
 		<name>OpenCL Platform Type</name>

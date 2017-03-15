@@ -20,6 +20,7 @@
 install(FILES
     clenabled_clAdd.xml 
     clenabled_clAddConst.xml
+    clenabled_clMultConst.xml
     clenabled_clBandPassFilter.xml
     clenabled_clBandRejectFilter.xml
     clenabled_clComplexConjugate.xml

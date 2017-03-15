@@ -216,12 +216,12 @@ namespace gr {
 			srcStdStr += "    c[index].imag = a[index].imag * multiplier;\n";
 			break;
 			case MATHOP_ADD:
-			srcStdStr += "    c[index].real = a[index].real + val.real;\n";
-			srcStdStr += "    c[index].imag = a[index].imag + val.imag;\n";
+			srcStdStr += "    c[index].real = a[index].real + multiplier;\n";
+			srcStdStr += "    c[index].imag = a[index].imag + multiplier;\n";
 			break;
 			case MATHOP_SUBTRACT:
-			srcStdStr += "    c[index].real = a[index].real - val.real;\n";
-			srcStdStr += "    c[index].imag = a[index].imag - val.imag;\n";
+			srcStdStr += "    c[index].real = a[index].real - multiplier;\n";
+			srcStdStr += "    c[index].imag = a[index].imag - multiplier;\n";
 			break;
 			}
 			srcStdStr += "}\n";

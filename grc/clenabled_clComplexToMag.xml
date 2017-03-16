@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <block>
-  <name>OpenCL ComplexToMag</name>
+  <name>OpenCL Complex To Mag</name>
   <key>clenabled_complextomag</key>
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>

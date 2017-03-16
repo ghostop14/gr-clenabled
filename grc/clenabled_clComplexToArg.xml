@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <block>
-  <name>OpenCL ComplexToArg</name>
+  <name>OpenCL Complex To Arg</name>
   <key>clenabled_complextoarg</key>
   <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>

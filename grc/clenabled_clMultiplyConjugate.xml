@@ -103,7 +103,11 @@
 		</option>
 	</param>
   <sink>
-    <name>in</name>
+    <name>in1</name>
+    <type>complex</type>
+  </sink>
+  <sink>
+    <name>in2</name>
     <type>complex</type>
   </sink>
   <source>

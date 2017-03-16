@@ -49,7 +49,7 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(float))),
 	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug)
    {
-    	d_gain = gain;
+    	f_gain = gain;
 
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
@@ -121,7 +121,13 @@ namespace gr {
         std::string srcStdStr="";
         std::string fnName = "quadDemod";
 
-        srcStdStr += "#define GAIN " + std::to_string(d_gain) + "\n";
+        // Debug Code
+        // srcStdStr += "#pragma OPENCL EXTENSION cl_intel_printf : enable\n";
+
+        if (f_gain != 1.0) {
+        	srcStdStr += "#define GAIN " + std::to_string(f_gain) + "\n";
+        }
+
     	srcStdStr += "struct ComplexStruct {\n";
     	srcStdStr += "float real;\n";
     	srcStdStr += "float imag; };\n";
@@ -133,14 +139,23 @@ namespace gr {
     		srcStdStr += "__kernel void quadDemod(__global SComplex * restrict a, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float a_r=a[index].real;\n";
-    	srcStdStr += "    float a_i=a[index].imag;\n";
+    	srcStdStr += "    float a_r=a[index+1].real;\n";
+    	srcStdStr += "    float a_i=a[index+1].imag;\n";
     	srcStdStr += "    float b_r=a[index].real;\n";
     	srcStdStr += "    float b_i=-1.0 * a[index].imag;\n";
-    	srcStdStr += "    SComplex multCC;\n";
-    	srcStdStr += "    multCC.real = a_r * b_r - (a_i*b_i);\n";
-    	srcStdStr += "    multCC.imag = a_r * b_i + a_i * b_r;\n";
-    	srcStdStr += "    c[index] = GAIN * atan2(multCC.imag,multCC.real);\n";
+    	srcStdStr += "    float multCCreal = (a_r * b_r) - (a_i*b_i);\n";
+    	srcStdStr += "    float multCCimag = (a_r * b_i) + (a_i * b_r);\n";
+        if (f_gain != 1.0)
+        	srcStdStr += "    c[index] = GAIN * atan2(multCCimag,multCCreal);\n";
+        else
+        	srcStdStr += "    c[index] = atan2(multCCimag,multCCreal);\n";
+/*// Debug Code
+    	srcStdStr += "    if (a_r != 0.0 || a_i != 0.0) {\n";
+    	srcStdStr += "       printf(\"Kernel: input real=%f input imag=%f\\n\",a_r,a_i);\n";
+    	srcStdStr += "       printf(\"Kernel: multCC real=%f multCC imag=%f\\n\",multCCreal,multCCimag);\n";
+    	srcStdStr += "       printf(\"Kernel: atan2=%f\\n\",c[index]);\n";
+    	srcStdStr += "    }\n";
+*/
     	srcStdStr += "}\n";
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
@@ -157,7 +172,13 @@ namespace gr {
     	aBuffer = new cl::Buffer(
             *context,
             CL_MEM_READ_ONLY,
-			numItems * sizeof(gr_complex));
+			(numItems+1) * sizeof(gr_complex));  // complex conj is of index+1.
+
+    	// Zero out the last entry
+    	float zeroBuff[2];
+    	zeroBuff[0] = zeroBuff[1] = 0.0;
+
+    	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,numItems*sizeof(gr_complex),sizeof(gr_complex),(void *)&zeroBuff[0]);
 
         cBuffer = new cl::Buffer(
             *context,
@@ -180,6 +201,11 @@ namespace gr {
     		delete cBuffer;
     }
 
+    /*
+     * *********************************************
+     * 			TestCPU
+     * *********************************************
+     */
     int clQuadratureDemod_impl::testCPU(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
@@ -191,7 +217,7 @@ namespace gr {
         std::vector<gr_complex> tmp(noutput_items);
         volk_32fc_x2_multiply_conjugate_32fc(&tmp[0], &in[1], &in[0], noutput_items);
         for(int i = 0; i < noutput_items; i++) {
-          out[i] = d_gain * gr::clenabled::fast_atan2f(imag(tmp[i]), real(tmp[i]));
+          out[i] = f_gain * gr::clenabled::fast_atan2f(imag(tmp[i]), real(tmp[i]));
         }
 
         return noutput_items;
@@ -247,6 +273,13 @@ namespace gr {
     // the host
 
 	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,noutput_items*sizeof(float),(void *)output_items[0]);
+/*
+	gr_complex *in = (gr_complex*)input_items[0];
+	float *out = (float*)output_items[0];
+	for (int i=0;i<noutput_items;i++)
+		if (in[i].real() != 0.0 || in[i].imag() != 0.0)
+			printf("[%f %fj -> %f]\n",in[i].real(),in[i].imag(),out[i]);
+*/
 
       // Tell runtime system how many output items we produced.
       return noutput_items;
@@ -260,6 +293,7 @@ namespace gr {
                        gr_vector_void_star &output_items)
     {
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
+        // int retVal = testCPU(noutput_items,ninput_items,input_items,output_items);
 
       consume_each (noutput_items);
 

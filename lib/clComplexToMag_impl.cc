@@ -145,7 +145,7 @@ namespace gr {
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float aval = a[index].imag;\n";
     	srcStdStr += "    float bval = a[index].real;\n";
-    	srcStdStr += "    c[index] = sqrt(aval*aval+bval*bval);\n";
+    	srcStdStr += "    c[index] = sqrt((aval*aval)+(bval*bval));\n";
     	srcStdStr += "}\n";
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());

@@ -305,10 +305,16 @@ namespace gr {
         	case MATHOP_COMPLEX_CONJUGATE:
                 numParams = 1;
 
-                if (useConst)
-                	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
-                else
-                	srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
+            	srcStdStr = "struct ComplexStruct {\n";
+            	srcStdStr += "float real;\n";
+            	srcStdStr += "float imag; };\n";
+            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+            	fnName = "op_complex";
+            	if (useConst)
+            		srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+            	else
+            		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
 
             	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    c[index].real = a[index].real;\n";
@@ -317,22 +323,26 @@ namespace gr {
         	break;
 
         	case MATHOP_MULTIPLY_CONJUGATE:
-                numParams = 1;
-                if (useConst)
-                	srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
-                else
-                	srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
+                numParams = 2;
+            	fnName = "op_complex";
 
-            	srcStdStr += "    size_t index =  get_global_id(0);\n";
-            	srcStdStr += "    c[index].real = a[index].real;\n";
-            	srcStdStr += "    c[index].imag = -1.0 * a[index].imag;\n";
+            	srcStdStr = "struct ComplexStruct {\n";
+            	srcStdStr += "float real;\n";
+            	srcStdStr += "float imag; };\n";
+            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+            	if (useConst)
+            		srcStdStr += "__kernel void op_complex(__constant SComplex * a, __constant SComplex * b, __global SComplex * restrict c) {\n";
+            	else
+            		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict b, __global SComplex * restrict c) {\n";
+
             	srcStdStr += "    float a_r=a[index].real;\n";
             	srcStdStr += "    float a_i=a[index].imag;\n";
-            	srcStdStr += "    float b_r=a[index].real;\n";
-            	srcStdStr += "    float b_i=-1.0 * a[index].imag;\n";
+            	srcStdStr += "    float b_r=b[index].real;\n";
+            	srcStdStr += "    float b_i=-1.0 * b[index].imag;\n";
             	srcStdStr += "    c[index].real = a_r * b_r - (a_i*b_i);\n";
             	srcStdStr += "    c[index].imag = a_r * b_i + a_i * b_r;\n";
-            	numConstParams = 1;
+            	numConstParams = 2;
         	break;
         	}
         	srcStdStr += "}\n";

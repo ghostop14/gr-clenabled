@@ -33,7 +33,7 @@ namespace gr {
     {
      private:
         bool d_updated;
-        bool USE_TIME_DOMAIN=true;
+        bool USE_TIME_DOMAIN=false;
 
         std::vector<float> d_new_taps;
 

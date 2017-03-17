@@ -201,43 +201,6 @@ namespace gr {
 
         	// MATHOP_EMPTY will just fall through
 
-        	case MATHOP_LOG:
-                numParams = 1;
-        		// restart function... only have 1 param
-            	if (useConst)
-                	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
-            	else
-                	srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict c) {\n";
-
-            	srcStdStr += "    size_t index =  get_global_id(0);\n";
-            	srcStdStr += "    c[index] = log(a[index]);\n";
-            	numConstParams = 1;
-        	break;
-
-        	case MATHOP_LOG10:
-                numParams = 1;
-
-        		// restart function... only have 1 param
-            	if (useConst)
-                	srcStdStr = "__kernel void op_float(__constant float * a, __global float * restrict c) {\n";
-            	else
-                	srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict c) {\n";
-
-            	srcStdStr += "    size_t index =  get_global_id(0);\n";
-            	srcStdStr += "    c[index] = log10(a[index]);\n";
-            	numConstParams = 1;
-        	break;
-
-        	case MATHOP_SNR_HELPER:
-            	if (useConst)
-            		srcStdStr = "__kernel void op_float(__constant float * a, __constant float * b, __global float * restrict c) {\n";
-            	else
-            		srcStdStr = "__kernel void op_float(__global float * restrict a, __global float * restrict b, __global float * restrict c) {\n";
-
-            	srcStdStr += "    size_t index =  get_global_id(0);\n";
-            	srcStdStr += "    float tmpVal =  a[index] / b[index];\n";
-            	srcStdStr += "    c[index] = abs(log10(tmpVal));\n";
-        	break;
         	}
         	srcStdStr += "}\n";
         break;
@@ -302,26 +265,6 @@ namespace gr {
             	srcStdStr += "    c[index].imag = a[index].imag - b[index].imag;\n";
         	break;
 
-        	case MATHOP_COMPLEX_CONJUGATE:
-                numParams = 1;
-
-            	srcStdStr = "struct ComplexStruct {\n";
-            	srcStdStr += "float real;\n";
-            	srcStdStr += "float imag; };\n";
-            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
-
-            	fnName = "op_complex";
-            	if (useConst)
-            		srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
-            	else
-            		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
-
-            	srcStdStr += "    size_t index =  get_global_id(0);\n";
-            	srcStdStr += "    c[index].real = a[index].real;\n";
-            	srcStdStr += "    c[index].imag = -1.0 * a[index].imag;\n";
-            	numConstParams = 1;
-        	break;
-
         	case MATHOP_MULTIPLY_CONJUGATE:
                 numParams = 2;
             	fnName = "op_complex";
@@ -336,12 +279,13 @@ namespace gr {
             	else
             		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict b, __global SComplex * restrict c) {\n";
 
+            	srcStdStr += "    size_t index =  get_global_id(0);\n";
             	srcStdStr += "    float a_r=a[index].real;\n";
             	srcStdStr += "    float a_i=a[index].imag;\n";
             	srcStdStr += "    float b_r=b[index].real;\n";
             	srcStdStr += "    float b_i=-1.0 * b[index].imag;\n";
-            	srcStdStr += "    c[index].real = a_r * b_r - (a_i*b_i);\n";
-            	srcStdStr += "    c[index].imag = a_r * b_i + a_i * b_r;\n";
+            	srcStdStr += "    c[index].real = (a_r * b_r) - (a_i*b_i);\n";
+            	srcStdStr += "    c[index].imag = (a_r * b_i) + (a_i * b_r);\n";
             	numConstParams = 2;
         	break;
         	}

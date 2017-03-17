@@ -148,7 +148,7 @@ namespace gr {
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float aval = a[index].imag;\n";
     	srcStdStr += "    float bval = a[index].real;\n";
-    	srcStdStr += "    b[index] = sqrt(aval*aval+bval*bval);\n";
+    	srcStdStr += "    b[index] = sqrt((aval*aval)+(bval*bval));\n";
     	srcStdStr += "    c[index] = atan2(aval,bval);\n";
     	srcStdStr += "}\n";
 

@@ -33,7 +33,7 @@ namespace gr {
      private:
       // Nothing to declare in this block.
 
-    	float d_gain;
+    	float f_gain;
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;

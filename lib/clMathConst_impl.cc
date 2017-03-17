@@ -223,6 +223,24 @@ namespace gr {
 			srcStdStr += "    c[index].real = a[index].real - multiplier;\n";
 			srcStdStr += "    c[index].imag = a[index].imag - multiplier;\n";
 			break;
+
+        	case MATHOP_COMPLEX_CONJUGATE:
+            	srcStdStr = "struct ComplexStruct {\n";
+            	srcStdStr += "float real;\n";
+            	srcStdStr += "float imag; };\n";
+            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+            	fnName = "op_complex";
+            	if (useConst)
+            		srcStdStr += "__kernel void op_complex(__constant SComplex * a, __global SComplex * restrict c) {\n";
+            	else
+            		srcStdStr += "__kernel void op_complex(__global SComplex * restrict a, __global SComplex * restrict c) {\n";
+
+            	srcStdStr += "    size_t index =  get_global_id(0);\n";
+            	srcStdStr += "    c[index].real = a[index].real;\n";
+            	srcStdStr += "    c[index].imag = -1.0 * a[index].imag;\n";
+        	break;
+
 			}
 			srcStdStr += "}\n";
 		break;
@@ -330,8 +348,13 @@ namespace gr {
 
         kernel->setArg(0, *aBuffer);
 
-        kernel->setArg(1, value);
-        kernel->setArg(2, *cBuffer);
+        if (mathOperatorType == MATHOP_COMPLEX_CONJUGATE) {
+            kernel->setArg(1, *cBuffer);
+        }
+        else {
+            kernel->setArg(1, value);
+            kernel->setArg(2, *cBuffer);
+        }
 
         cl::NDRange localWGSize=cl::NullRange;
         // localWGSize = cl::NDRange(preferredWorkGroupSizeMultiple);

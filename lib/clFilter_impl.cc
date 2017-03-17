@@ -117,6 +117,8 @@ namespace gr {
      */
     clFilter_impl::~clFilter_impl()
     {
+    	std::cout << "Filter calling destructor." << std::endl;
+
 		if (dataType==DTYPE_FLOAT) {
 			if (transformedTaps_float)
 				delete[] transformedTaps_float;
@@ -145,6 +147,9 @@ namespace gr {
            /* Release clFFT library. */
 
             try {
+            	if (debugMode) {
+            		std::cout << "Filter calling clfftTeardown()" << std::endl;
+            	}
             	clfftTeardown( );
             }
             catch(...) {

@@ -160,8 +160,6 @@ namespace gr {
     }
 
     bool clFFT_impl::stop() {
-    	std::cout << "Calling Stop." << std::endl;
-
     	curBufferSize = 0;
         /* Release the plan. */
     	int err;

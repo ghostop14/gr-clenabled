@@ -46,6 +46,7 @@ namespace gr {
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 		int inputSize=0;
+		void *windowBuffer=NULL;
 
 		// clFFT
 		clfftPlanHandle planHandle;
@@ -67,7 +68,7 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items);
 
-      clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
+      clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &window,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
       virtual ~clFFT_impl();
 
       virtual bool stop();

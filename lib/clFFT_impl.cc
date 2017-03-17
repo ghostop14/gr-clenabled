@@ -32,7 +32,7 @@ namespace gr {
   namespace clenabled {
 
     clFFT::sptr
-    clFFT::make(int fftSize, int clFFTDir,int idataType, int openCLPlatformType,int devSelector,int platformId, int devId,int setDebug)
+    clFFT::make(int fftSize, int clFFTDir,const std::vector<float> &window, int idataType, int openCLPlatformType,int devSelector,int platformId, int devId,int setDebug)
     {
         int dsize=sizeof(float);
 
@@ -50,26 +50,25 @@ namespace gr {
 
       if (setDebug == 1) {
 		  return gnuradio::get_initial_sptr
-			(new clFFT_impl(fftSize, clFFTDir,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,true));
+			(new clFFT_impl(fftSize, clFFTDir,window,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,true));
       }
       else {
           return gnuradio::get_initial_sptr
-            (new clFFT_impl(fftSize, clFFTDir,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,false));
+            (new clFFT_impl(fftSize, clFFTDir,window,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,false));
       }
     }
 
     /*
      * The private constructor
      */
-    clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
+    clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &window,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
       : gr::sync_block("clFFT",
               gr::io_signature::make(1, 1, fftSize*dSize),
               gr::io_signature::make(1, 1, fftSize*dSize)),
 	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug),
-			  d_fft_size(fftSize), d_forward(true), d_shift(false)
+			  d_fft_size(fftSize), d_forward(true), d_shift(false),d_window(window)
     {
         d_fft = new fft_complex(d_fft_size, d_forward, 1);
-        d_window=gr::clenabled::window::blackmanharris(fftSize);
 
     	// Move type to enum var
     	if (clFFTDir == CLFFT_FORWARD)
@@ -121,6 +120,24 @@ namespace gr {
         curBufferSize=numItems;
     	inputSize = curBufferSize*dataSize; // curBufferSize will be fftSize
 
+    	if (windowBuffer) {
+        	if (dataType==DTYPE_COMPLEX) {
+        		delete[] (gr_complex *)windowBuffer;
+        	}
+        	else {
+        		delete[] (float *)windowBuffer;
+        	}
+
+    	}
+
+    	if (dataType==DTYPE_COMPLEX) {
+    		windowBuffer = (void *)new gr_complex[curBufferSize];
+    	}
+    	else {
+    		windowBuffer = (void* )new float[curBufferSize];
+    	}
+
+
     	aBuffer = new cl::Buffer(
             *context,
             CL_MEM_READ_ONLY,  // this has to be read/write of the clFFT enqueue transform call crashes.
@@ -148,6 +165,18 @@ namespace gr {
     	curBufferSize = 0;
         /* Release the plan. */
     	int err;
+
+
+    	if (windowBuffer) {
+        	if (dataType==DTYPE_COMPLEX) {
+        		delete[] (gr_complex *)windowBuffer;
+        	}
+        	else {
+        		delete[] (float *)windowBuffer;
+        	}
+
+        	windowBuffer = NULL;
+    	}
 
         err = clfftDestroyPlan( &planHandle );
        /* Release clFFT library. */
@@ -308,6 +337,7 @@ namespace gr {
 		// only taking FFT size items
 
         int count = 0;
+        int i;
         int err;
         const gr_complex *in_complex = (const gr_complex *) input_items[0];
         gr_complex *out_complex = (gr_complex *) output_items[0];
@@ -315,13 +345,34 @@ namespace gr {
         float *out_float = (float *) output_items[0];
 
         while(count < noutput_items) {
-            // Load the data
-        	if (dataType==DTYPE_COMPLEX) {
-                queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_complex[count]);
-        	}
-        	else {
-                queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_float[count]);
-        	}
+            // Apply the window if there is one, otherwise just copy to the buffer.
+        	// This is the same logic as in the native FFT class, rather than making 2 GPU calls,
+        	// These single multiply ops are faster on the CPU.
+            if(d_window.size()) {
+            	if (dataType==DTYPE_COMPLEX) {
+            		volk_32fc_32f_multiply_32fc((gr_complex *)windowBuffer, &in_complex[count], &d_window[0], d_fft_size);
+            	}
+            	else {
+            		float *outBuff;
+            		const float *inBuff;
+            		inBuff=&in_float[count];
+            		outBuff=(float *)windowBuffer;
+
+            		for (i=0;i<d_fft_size;i++) {
+            			outBuff[i] = inBuff[i] * d_window[i];
+            		}
+            	}
+                queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)windowBuffer);
+            }
+            else {
+            	// No window, just copy the data
+            	if (dataType==DTYPE_COMPLEX) {
+                    queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_complex[count]);
+            	}
+            	else {
+                    queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,(void *)&in_float[count]);
+            	}
+            }
 
             // Execute the plan.
            	err = clfftEnqueueTransform(planHandle, fftDir, 1, &((*queue)()), 0, NULL, NULL, &((*aBuffer)()), &((*cBuffer)()), NULL);

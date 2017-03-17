@@ -52,6 +52,7 @@
 #include "clComplexToMagPhase_impl.h"
 #include "clComplexToArg_impl.h"
 #include "clMagPhaseToComplex_impl.h"
+#include "window.h"
 
 bool verbose=false;
 int largeBlockSize=8192;
@@ -622,7 +623,7 @@ bool testFFT(bool runReverse) {
 
 	gr::clenabled::clFFT_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
+		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -738,7 +739,7 @@ bool testFFT(bool runReverse) {
 
 	std::cout << "Testing Reverse FFT" << std::endl;
 	delete test;
-	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
+	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 
 	inputItems.clear();
 

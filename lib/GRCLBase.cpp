@@ -328,11 +328,12 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 		program->build(devices);
 
 		kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
-
+/*
 		if (debugMode) {
 			std::cout << "Using kernel function " << kernelFunctionName << ":" << std::endl;
 			std::cout << kernelCode << std::endl;
 		}
+*/
 	}
 	catch(cl::Error& e) {
 		std::cout << "OpenCL Error compiling kernel for " << kernelFunctionName << std::endl;
@@ -409,8 +410,12 @@ void GRCLBase::cleanup() {
 }
 
 GRCLBase::~GRCLBase() {
-	// TODO Auto-generated destructor stub
+}
+
+bool GRCLBase::stop() {
 	cleanup();
+
+	return true;
 }
 
 } /* namespace clenabled */

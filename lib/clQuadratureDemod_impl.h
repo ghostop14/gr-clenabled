@@ -42,7 +42,8 @@ namespace gr {
 
      public:
       clQuadratureDemod_impl(float gain, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
-      ~clQuadratureDemod_impl();
+      virtual ~clQuadratureDemod_impl();
+      virtual bool stop();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

@@ -276,14 +276,24 @@ namespace gr {
      */
     clMathConst_impl::~clMathConst_impl()
     {
-    	if (aBuffer)
+    	if (curBufferSize > 0)
+    		stop();
+    }
+
+    bool clMathConst_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
 
-    	// Called in grclbase destructor
-    	// cleanup();
+    	return GRCLBase::stop();
     }
 
     void

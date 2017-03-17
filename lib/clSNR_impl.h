@@ -46,7 +46,8 @@ namespace gr {
 
      public:
       clSNR_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug=false);
-      ~clSNR_impl();
+      virtual ~clSNR_impl();
+      virtual bool stop();
 
       void setBufferLength(int numItems);
 

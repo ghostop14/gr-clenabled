@@ -194,12 +194,26 @@ namespace gr {
      */
     clQuadratureDemod_impl::~clQuadratureDemod_impl()
     {
-    	if (aBuffer)
-    		delete aBuffer;
-
-    	if (cBuffer)
-    		delete cBuffer;
+    	if (curBufferSize > 0)
+    		stop();
     }
+
+    bool clQuadratureDemod_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
+    		delete aBuffer;
+    		aBuffer = NULL;
+    	}
+
+    	if (cBuffer) {
+    		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	return GRCLBase::stop();
+    }
+
 
     /*
      * *********************************************

@@ -83,15 +83,31 @@ namespace gr {
      */
     clComplexToMagPhase_impl::~clComplexToMagPhase_impl()
     {
-    	if (aBuffer)
-    		delete aBuffer;
-
-    	if (bBuffer)
-    		delete bBuffer;
-
-    	if (cBuffer)
-    		delete cBuffer;
+    	if (curBufferSize > 0)
+    		stop();
     }
+
+    bool clComplexToMagPhase_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
+    		delete aBuffer;
+    		aBuffer = NULL;
+    	}
+
+    	if (bBuffer) {
+    		delete bBuffer;
+    		bBuffer = NULL;
+    	}
+
+    	if (cBuffer) {
+    		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	return GRCLBase::stop();
+    }
+
 
     void clComplexToMagPhase_impl::buildKernel(int numItems) {
     	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));

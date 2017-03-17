@@ -40,7 +40,8 @@ namespace gr {
 
      public:
       clComplexToMagPhase_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
-      ~clComplexToMagPhase_impl();
+      virtual ~clComplexToMagPhase_impl();
+      virtual bool stop();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

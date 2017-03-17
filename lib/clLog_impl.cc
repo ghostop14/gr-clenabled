@@ -189,12 +189,26 @@ namespace gr {
      */
     clLog_impl::~clLog_impl()
     {
-    	if (aBuffer)
-    		delete aBuffer;
-
-    	if (cBuffer)
-    		delete cBuffer;
+    	if (curBufferSize > 0)
+    		stop();
     }
+
+    bool clLog_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
+    		delete aBuffer;
+    		aBuffer = NULL;
+    	}
+
+    	if (cBuffer) {
+    		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	return GRCLBase::stop();
+    }
+
 
     void
     clLog_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)

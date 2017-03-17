@@ -677,12 +677,12 @@ bool testFFT(bool runReverse) {
 	int noutputitems;
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(fftDataSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(fftDataSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -712,11 +712,11 @@ bool testFFT(bool runReverse) {
 
 	int j;
 
-	noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testCPU(fftDataSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
-		noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fftDataSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -759,12 +759,12 @@ bool testFFT(bool runReverse) {
 	outputPointers.push_back((void *)&outputItems[0]);
 
 	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(fftDataSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(fftDataSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(fftDataSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -797,11 +797,11 @@ bool testFFT(bool runReverse) {
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
     << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
 
-	noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test->testCPU(fftDataSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	for (j=0;j<iterations;j++) {
-		noutputitems = test->testCPU(fftDataSize,ninitems,inputPointers,outputPointers);
+		noutputitems = test->testCPU(fftDataSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 

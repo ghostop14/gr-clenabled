@@ -39,7 +39,8 @@ namespace gr {
 
      public:
       clComplexToArg_impl(int openCLPlatformType, int devSelector,int platformId, int devId,bool setDebug=false);
-      ~clComplexToArg_impl();
+      virtual ~clComplexToArg_impl();
+      virtual bool stop();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

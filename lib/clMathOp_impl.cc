@@ -348,17 +348,29 @@ namespace gr {
      */
     clMathOp_impl::~clMathOp_impl()
     {
-    	if (aBuffer)
+    	if (curBufferSize > 0)
+    		stop();
+    }
+
+    bool clMathOp_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (bBuffer)
+    	if (bBuffer) {
     		delete bBuffer;
+    		bBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
 
-    	// Called in grclbase destructor
-    	// cleanup();
+    	return GRCLBase::stop();
     }
 
     void

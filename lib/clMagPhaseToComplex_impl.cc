@@ -81,14 +81,29 @@ namespace gr {
      */
     clMagPhaseToComplex_impl::~clMagPhaseToComplex_impl()
     {
-    	if (aBuffer)
+    	if (curBufferSize > 0)
+    		stop();
+    }
+
+    bool clMagPhaseToComplex_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (bBuffer)
+    	if (bBuffer) {
     		delete bBuffer;
+    		bBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	return GRCLBase::stop();
     }
 
     void clMagPhaseToComplex_impl::buildKernel(int numItems) {

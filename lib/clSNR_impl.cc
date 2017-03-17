@@ -178,15 +178,29 @@ namespace gr {
      */
     clSNR_impl::~clSNR_impl()
     {
-    	if (aBuffer)
+    	if (curBufferSize > 0)
+    		stop();
+    }
+
+    bool clSNR_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (bBuffer)
+    	if (bBuffer) {
     		delete bBuffer;
+    		bBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
 
+    	return GRCLBase::stop();
     }
 
     void

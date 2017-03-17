@@ -93,6 +93,7 @@ public:
 	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false); // selects First of specified type
 	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
 	virtual ~GRCLBase();
+    virtual bool stop();
 
     cl_device_type GetContextType();
 

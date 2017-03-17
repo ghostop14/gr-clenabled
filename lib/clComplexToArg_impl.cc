@@ -78,11 +78,24 @@ namespace gr {
 }
     clComplexToArg_impl::~clComplexToArg_impl()
     {
-    	if (aBuffer)
-    		delete aBuffer;
+    	if (curBufferSize > 0)
+    		stop();
+    }
 
-    	if (cBuffer)
+    bool clComplexToArg_impl::stop() {
+    	curBufferSize = 0;
+
+    	if (aBuffer) {
+    		delete aBuffer;
+    		aBuffer = NULL;
+    	}
+
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
+
+    	return GRCLBase::stop();
     }
 
     void clComplexToArg_impl::buildKernel(int numItems) {

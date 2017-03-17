@@ -44,7 +44,9 @@ namespace gr {
 
      public:
       clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,float fValue,int operatorType, bool setDebug=false);
-      ~clMathConst_impl();
+      virtual ~clMathConst_impl();
+
+      virtual bool stop();
 
       void setup_rpc();
 

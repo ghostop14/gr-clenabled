@@ -117,27 +117,45 @@ namespace gr {
      */
     clFilter_impl::~clFilter_impl()
     {
-    	std::cout << "Filter calling destructor." << std::endl;
+    	if (curBufferSize > 0)
+    		stop();
+    }
 
+    bool clFilter_impl::stop()
+    {
 		if (dataType==DTYPE_FLOAT) {
-			if (transformedTaps_float)
+			if (transformedTaps_float) {
 				delete[] transformedTaps_float;
+				transformedTaps_float = NULL;
+			}
 		}
 
-    	if (aBuffer)
+		curBufferSize = 0;
+
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (bBuffer)
+    	if (bBuffer) {
     		delete bBuffer;
+    		bBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
 
-    	if (zeroBuff)
+    	if (zeroBuff) {
     		delete[] zeroBuff;
+    		zeroBuff = NULL;
+    	}
 
-    	if (tmpFFTBuff)
+    	if (tmpFFTBuff) {
     		delete[] tmpFFTBuff;
+    		tmpFFTBuff = NULL;
+    	}
 
     	if (!USE_TIME_DOMAIN) {
             /* Release the plan. */
@@ -158,12 +176,16 @@ namespace gr {
             if (ifftBuff) {
 				if (dataType == DTYPE_COMPLEX) {
 					delete[] (gr_complex *)ifftBuff;
+					ifftBuff = NULL;
 				}
 				else {
 					delete [] (float *)ifftBuff;
+					ifftBuff = NULL;
 				}
             }
     	}
+
+    	return GRCLBase::stop();
     }
 
     void clFilter_impl::setFilterVariables(int ninput_items) {

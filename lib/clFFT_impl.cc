@@ -50,11 +50,11 @@ namespace gr {
 
       if (setDebug == 1) {
 		  return gnuradio::get_initial_sptr
-			(new clFFT_impl(fftSize, clFFTDir,dsize,openCLPlatformType,devSelector,platformId,devId,true));
+			(new clFFT_impl(fftSize, clFFTDir,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,true));
       }
       else {
           return gnuradio::get_initial_sptr
-            (new clFFT_impl(fftSize, clFFTDir,dsize,openCLPlatformType,devSelector,platformId,devId,false));
+            (new clFFT_impl(fftSize, clFFTDir,idataType,dsize,openCLPlatformType,devSelector,platformId,devId,false));
       }
     }
 
@@ -62,9 +62,9 @@ namespace gr {
      * The private constructor
      */
     clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
-      : gr::block("clFFT",
-              gr::io_signature::make(1, 1, dSize),
-              gr::io_signature::make(1, 1, dSize)),
+      : gr::sync_block("clFFT",
+              gr::io_signature::make(1, 1, fftSize*dSize),
+              gr::io_signature::make(1, 1, fftSize*dSize)),
 	  	  	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug),
 			  d_fft_size(fftSize), d_forward(true), d_shift(false)
     {
@@ -138,6 +138,14 @@ namespace gr {
      */
     clFFT_impl::~clFFT_impl()
     {
+    	if (curBufferSize > 0)
+    		stop();
+    }
+
+    bool clFFT_impl::stop() {
+    	std::cout << "Calling Stop." << std::endl;
+
+    	curBufferSize = 0;
         /* Release the plan. */
     	int err;
 
@@ -145,13 +153,20 @@ namespace gr {
        /* Release clFFT library. */
         clfftTeardown( );
 
-    	if (aBuffer)
+    	if (aBuffer) {
     		delete aBuffer;
+    		aBuffer = NULL;
+    	}
 
-    	if (cBuffer)
+    	if (cBuffer) {
     		delete cBuffer;
+    		cBuffer = NULL;
+    	}
 
     	delete d_fft;
+    	d_fft = NULL;
+
+    	return GRCLBase::stop();
     }
 
     void
@@ -161,7 +176,6 @@ namespace gr {
     }
 
     int clFFT_impl::testCPU(int noutput_items,
-            gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     	{
@@ -279,14 +293,12 @@ namespace gr {
 */
 
     int clFFT_impl::testOpenCL(int noutput_items,
-            gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
-    	return processOpenCL(noutput_items,ninput_items,input_items, output_items);
+    	return processOpenCL(noutput_items,input_items, output_items);
     }
 
     int clFFT_impl::processOpenCL(int noutput_items,
-            gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     {
@@ -332,22 +344,19 @@ namespace gr {
 
 
     int
-    clFFT_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
-                       gr_vector_const_void_star &input_items,
-                       gr_vector_void_star &output_items)
+    clFFT_impl::work(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items)
     {
       // for vectors coming in, noutput_items will be the number of vectors.
       // So for the calculation we need to multiply # of vectors * fft_size to get the # of data points
 
       int inputSize = noutput_items * d_fft_size;
 
-      int retVal = processOpenCL(inputSize,ninput_items,input_items,output_items);
-
-      consume_each (noutput_items);
+      int retVal = processOpenCL(inputSize,input_items,output_items);
 
       // Tell runtime system how many output items we produced.
-      return retVal;
+      return noutput_items;
     }
 
   } /* namespace clenabled */

@@ -45,7 +45,8 @@ namespace gr {
 
      public:
       clLog_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug=false);
-      ~clLog_impl();
+      virtual ~clLog_impl();
+      virtual bool stop();
 
 		void setBufferLength(int numItems);
 

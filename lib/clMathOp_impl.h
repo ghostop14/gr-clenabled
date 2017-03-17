@@ -50,7 +50,9 @@ namespace gr {
 
      public:
       clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType, bool setDebug=false);
-      ~clMathOp_impl();
+      virtual ~clMathOp_impl();
+
+      virtual bool stop();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

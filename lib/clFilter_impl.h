@@ -33,7 +33,7 @@ namespace gr {
     {
      private:
         bool d_updated;
-        bool USE_TIME_DOMAIN=false;
+        bool USE_TIME_DOMAIN=true;  // Time domain actually seems more efficient
 
         std::vector<float> d_new_taps;
 
@@ -99,6 +99,7 @@ namespace gr {
               const std::vector<float> &taps,
               int nthreads=1, bool setDebug=false,bool bUseTimeDomain=false);
       virtual ~clFilter_impl();
+      virtual bool stop();
 
       int testCPU(int noutput_items,
               gr_vector_const_void_star &input_items,

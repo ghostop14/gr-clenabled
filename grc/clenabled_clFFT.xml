@@ -2,11 +2,12 @@
   <name>OpenCL FFT</name>
   <key>clenabled_clFFT</key>
   <category>[OpenCL-Enabled]</category>
+  <import>from gnuradio.fft import window</import>
   <import>import clenabled</import>
     <make>#if $devices == 1
-	clenabled.clFFT($fft_size, $fft_dir, $type.datatype,$openCLPlatform,1,0,0,$setDebug)
+	clenabled.clFFT($fft_size, $fft_dir, $window,$type.datatype,$openCLPlatform,1,0,0,$setDebug)
 	#else
-	clenabled.clFFT($fft_size, $fft_dir, $type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$setDebug)
+	clenabled.clFFT($fft_size, $fft_dir, $window,$type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$setDebug)
 	#end if</make>
 	<param>
 		<name>Data Type</name>
@@ -132,6 +133,12 @@
 			<name>Reverse</name>
 			<key>1</key>
 		</option>
+	</param>
+	<param>
+		<name>Window</name>
+		<key>window</key>
+		<value>window.blackmanharris(1024)</value>
+		<type>real_vector</type>
 	</param>
 	<param>
 		<name>FFT Size</name>

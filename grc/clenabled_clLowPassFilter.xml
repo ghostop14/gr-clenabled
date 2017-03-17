@@ -6,10 +6,10 @@
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
   clenabled.clFilter($openCLPlatform,1,0,0,$decimation,firdes.low_pass(
-	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1)
+	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug)
 	#else
   clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,firdes.low_pass(
-	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1)
+	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug)
 	#end if
 	</make>
 	

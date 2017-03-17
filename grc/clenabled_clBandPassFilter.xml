@@ -6,10 +6,10 @@
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
   clenabled.clFilter($openCLPlatform,1,0,0,$decimation,firdes.complex_band_pass(
-	$gain, $samp_rate, $low_cutoff_freq, $high_cutoff_freq, $width, $win, $beta),1)
+	$gain, $samp_rate, $low_cutoff_freq, $high_cutoff_freq, $width, $win, $beta),1,$setDebug)
 	#else
   clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,firdes.complex_band_pass(
-	$gain, $samp_rate, $low_cutoff_freq, $high_cutoff_freq, $width, $win, $beta),1)
+	$gain, $samp_rate, $low_cutoff_freq, $high_cutoff_freq, $width, $win, $beta),1,$setDebug)
 	#end if
 	</make>
 	<callback>set_taps2(clenabled.firdes.complex_band_pass($gain, $samp_rate, $low_cutoff_freq, $high_cutoff_freq, $width, $win, $beta))</callback>

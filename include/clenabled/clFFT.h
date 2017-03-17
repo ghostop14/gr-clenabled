@@ -51,7 +51,7 @@ namespace gr {
        */
 
       // Default to ANY OpenCL device.
-      static sptr make(int fftSize, int clFFTDir,int idataType, int devSelector,int platformId, int devId,int openCLPlatformType=4,int setDebug=0);
+      static sptr make(int fftSize, int clFFTDir,const std::vector<float> &window,int idataType, int devSelector,int platformId, int devId,int openCLPlatformType=4,int setDebug=0);
     };
 
   } // namespace clenabled

@@ -57,6 +57,8 @@ namespace gr {
   	 * \brief Set number of threads to use.
   	 */
   	virtual void set_nthreads(int n)=0;
+
+  	virtual ~clFilter() { }
     };
 
   } // namespace clenabled

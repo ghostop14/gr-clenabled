@@ -23,7 +23,7 @@
 #define INCLUDED_CLENABLED_CLFFT_H
 
 #include <clenabled/api.h>
-#include <gnuradio/block.h>
+#include <gnuradio/sync_block.h>
 
 #define CLFFT_FWD 1
 #define CLFFT_REV 2
@@ -36,7 +36,7 @@ namespace gr {
      * \ingroup clenabled
      *
      */
-    class CLENABLED_API clFFT : virtual public gr::block
+    class CLENABLED_API clFFT : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<clFFT> sptr;

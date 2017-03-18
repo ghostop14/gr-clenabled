@@ -58,7 +58,12 @@ namespace gr {
 			prevTaps = d_ntaps;
         	d_nsamples = set_taps(d_new_taps);
 			d_updated = false;
+			try {
 			set_output_multiple(d_nsamples);
+			}
+			catch (...) {
+
+			}
 			setFilterVariables(ninput_items);
 			prevInputLength = ninput_items;
         }
@@ -88,7 +93,11 @@ namespace gr {
 			  d_updated(false)
     {
         set_history(1);
+        try {
         set_output_multiple(d_nsamples);
+        }
+        catch (...) {
+        }
 
     	USE_TIME_DOMAIN = bUseTimeDomain;
     	prevTaps = d_ntaps;

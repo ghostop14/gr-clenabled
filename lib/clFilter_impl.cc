@@ -183,9 +183,6 @@ namespace gr {
            /* Release clFFT library. */
 
             try {
-            	if (debugMode) {
-            		std::cout << "Filter calling clfftTeardown()" << std::endl;
-            	}
             	clfftTeardown( );
             }
             catch(...) {

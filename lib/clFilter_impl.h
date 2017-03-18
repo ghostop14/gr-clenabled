@@ -29,12 +29,13 @@
 namespace gr {
   namespace clenabled {
 
+  	const bool DEFAULT_USE_TIME_DOMAIN_SETTING=false;  // frequency domain is still faster.
+
     class clFilter_impl : public clFilter, public fft_filter_ccf, public GRCLBase
     {
      private:
         bool d_updated;
-        bool USE_TIME_DOMAIN=true;  // Time domain actually seems more efficient
-
+        bool USE_TIME_DOMAIN;
         std::vector<float> d_new_taps;
 
 
@@ -97,7 +98,7 @@ namespace gr {
      public:
     	clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation,
               const std::vector<float> &taps,
-              int nthreads=1, bool setDebug=false,bool bUseTimeDomain=false);
+              int nthreads=1, bool setDebug=false,bool bUseTimeDomain=DEFAULT_USE_TIME_DOMAIN_SETTING);
       virtual ~clFilter_impl();
       virtual bool stop();
 

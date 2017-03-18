@@ -98,6 +98,9 @@ namespace gr {
         else {
             err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_REAL);
         }
+
+    	clfftSetPlanScale(planHandle, CLFFT_BACKWARD, 1.0f); // By default the backward scale is set to 1/N so you have to set it here.
+
         //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
         err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
 
@@ -257,67 +260,6 @@ namespace gr {
 
         return noutput_items;
     	}
- /*
-    int clFFT_impl::testCPU(int noutput_items,
-            gr_vector_int &ninput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items)
-    	{
-        const gr_complex *in = (const gr_complex *) input_items[0];
-        gr_complex *out = (gr_complex *) output_items[0];
-
-        unsigned int input_data_size = input_signature()->sizeof_stream_item (0);
-        unsigned int output_data_size = output_signature()->sizeof_stream_item (0);
-
-        int count = 0;
-
-        while(count++ < noutput_items) {
-        // copy input into optimally aligned buffer
-        if(d_window.size()) {
-			  gr_complex *dst = d_fft->get_inbuf();
-			  if(!d_forward && d_shift) {
-				unsigned int offset = (!d_forward && d_shift)?(d_fft_size/2):0;
-				int fft_m_offset = d_fft_size - offset;
-				volk_32fc_32f_multiply_32fc(&dst[fft_m_offset], &in[count], &d_window[0], offset);
-				volk_32fc_32f_multiply_32fc(&dst[0], &in[count+offset], &d_window[offset], d_fft_size-offset);
-			  }
-			  else {
-					volk_32fc_32f_multiply_32fc(&dst[0], &in[count], &d_window[0], d_fft_size);
-			  }
-        }
-        else {
-			  if(!d_forward && d_shift) {  // apply an ifft shift on the data
-				gr_complex *dst = d_fft->get_inbuf();
-				unsigned int len = (unsigned int)(floor(d_fft_size/2.0)); // half length of complex array
-				memcpy(&dst[0], &in[len], sizeof(gr_complex)*(d_fft_size - len));
-				memcpy(&dst[d_fft_size - len], &in[count], sizeof(gr_complex)*len);
-			  }
-			  else {
-				memcpy(d_fft->get_inbuf(), &in[count], input_data_size);
-			  }
-        }  // if-else d_window.size();
-
-        // compute the fft
-        d_fft->execute();
-
-        // copy result to our output
-        if(d_forward && d_shift) {  // apply a fft shift on the data
-          unsigned int len = (unsigned int)(ceil(d_fft_size/2.0));
-          memcpy(&out[0], &d_fft->get_outbuf()[len], sizeof(gr_complex)*(d_fft_size - len));
-          memcpy(&out[d_fft_size - len], &d_fft->get_outbuf()[0], sizeof(gr_complex)*len);
-        }
-        else {
-           memcpy ((void *)&out[count], d_fft->get_outbuf (), output_data_size);
-        }
-
-//        in  += d_fft_size;
-//        out += d_fft_size;
-        count += d_fft_size;
-        }
-
-        return noutput_items;
-    }
-*/
 
     int clFFT_impl::testOpenCL(int noutput_items,
             gr_vector_const_void_star &input_items,
@@ -373,7 +315,9 @@ namespace gr {
             }
 
             // Execute the plan.
-           	err = clfftEnqueueTransform(planHandle, fftDir, 1, &((*queue)()), 0, NULL, NULL, &((*aBuffer)()), &((*cBuffer)()), NULL);
+
+            // https://community.amd.com/thread/160016  backward transform
+        	err = clfftEnqueueTransform(planHandle, fftDir, 1, &((*queue)()), 0, NULL, NULL, &((*aBuffer)()), &((*cBuffer)()), NULL);
             // Wait for calculations to be finished.
             err = clFinish((*queue)());
             // Fetch results of calculations.

@@ -24,6 +24,7 @@
 
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
+#include <volk/volk.h>
 
 namespace gr {
   namespace clenabled {
@@ -73,14 +74,22 @@ namespace gr {
     /*
      * The private constructor
      */
+
+
+    // NOTE: ONLY COMPLEX IS SUPPORTED BY THE XML GRC BLCOK RIGHT NOW.
+    // IF THIS GETS UPDATED TO SUPPORT FLOATS TOO, iDataSize would need to be set up like in MathOp
+
     clFilter_impl::clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation, const std::vector<float> &taps,int nthreads,bool setDebug,bool bUseTimeDomain)
-      : gr::sync_decimator("clLowPassFilter",
+      : gr::sync_decimator("clFilter",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  fft_filter_ccf(decimation, taps,nthreads),
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),
 			  d_updated(false)
     {
+        set_history(1);
+        set_output_multiple(d_nsamples);
+
     	USE_TIME_DOMAIN = bUseTimeDomain;
     	prevTaps = d_ntaps;
     	// Buffer sizes need to match up with blocks based on the number of taps...
@@ -106,7 +115,7 @@ namespace gr {
 			setFilterVariables(imaxItems);
     	}
     	else {
-			set_output_multiple(prevInputLength);
+//			set_output_multiple(prevInputLength);
 
 			setFilterVariables(prevInputLength);
     	}
@@ -344,6 +353,8 @@ namespace gr {
         	set_max_noutput_items(imaxItems);
     	}
     	else {
+    		// Frequency Domain
+
         	setBufferLength(ninput_items);
         	// Control how the scheduler feeds us data.
         	set_output_multiple(d_fftsize);
@@ -378,7 +389,9 @@ namespace gr {
             else {
                 err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_REAL);
             }
-            //err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source queue.  Not what we want.
+
+           	clfftSetPlanScale(planHandle, CLFFT_BACKWARD, 1.0f); // By default reverse plan scale is 1/N
+
             err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
 
             /* Bake the plan. */
@@ -631,6 +644,9 @@ clFilter_impl::filterGPU(int ninput_items,
     		// in GNURadio min input items and max items should be
     		// set to the same value to ensure consistency.
     		setFilterVariables(ninput_items);
+    		if (debugMode) {
+    			std::cout << "ninput_items > curBufferSize.  Adjusting buffer to match..." << std::endl;
+    		}
     	}
 
     	int inputBytes=ninput_items*dataSize;
@@ -699,138 +715,86 @@ clFilter_impl::filterGPU(int ninput_items,
 	clFilter_impl::filterGPUFrequencyDomain(int ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
+    	const gr_complex *input = (const gr_complex *) input_items[0];
+        gr_complex *output = (gr_complex *) output_items[0];
 
-	  gr_complex *output_complex = (gr_complex *) output_items[0];
-	  float *output_float = (float *) output_items[0];
+    	if (!d_fwdfft || !d_invfft)
+    		return 0;
 
     	int dec_ctr = 0;
     	int j = 0;
-    	int k;
-        int err;
+    	int err;
 
     	for(int i = 0; i < ninput_items; i += d_nsamples) {
+    	  // Move block of data to forward FFT buffer
+    	/*
+    	  memcpy(d_fwdfft->get_inbuf(), &input[i], d_nsamples * sizeof(gr_complex));
 
-    		// ------------ Forward FFT ---------------- //
+    	  // zero out any data past d_nsamples to fft_size
+    	  for(j = d_nsamples; j < d_fftsize; j++)
+    		d_fwdfft->get_inbuf()[j] = 0;
+    	  // Run the transform
+    	  d_fwdfft->execute();	// compute fwd xform
+    */
 
-    		// Move block of data to forward FFT buffer
-			  // memcpy(d_fwdfft->get_inbuf(), &input[i], d_nsamples * sizeof(gr_complex));
+    	  const gr_complex *in = (const gr_complex *) input_items[0];
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
+    	  err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
+    	  err = clFinish((*queue)());
 
-			  if (dataType == DTYPE_COMPLEX) {
-				  const gr_complex *in = (const gr_complex *) input_items[0];
-				  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
-			  }
-			  else {
-				  const float *in = (const float *) input_items[0];
-				  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
+    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
 
-			  }
+    	  // Get the fwd FFT data out
+    //	  gr_complex *a = d_fwdfft->get_outbuf();
+    	  gr_complex *a;
+    	  a=(gr_complex *)tmpFFTBuff;
 
-			  // zero out any data past d_nsamples to fft_size
-			  // for(j = d_nsamples; j < d_fftsize; j++)
-				// d_fwdfft->get_inbuf()[j] = 0;
-			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
+    	  gr_complex *b = d_xformed_taps;
 
+    	  // set up the inv FFT buffer to receive the complex multiplied data
+    //	  gr_complex *c = d_invfft->get_inbuf();
+    	  gr_complex *c;
+    	  c=(gr_complex *)ifftBuff;
 
-			  // Run the transform
-			  // d_fwdfft->execute();	// compute fwd xform
-			  // Execute the plan.
-				err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
+    	  // THIS Volk Function just does complex multiplication.  c[i]=a[i]*b[i] in the complex domain.
+    	  volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
 
-			  // Wait for calculations to be finished.
-			  err = clFinish((*queue)());
+    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fftsize*dataSize);
 
-	    		// ------------ Apply Filter ---------------- //
+    	  // Run the inverse FFT
+    	  //  d_invfft->execute();	// compute inv xform
 
-			  // and outputting FFTSize samples
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)ifftBuff);
+    	  err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
+    	  err = clFinish((*queue)());
+    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
 
-			  if (dataType==DTYPE_COMPLEX) {
-				  gr_complex *b = d_xformed_taps;
+      	  gr_complex *outdata;
+    	  outdata=(gr_complex *)tmpFFTBuff;
+      	  // outdata = (gr_complex *)d_invfft->get_outbuf();
 
-				  // Fetch results of calculations.
-				  // Get the fwd FFT data out
-		//    	  gr_complex *a = d_fwdfft->get_outbuf();
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
-				  // THIS Volk Function just does complex multiplication to apply the filter.  c[i]=a[i]*b[i] in the complex domain.
-				  // volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
+    	  // add in the overlapping tail
+    	  for(j = 0; j < tailsize(); j++)
+    		outdata[j] += d_tail[j];
 
-				  gr_complex *a = (gr_complex *)tmpFFTBuff;
+    	  // copy d_nsamples to output buffer and increment for decimation!
 
-				  for (k=0;k<d_fftsize;k++) {
-					  ((gr_complex *)ifftBuff)[k] = a[k] * b[k];
-				  }
-			  }
-			  else {
-				  float *a = (float *)tmpFFTBuff;
-				  // Fetch results of calculations.
-				  // Get the fwd FFT data out
-		//    	  gr_complex *a = d_fwdfft->get_outbuf();
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)tmpFFTBuff);
+    	  j = dec_ctr;
+    	  while(j < d_nsamples) {
+    		*output++ = outdata[j];
+    		j += decimation();
+    	  }
+    	  dec_ctr = (j - d_nsamples);
 
-				  float *b = transformedTaps_float;
+    	  // stash the tail
+    	  memcpy(&d_tail[0], outdata + d_nsamples,
+    		 tailsize() * sizeof(gr_complex));
+    	}
 
-				  for (k=0;k<d_fftsize;k++) {
-					  ((float *)ifftBuff)[k] = a[k] * b[k];
-				  }
-			  }
-
-	    		// ------------ Reverse FFT ---------------- //
-
-			  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fftsize*dataSize,(void *)ifftBuff);
-
-			  // Run the inverse FFT
-	//    	  d_invfft->execute();	// compute inv xform
-			err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
-
-
-			err = clFinish((*queue)());
-
-			j = dec_ctr;
-			if (dataType==DTYPE_COMPLEX) {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)tmpFFTBuff);
-
-				  gr_complex * a=(gr_complex *)tmpFFTBuff;
-
-				  // add in the overlapping tail
-				  for(j = 0; j < tailsize(); j++)
-					a[j] += d_tail[j];
-
-				  // copy d_nsamples to output buffer and increment for decimation!
-				  while(j < d_nsamples) {
-					*output_complex++ = a[j];
-					j += decimation();
-				  }
-
-				  dec_ctr = (j - d_nsamples);
-
-				  // stash the tail
-				  memcpy(&d_tail[0], a + d_nsamples,
-					 tailsize() * dataSize);
-			}
-			else {
-				  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)tmpFFTBuff);
-
-				  float * a=(float *)tmpFFTBuff;
-
-				  // add in the overlapping tail
-				  for(j = 0; j < tailsize(); j++)
-					a[j] += d_tail_float[j];
-
-				  // copy d_nsamples to output buffer and increment for decimation!
-				  while(j < d_nsamples) {
-					*output_float++ = a[j];
-					j += decimation();
-				  }
-				  dec_ctr = (j - d_nsamples);
-
-				  // stash the tail
-				  memcpy(&d_tail_float[0], a + d_nsamples,
-					 tailsize() * dataSize);
-			}
-
-    	}  // end for
-
-    	return ninput_items / decimation();  // expecting nitems which is ninput_items/decimation
+    	return ninput_items;
     }
+
 
     int clFilter_impl::testCPU(int noutput_items,
             gr_vector_const_void_star &input_items,
@@ -894,28 +858,23 @@ clFilter_impl::filterGPU(int ninput_items,
     {
     	int ninput_items = noutput_items * fft_filter_ccf::d_decimation;
         if (d_updated){
+        	// GNURadio filter code
         	// set_taps sets d_nsamples so changed this line.
         	d_nsamples = fft_filter_ccf::set_taps(d_new_taps);
 			d_updated = false;
 			set_output_multiple(d_nsamples);
-			setFilterVariables(noutput_items);
+
+			// Additions for our filter
+			setFilterVariables(ninput_items);
+
 			prevTaps = d_ntaps;
 			prevInputLength = ninput_items;
-        }
-        else {
-        	if (prevInputLength != noutput_items) {
-        		// input length changed from the previous cycle.
-        		// NOTE: THIS SHOULD BE AVOIDED AS TAIL DATA FROM THE PREVIOUS
-        		// CYCLE WILL BE LOST and a new kernel will be built which will take some time.
-        		setFilterVariables(noutput_items);
-    			prevTaps = d_ntaps;
-    			prevInputLength = ninput_items;
-        	}
-        }
 
+			return 0;
+        }
         // filterCPU(noutput_items, input_items,output_items);
 
-        filterGPU(noutput_items * fft_filter_ccf::d_decimation,input_items,output_items);
+        filterGPU(ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.
         return noutput_items;

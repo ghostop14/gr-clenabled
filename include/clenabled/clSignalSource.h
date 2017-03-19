@@ -19,8 +19,8 @@
  */
 
 
-#ifndef INCLUDED_CLENABLED_CLLOG_H
-#define INCLUDED_CLENABLED_CLLOG_H
+#ifndef INCLUDED_CLENABLED_CLSIGNALSOURCE_H
+#define INCLUDED_CLENABLED_CLSIGNALSOURCE_H
 
 #include <clenabled/api.h>
 #include <gnuradio/block.h>
@@ -33,24 +33,25 @@ namespace gr {
      * \ingroup clenabled
      *
      */
-    class CLENABLED_API clLog : virtual public gr::block
+    class CLENABLED_API clSignalSource : virtual public gr::block
     {
      public:
-      typedef boost::shared_ptr<clLog> sptr;
+      typedef boost::shared_ptr<clSignalSource> sptr;
 
       /*!
-       * \brief Return a shared_ptr to a new instance of clenabled::clLog.
+       * \brief Return a shared_ptr to a new instance of clenabled::clSignalSource.
        *
-       * To avoid accidental use of raw pointers, clenabled::clLog's
+       * To avoid accidental use of raw pointers, clenabled::clSignalSource's
        * constructor is in a private implementation
-       * class. clenabled::clLog::make is the public interface for
+       * class. clenabled::clSignalSource::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int openCLPlatformType, int devSelector,int platformId, int devId,float nValue,float kValue,int setDebug=0);
+      static sptr make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId,
+    		  float samp_rate,int waveform, float freq, float amplitude,int setDebug=0);
     };
 
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLLOG_H */
+#endif /* INCLUDED_CLENABLED_CLSIGNALSOURCE_H */
 

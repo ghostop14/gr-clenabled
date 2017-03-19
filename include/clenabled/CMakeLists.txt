@@ -32,5 +32,8 @@ install(FILES
     clComplexToArg.h
     clComplexToMagPhase.h
     clMagPhaseToComplex.h
-    clComplexToMag.h DESTINATION include/clenabled
+    clComplexToMag.h
+    clKernel1To1.h
+    clKernel2To1.h
+    clSignalSource.h DESTINATION include/clenabled
 )

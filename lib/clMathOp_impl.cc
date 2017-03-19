@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2017 <+YOU OR YOUR COMPANY+>.
+ * Copyright 2017 ghostop14.
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,29 +138,7 @@ namespace gr {
 
     void clMathOp_impl::buildKernel(int numItems) {
     	bool useConst;
-/*
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
 
-    	if (maxConstItems < imaxItems) {
-    		try {
-    			gr::block::set_max_noutput_items(maxConstItems);
-    		}
-    		catch(...) {
-
-    		}
-
-    		imaxItems = maxConstItems;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: Math Op adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: Math Op using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
-		}
-*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else
@@ -253,8 +231,8 @@ namespace gr {
             	srcStdStr += "    float a_i=a[index].imag;\n";
             	srcStdStr += "    float b_r=b[index].real;\n";
             	srcStdStr += "    float b_i=b[index].imag;\n";
-            	srcStdStr += "    c[index].real = a_r * b_r - (a_i*b_i);\n";
-            	srcStdStr += "    c[index].imag = a_r * b_i + a_i * b_r;\n";
+            	srcStdStr += "    c[index].real = (a_r * b_r) - (a_i*b_i);\n";
+            	srcStdStr += "    c[index].imag = (a_r * b_i) + (a_i * b_r);\n";
         	break;
         	case MATHOP_ADD:
             	srcStdStr += "    c[index].real = a[index].real + b[index].real;\n";
@@ -343,14 +321,6 @@ namespace gr {
 
         curBufferSize=numItems;
     }
-    /*
-     * Our virtual destructor.
-     */
-    clMathOp_impl::~clMathOp_impl()
-    {
-    	if (curBufferSize > 0)
-    		stop();
-    }
 
     bool clMathOp_impl::stop() {
     	curBufferSize = 0;
@@ -371,6 +341,15 @@ namespace gr {
     	}
 
     	return GRCLBase::stop();
+    }
+
+    /*
+     * Our virtual destructor.
+     */
+    clMathOp_impl::~clMathOp_impl()
+    {
+    	if (curBufferSize > 0)
+    		stop();
     }
 
     void

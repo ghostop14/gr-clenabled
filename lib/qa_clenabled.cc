@@ -37,6 +37,9 @@
 #include "qa_clComplexToMagPhase.h"
 #include "qa_clMagPhaseToComplex.h"
 #include "qa_clComplexToMag.h"
+#include "qa_clKernel1To1.h"
+#include "qa_clKernel2To1.h"
+#include "qa_clSignalSource.h"
 
 CppUnit::TestSuite *
 qa_clenabled::suite()
@@ -53,6 +56,9 @@ qa_clenabled::suite()
   s->addTest(gr::clenabled::qa_clComplexToMagPhase::suite());
   s->addTest(gr::clenabled::qa_clMagPhaseToComplex::suite());
   s->addTest(gr::clenabled::qa_clComplexToMag::suite());
+  s->addTest(gr::clenabled::qa_clKernel1To1::suite());
+  s->addTest(gr::clenabled::qa_clKernel2To1::suite());
+  s->addTest(gr::clenabled::qa_clSignalSource::suite());
 
   return s;
 }

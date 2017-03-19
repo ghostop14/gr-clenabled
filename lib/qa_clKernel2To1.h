@@ -19,8 +19,8 @@
  */
 
 
-#ifndef _QA_CLMATHOP_H_
-#define _QA_CLMATHOP_H_
+#ifndef _QA_CLKERNEL2TO1_H_
+#define _QA_CLKERNEL2TO1_H_
 
 #include <cppunit/extensions/HelperMacros.h>
 #include <cppunit/TestCase.h>
@@ -28,10 +28,10 @@
 namespace gr {
   namespace clenabled {
 
-    class qa_clMathOp : public CppUnit::TestCase
+    class qa_clKernel2To1 : public CppUnit::TestCase
     {
     public:
-      CPPUNIT_TEST_SUITE(qa_clMathOp);
+      CPPUNIT_TEST_SUITE(qa_clKernel2To1);
       CPPUNIT_TEST(t1);
       CPPUNIT_TEST_SUITE_END();
 
@@ -42,5 +42,5 @@ namespace gr {
   } /* namespace clenabled */
 } /* namespace gr */
 
-#endif /* _QA_CLMATHOP_H_ */
+#endif /* _QA_CLKERNEL2TO1_H_ */
 

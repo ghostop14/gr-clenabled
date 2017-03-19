@@ -18,19 +18,24 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H
-#define INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H
+#ifndef INCLUDED_CLENABLED_CLSIGNALSOURCE_IMPL_H
+#define INCLUDED_CLENABLED_CLSIGNALSOURCE_IMPL_H
 
-#include <clenabled/clMagPhaseToComplex.h>
+#include <clenabled/clSignalSource.h>
 #include "GRCLBase.h"
+
+#define SIGSOURCE_COS 1
+#define SIGSOURCE_SIN 2
 
 namespace gr {
   namespace clenabled {
 
-    class clMagPhaseToComplex_impl : public clMagPhaseToComplex, public GRCLBase
+    class clSignalSource_impl : public clSignalSource, public GRCLBase
     {
-     private:
-      // Nothing to declare in this block.
+     protected:
+        std::string srcStdStr;
+        std::string fnName = "";
+
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
@@ -39,26 +44,15 @@ namespace gr {
 		void buildKernel(int numItems);
 
      public:
-      clMagPhaseToComplex_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
-      virtual ~clMagPhaseToComplex_impl();
-      virtual bool stop();
+      clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,bool setDebug);
+      ~clSignalSource_impl();
 
+      virtual bool stop();
+      void setBufferLength(int numItems);
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 
-      int testCPU(int noutput_items,
-              gr_vector_int &ninput_items,
-              gr_vector_const_void_star &input_items,
-              gr_vector_void_star &output_items);
-
       int processOpenCL(int noutput_items,
-              gr_vector_int &ninput_items,
-              gr_vector_const_void_star &input_items,
-              gr_vector_void_star &output_items);
-
-      void setBufferLength(int numItems);
-
-      int testOpenCL(int noutput_items,
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
@@ -72,5 +66,5 @@ namespace gr {
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H */
+#endif /* INCLUDED_CLENABLED_CLSIGNALSOURCE_IMPL_H */
 

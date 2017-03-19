@@ -45,7 +45,6 @@
 #include "clFFT_impl.h"
 #include "clLog_impl.h"
 #include "clSNR_impl.h"
-#include <iostream>
 #include <chrono>
 #include <ctime>
 #include "clComplexToMag_impl.h"
@@ -1458,6 +1457,8 @@ bool testLowPassFilter() {
 	double cutoff_freq;
 	double transition_width;
 
+	int nthreads = 4;
+
 	// -------------------------  TIME DOMAIN FILTER -------------------------------------------------
 	samp_rate=10000000;
 	cutoff_freq=100000.0;
@@ -1467,7 +1468,7 @@ bool testLowPassFilter() {
 		std::cout << "Testing TIME DOMAIN OpenCL filter performance with 10 MSPS sample rate" << std::endl;
 		std::cout << "NOTE: input block sizes need to be adjusted for OpenCL hardware and the number of filter taps." << std::endl;
 
-		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,1,
+		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,nthreads,
 				gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width),1,true,true);
 	}
 	catch(const std::runtime_error& re)

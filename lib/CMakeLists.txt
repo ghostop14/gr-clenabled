@@ -46,6 +46,9 @@ list(APPEND clenabled_sources
     clComplexToMagPhase_impl.cc
     clMagPhaseToComplex_impl.cc
     clComplexToMag_impl.cc
+    clKernel1To1_impl.cc
+    clKernel2To1_impl.cc
+    clSignalSource_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -80,6 +83,9 @@ include_directories(${CPPUNIT_INCLUDE_DIRS})
 list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test_clenabled.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clenabled.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clSignalSource.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clKernel2To1.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clKernel1To1.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clComplexToMag.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clMagPhaseToComplex.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clComplexToMagPhase.cc
@@ -137,6 +143,28 @@ target_link_libraries(
 )
 
 install(TARGETS clview DESTINATION /usr/bin RUNTIME)
+
+########################################################################
+# Build and register test-clkernel
+########################################################################
+list(APPEND test_clkernel_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-clkernel.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clKernel1To1_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clKernel2To1_impl.cc
+)
+
+add_executable(test-clkernel ${test_clkernel_sources})
+
+
+target_link_libraries(
+  test-clkernel
+  OpenCL
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gnuradio-clenabled
+)
+
+install(TARGETS test-clkernel DESTINATION /usr/bin RUNTIME)
 
 ########################################################################
 # Print summary

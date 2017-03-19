@@ -18,47 +18,37 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H
-#define INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H
+#ifndef INCLUDED_CLENABLED_CLKERNEL1TO1_IMPL_H
+#define INCLUDED_CLENABLED_CLKERNEL1TO1_IMPL_H
 
-#include <clenabled/clMagPhaseToComplex.h>
+#include <clenabled/clKernel1To1.h>
 #include "GRCLBase.h"
 
 namespace gr {
   namespace clenabled {
 
-    class clMagPhaseToComplex_impl : public clMagPhaseToComplex, public GRCLBase
+    class clKernel1To1_impl : public clKernel1To1, public GRCLBase
     {
-     private:
-      // Nothing to declare in this block.
+     protected:
+
 		cl::Buffer *aBuffer=NULL;
-		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
-		void buildKernel(int numItems);
-
      public:
-      clMagPhaseToComplex_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
-      virtual ~clMagPhaseToComplex_impl();
-      virtual bool stop();
+      std::string srcStdStr;
+      std::string fnName = "";
 
+      clKernel1To1_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId,
+    		  const char *kernelFnName, const char *filename, bool setDebug);
+      ~clKernel1To1_impl();
+
+      virtual bool stop();
+      void setBufferLength(int numItems);
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 
-      int testCPU(int noutput_items,
-              gr_vector_int &ninput_items,
-              gr_vector_const_void_star &input_items,
-              gr_vector_void_star &output_items);
-
       int processOpenCL(int noutput_items,
-              gr_vector_int &ninput_items,
-              gr_vector_const_void_star &input_items,
-              gr_vector_void_star &output_items);
-
-      void setBufferLength(int numItems);
-
-      int testOpenCL(int noutput_items,
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
@@ -72,5 +62,5 @@ namespace gr {
   } // namespace clenabled
 } // namespace gr
 
-#endif /* INCLUDED_CLENABLED_CLMAGPHASETOCOMPLEX_IMPL_H */
+#endif /* INCLUDED_CLENABLED_CLKERNEL1TO1_IMPL_H */
 

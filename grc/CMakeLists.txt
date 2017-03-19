@@ -38,5 +38,8 @@ install(FILES
     clenabled_clRootRaisedCosine.xml
     clenabled_clSNR.xml
     clenabled_clSubtract.xml
+    clenabled_clKernel1To1.xml
+    clenabled_clKernel2To1.xml
+    clenabled_clSignalSource.xml 
     DESTINATION share/gnuradio/grc/blocks
 )

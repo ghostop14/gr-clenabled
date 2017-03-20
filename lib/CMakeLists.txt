@@ -111,6 +111,7 @@ list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToArg_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToMagPhase_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clMagPhaseToComplex_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clSignalSource_impl.cc
 )
 
 add_executable(test-clenabled ${test_clenabled_sources})

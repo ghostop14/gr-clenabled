@@ -51,6 +51,8 @@
 #include "clComplexToMagPhase_impl.h"
 #include "clComplexToArg_impl.h"
 #include "clMagPhaseToComplex_impl.h"
+#include "clSignalSource_impl.h"
+
 #include "window.h"
 
 bool verbose=false;
@@ -75,6 +77,116 @@ int ComplexToMagCPU(int noutput_items,
     volk_32fc_magnitude_32f_u(out, in, noi);
 
     return noutput_items;
+}
+
+bool testSigSource() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+
+	std::cout << "Testing Complex Signal Source" << std::endl;
+
+	gr::clenabled::clSignalSource_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clSignalSource_impl(DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,2400000.0,SIGSOURCE_COS, 1000.0, 1.0,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	std::vector<int> ninitems;
+
+
+	std::vector<gr_complex> outputItems;
+	std::vector<const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	gr_complex grZero(0.0,0.0);
+	gr_complex newComplex(1.0,0.5);
+
+	for (i=0;i<largeBlockSize;i++) {
+		outputItems.push_back(grZero);
+	}
+
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	// Run empty test
+	int noutputitems;
+
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+
+	float elapsed_time,throughput;
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+
+	int j;
+
+	noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+
+	std::cout << std::endl;
+
+	// ----------------------------------------------------------------------
+	// Clean up
+	if (test != NULL) {
+		delete test;
+	}
+
+	outputPointers.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
 }
 
 bool testMagPhaseToComplex() {
@@ -2051,12 +2163,17 @@ main (int argc, char **argv)
 
 	bool was_successful = runner.run("", false);  was_successful = testMultiply();
 */
-
+/*
 	was_successful = test_complex();
 	std::cout << std::endl;
+*/
 
 	was_successful = testMultiplyConst();
 	std::cout << std::endl;
+
+	was_successful = testSigSource();
+	std::cout << std::endl;
+
 	was_successful = testMultiply();
 	std::cout << std::endl;
 

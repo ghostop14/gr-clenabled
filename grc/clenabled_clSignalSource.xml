@@ -5,9 +5,9 @@
   <category>[OpenCL-Enabled]</category>
   <import>import clenabled</import>
 	<make>#if $devices == 1
-clenabled.clKernel1To1($type.datatype,$openCLPlatform,1,0,0,$samp_rate,$waveform, $freq, $amplitude,$setDebug)
+clenabled.clSignalSource($type.datatype,$openCLPlatform,1,0,0,$samp_rate,$waveform, $freq, $amplitude,$setDebug)
 #else
-clenabled.clKernel1To1($type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$samp_rate,$waveform, $freq, $amplitude,$setDebug)
+clenabled.clSignalSource($type.datatype,$openCLPlatform,$devices,$platformId,$deviceId,$samp_rate,$waveform, $freq, $amplitude,$setDebug)
 #end if</make>
 	<param>
 		<name>Data Type</name>
@@ -116,12 +116,6 @@ clenabled.clKernel1To1($type.datatype,$openCLPlatform,$devices,$platformId,$devi
 		</option>
 	</param>
 	<param>
-			<name>Sample Rate</name>
-			<key>samp_rate</key>
-			<value></value>
-			<type>float</type>
-	</param>
-	<param>
 			<name>Waveform</name>
 			<key>waveform</key>
 			<type>enum</type>
@@ -137,13 +131,13 @@ clenabled.clKernel1To1($type.datatype,$openCLPlatform,$devices,$platformId,$devi
 	<param>
 			<name>Sample Rate</name>
 			<key>samp_rate</key>
-			<value></value>
+			<value>samp_rate</value>
 			<type>float</type>
 	</param>
 	<param>
 			<name>Frequency</name>
 			<key>freq</key>
-			<value></value>
+			<value>1000</value>
 			<type>float</type>
 	</param>
 	<param>
@@ -165,10 +159,6 @@ clenabled.clKernel1To1($type.datatype,$openCLPlatform,$devices,$platformId,$devi
 			<key>1</key>
 		</option>
 	</param>
-  <sink>
-    <name>in</name>
-    <type>$type.input</type>
-  </sink>
   <source>
     <name>out</name>
     <type>$type.output</type>

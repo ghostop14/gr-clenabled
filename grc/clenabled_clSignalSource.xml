@@ -2,7 +2,7 @@
 <block>
   <name>OpenCL Signal Source</name>
   <key>clenabled_clSignalSource</key>
-  <category>[OpenCL-Enabled]</category>
+  <category>[OpenCL-Offload]</category>
   <import>import clenabled</import>
 	<make>#if $devices == 1
 clenabled.clSignalSource($type.datatype,$openCLPlatform,1,0,0,$samp_rate,$waveform, $freq, $amplitude,$setDebug)

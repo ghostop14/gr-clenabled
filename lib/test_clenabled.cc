@@ -758,7 +758,8 @@ bool testFFT(bool runReverse) {
 
 	float frequency_signal = 10;
 	float frequency_sampling = fftDataSize*frequency_signal;
-	float step = 1.0/frequency_sampling;
+	float curPhase = 0.0;
+	float signal_ang_rate = 2*M_PI*frequency_signal / frequency_sampling;
 
 	std::vector<gr_complex> inputItems;
 	std::vector<gr_complex> outputItems;
@@ -768,12 +769,9 @@ bool testFFT(bool runReverse) {
 	gr_complex grZero(0.0,0.0);
 	gr_complex newComplex(1.0,0.5);
 
-	float h=0.0;
-
 	for (i=0;i<fftDataSize;i++) {
-		inputItems.push_back(gr_complex(sin(2*M_PI*frequency_signal*h),cos(2*M_PI*frequency_signal*h)));
+		inputItems.push_back(gr_complex(sin(curPhase+(signal_ang_rate*i)),cos(curPhase+(signal_ang_rate*i))));
 		outputItems.push_back(grZero);
-		h = h + step;
 	}
 
 	std::cout << "First few points of input signal" << std::endl;

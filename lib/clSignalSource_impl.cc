@@ -60,7 +60,7 @@ namespace gr {
      */
     clSignalSource_impl::clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,bool setDebug)
       : gr::block("clSignalSource",
-              gr::io_signature::make(0, 0, iDataSize),
+              gr::io_signature::make(0, 0, 0),
               gr::io_signature::make(1, 1, iDataSize)),
 			  GRCLBase(idataType, iDataSize,openCLPlatformType,devSelector,platformId,devId,setDebug),
 			  d_phase(0), d_phase_inc(0),d_sampling_freq((double)samp_rate), d_waveform(waveform),
@@ -243,8 +243,9 @@ namespace gr {
 		// here.
 
 //		d_phase = d_phase + (d_phase_inc * noutput_items);
+		d_angle_pos = d_angle_pos + (d_angle_rate_inc * noutput_items);
 
-
+		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
 		while (d_angle_pos > (2*M_PI))
         	d_angle_pos -= 2.0 * M_PI;
 

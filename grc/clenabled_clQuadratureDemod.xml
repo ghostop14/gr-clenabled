@@ -1,7 +1,7 @@
 <block>
   <name>OpenCL Quadrature Demod</name>
   <key>clenabled_clQuadratureDemod</key>
-  <category>[OpenCL-Offload]</category>
+  <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <make>#if $devices == 1
 	clenabled.clQuadratureDemod($gain,$openCLPlatform,1,0,0,$setDebug)

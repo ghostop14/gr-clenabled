@@ -416,6 +416,8 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
+//    	std::cout << "math op const noutput_items: " << noutput_items << std::endl;
+
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
         // Tell runtime system how many input items we consumed on
         // each input stream.

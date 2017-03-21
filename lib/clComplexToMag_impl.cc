@@ -53,7 +53,7 @@ namespace gr {
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
-
+/*
     	if (imaxItems > maxConstItems) {
     		imaxItems = maxConstItems;
     	}
@@ -65,7 +65,7 @@ namespace gr {
 		catch(...) {
 
 		}
-
+*/
         setBufferLength(imaxItems);
 
         // And finally optimize the data we get based on the preferred workgroup size.
@@ -105,29 +105,7 @@ namespace gr {
     void clComplexToMag_impl::buildKernel(int numItems) {
     	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
     	bool useConst;
-/*
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
 
-    	if (maxConstItems < imaxItems) {
-    		try {
-    			gr::block::set_max_noutput_items(maxConstItems);
-    		}
-    		catch(...) {
-
-    		}
-
-    		imaxItems = maxConstItems;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: ComplexToMag adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: ComplexToMag using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
-		}
-*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else

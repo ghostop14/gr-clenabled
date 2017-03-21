@@ -115,12 +115,13 @@ namespace gr {
         	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
         	// Since we can't control the n_taps, we can control the noutput_items.
         	maxConstItems = (int)((float)(maxConstMemSize - d_taps.size()*sizeof(float))/(float)dataSize) - d_taps.size();
-
+/*
         	if (maxConstItems < imaxItems) {
         		imaxItems = maxConstItems;
         	}
 
         	set_max_noutput_items(imaxItems);
+*/
 			setFilterVariables(imaxItems);
     	}
     	else {

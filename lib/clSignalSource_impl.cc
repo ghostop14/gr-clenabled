@@ -94,7 +94,7 @@ namespace gr {
 
     		srcStdStr = "__kernel void sig_float(const double phase, const double phase_inc,const float ampl, __global float * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*dindex));\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
 
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
@@ -113,7 +113,7 @@ namespace gr {
 
     		srcStdStr = "__kernel void sig_int(const double phase, const double phase_inc,const double ampl, __global int * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*dindex));\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
                 srcStdStr += "    c[index] = (int)(cos(dval) * ampl);\n";
@@ -135,7 +135,7 @@ namespace gr {
 
     		srcStdStr += "__kernel void sig_complex(const double phase, const double phase_inc, const double ampl, __global SComplex * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*index));\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
             srcStdStr += "    c[index].real = (float)(cos(dval) * ampl);\n";
             srcStdStr += "    c[index].imag = (float)(sin(dval) * ampl);\n";
         	srcStdStr += "}\n";

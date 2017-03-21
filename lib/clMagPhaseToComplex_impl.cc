@@ -51,7 +51,7 @@ namespace gr {
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
-
+/*
     	if (imaxItems > maxConstItems) {
     		imaxItems = maxConstItems;
     	}
@@ -63,7 +63,7 @@ namespace gr {
 		catch(...) {
 
 		}
-
+*/
         setBufferLength(imaxItems);
 
         // And finally optimize the data we get based on the preferred workgroup size.

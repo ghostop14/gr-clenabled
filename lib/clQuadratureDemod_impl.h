@@ -33,6 +33,8 @@ namespace gr {
      private:
       // Nothing to declare in this block.
 
+        std::string srcStdStr="";
+
     	float f_gain;
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;

@@ -242,6 +242,7 @@ namespace gr {
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
 			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
+				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}
 		}
@@ -257,6 +258,8 @@ namespace gr {
 		catch (...) {
 			std::cout << "Quad Demod kernel error. preferredWorkGroupSizeMultilple: " << preferredWorkGroupSizeMultiple << std::endl;
 			std::cout << "noutput_items: " << noutput_items << std::endl;
+			std::cout << "Kernel: " << std::endl;
+			std::cout << srcStdStr << std::endl;
 			exit(1);
 		}
 

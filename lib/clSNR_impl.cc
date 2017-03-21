@@ -100,7 +100,7 @@ namespace gr {
 		if (useConst)
 			srcStdStr += "__kernel void op_snr(__constant float * a, __constant float * b, __global float * restrict c) {\n";
 		else
-			srcStdStr += "__kernel void op_snr(__global float * restrict a, __constant float * b, __global float * restrict c) {\n";
+			srcStdStr += "__kernel void op_snr(__global float * restrict a, __global float * restrict b, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float tmpVal = a[index] / b[index];\n";
@@ -249,12 +249,20 @@ namespace gr {
 		}
 
 		// Do the work
+		try {
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
 			cl::NDRange(noutput_items),
 			localWGSize);
-
+		}
+		catch (...) {
+			std::cout << "SNR kernel error. preferredWorkGroupSizeMultilple: " << preferredWorkGroupSizeMultiple << std::endl;
+			std::cout << "noutput_items: " << noutput_items << std::endl;
+			std::cout << "Kernel: " << std::endl;
+			std::cout << srcStdStr << std::endl;
+			exit(1);
+		}
 
     // Map cBuffer to host pointer. This enforces a sync with
     // the host

@@ -67,8 +67,22 @@ namespace gr {
 		      d_frequency(freq),d_ampl((double)amplitude),d_angle_pos(0.0),d_angle_rate_inc(0.0)
     {
     	set_frequency(freq);
-    	setBufferLength(8192);
-    }
+
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+    	setBufferLength(imaxItems);
+
+		try {
+			if (contextType != CL_DEVICE_TYPE_CPU) {
+				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+			}
+		}
+        catch (...) {
+
+        }
+}
 
     void clSignalSource_impl::setBufferLength(int numItems) {
     	if (cBuffer)
@@ -224,7 +238,8 @@ namespace gr {
 		cl::NDRange localWGSize=cl::NullRange;
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
+				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}
 		}

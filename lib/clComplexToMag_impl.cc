@@ -73,8 +73,13 @@ namespace gr {
         // it has to be done here.
         // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
         // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+		try {
+			if (contextType != CL_DEVICE_TYPE_CPU) {
+				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+			}
+		}
+        catch (...) {
+
         }
 }
     /*

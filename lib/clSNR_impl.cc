@@ -50,26 +50,12 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(float))),
 			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
     {
+    	n_val = nValue;
+    	k_val = kValue;
+
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
-/*
-    	if (imaxItems > maxConstItems) {
-    		imaxItems = maxConstItems;
-    	}
-
-		try {
-			// optimize for constant memory space
-			gr::block::set_max_noutput_items(imaxItems);
-		}
-		catch(...) {
-
-		}
-*/
-		setBufferLength(imaxItems);
-
-    	n_val = nValue;
-    	k_val = kValue;
 
         setBufferLength(imaxItems);
 
@@ -78,8 +64,13 @@ namespace gr {
         // it has to be done here.
         // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
         // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+		try {
+			if (contextType != CL_DEVICE_TYPE_CPU) {
+				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+			}
+		}
+        catch (...) {
+
         }
 }
 
@@ -251,7 +242,8 @@ namespace gr {
 		cl::NDRange localWGSize=cl::NullRange;
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
+				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}
 		}

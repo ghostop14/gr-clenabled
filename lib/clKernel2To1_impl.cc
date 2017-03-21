@@ -88,8 +88,21 @@ namespace gr {
 
 		infile.close();
 
-        setBufferLength(8192);
-    }
+    	int imaxItems=gr::block::max_noutput_items();
+    	if (imaxItems==0)
+    		imaxItems=8192;
+
+        setBufferLength(imaxItems);
+
+		try {
+			if (contextType != CL_DEVICE_TYPE_CPU) {
+				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+			}
+		}
+        catch (...) {
+
+        }
+}
 
     void clKernel2To1_impl::setBufferLength(int numItems) {
     	if (aBuffer)
@@ -184,7 +197,8 @@ namespace gr {
 		cl::NDRange localWGSize=cl::NullRange;
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
+				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}
 		}

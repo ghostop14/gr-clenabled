@@ -55,18 +55,6 @@ namespace gr {
     	if (imaxItems==0)
     		imaxItems=8192;
 
-    	if (imaxItems > maxConstItems) {
-    		imaxItems = maxConstItems;
-    	}
-
-		try {
-			// optimize for constant memory space
-			gr::block::set_max_noutput_items(imaxItems);
-		}
-		catch(...) {
-
-		}
-
 		setBufferLength(imaxItems);
 
         // And finally optimize the data we get based on the preferred workgroup size.
@@ -74,37 +62,20 @@ namespace gr {
         // it has to be done here.
         // Note: for CPU's adjusting the workgroup size away from 1 seems to decrease performance.
         // For GPU's setting it to the preferred size seems to have the best performance.
-        if (contextType != CL_DEVICE_TYPE_CPU) {
-        	gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+		try {
+			if (contextType != CL_DEVICE_TYPE_CPU) {
+				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
+			}
+		}
+        catch (...) {
+
         }
 }
 
     void clQuadratureDemod_impl::buildKernel(int numItems) {
     	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
+
     	bool useConst;
-/*
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
-
-    	if (maxConstItems < imaxItems) {
-    		try {
-    			gr::block::set_max_noutput_items(maxConstItems);
-    		}
-    		catch(...) {
-
-    		}
-
-    		imaxItems = maxConstItems;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: QuadratureDemod adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: QuadratureDemod using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
-		}
-*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else
@@ -270,18 +241,24 @@ namespace gr {
 		cl::NDRange localWGSize=cl::NullRange;
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}
 		}
 
 		// Do the work
+		try {
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
 			cl::NDRange(noutput_items),
 			localWGSize);
-
+		}
+		catch (...) {
+			std::cout << "Quad Demod kernel error. preferredWorkGroupSizeMultilple: " << preferredWorkGroupSizeMultiple << std::endl;
+			std::cout << "noutput_items: " << noutput_items << std::endl;
+			exit(1);
+		}
 
     // Map cBuffer to host pointer. This enforces a sync with
     // the host

@@ -249,20 +249,11 @@ namespace gr {
 		}
 
 		// Do the work
-		try {
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
 			cl::NDRange(noutput_items),
 			localWGSize);
-		}
-		catch (...) {
-			std::cout << "SNR kernel error. preferredWorkGroupSizeMultilple: " << preferredWorkGroupSizeMultiple << std::endl;
-			std::cout << "noutput_items: " << noutput_items << std::endl;
-			std::cout << "Kernel: " << std::endl;
-			std::cout << srcStdStr << std::endl;
-			exit(1);
-		}
 
     // Map cBuffer to host pointer. This enforces a sync with
     // the host

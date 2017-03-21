@@ -160,7 +160,7 @@ namespace gr {
     	if (useConst)
     		srcStdStr += "__kernel void magphasetocomplex(__constant float * a, __constant float * b, __global SComplex * restrict c) {\n";
     	else
-    		srcStdStr += "__kernel void magphasetocomplex(__global float * restrict a, __constant float * b, __global SComplex * restrict c) {\n";
+    		srcStdStr += "__kernel void magphasetocomplex(__global float * restrict a, __global float * restrict b, __global SComplex * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float mag = a[index];\n";

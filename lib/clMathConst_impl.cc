@@ -363,7 +363,7 @@ namespace gr {
         // localWGSize = cl::NDRange(preferredWorkGroupSizeMultiple);
 
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if (noutput_items % preferredWorkGroupSizeMultiple == 0 && (noutput_items < 8192)) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
 				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}

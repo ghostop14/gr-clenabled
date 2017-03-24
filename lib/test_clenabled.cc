@@ -1641,6 +1641,9 @@ bool testLowPassFilter() {
 
 	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
 	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
+	if (optimalSize > largeBlockSize)
+		optimalSize = largeBlockSize;
+
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
 	// So the number of samples used has to be a value that satisfies both of these
 
@@ -1648,6 +1651,8 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+
+	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1698,6 +1703,8 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
+
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1731,6 +1738,8 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
+
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1763,6 +1772,8 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+
+	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1830,6 +1841,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1880,6 +1892,7 @@ bool testLowPassFilter() {
 	}
 
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1913,6 +1926,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1946,6 +1960,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1979,6 +1994,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2012,6 +2028,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2046,6 +2063,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2079,6 +2097,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();

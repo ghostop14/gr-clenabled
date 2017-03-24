@@ -55,7 +55,6 @@ namespace gr {
 		clfftPlanHandle planHandle;
 		clfftDim dim = CLFFT_1D;
 
-        void setFilterVariables(int noutput_items);
         int prevTaps=0;
         int prevInputLength=0;  // numinputs
 
@@ -96,6 +95,8 @@ namespace gr {
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
      public:
+        void setFilterVariables(int noutput_items);
+
     	clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation,
               const std::vector<float> &taps,
               int nthreads=1, bool setDebug=false,bool bUseTimeDomain=DEFAULT_USE_TIME_DOMAIN_SETTING);

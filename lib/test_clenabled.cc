@@ -731,7 +731,7 @@ bool testFFT(bool runReverse) {
 
 	int fftDataSize;
 
-	fftDataSize = (int)((float)largeBlockSize / (float)fftSize);
+	fftDataSize = (int)((float)largeBlockSize / (float)fftSize) * fftSize;
 
 	if (fftDataSize == 0)
 		fftDataSize = fftSize;

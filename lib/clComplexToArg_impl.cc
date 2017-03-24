@@ -76,6 +76,10 @@ namespace gr {
 			if (contextType != CL_DEVICE_TYPE_CPU) {
 				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
 			}
+			else {
+				// Keep the IO somewhat aligned
+				gr::block::set_output_multiple(32);
+			}
 		}
         catch (...) {
 

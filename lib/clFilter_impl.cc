@@ -115,18 +115,10 @@ namespace gr {
         	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
         	// Since we can't control the n_taps, we can control the noutput_items.
         	maxConstItems = (int)((float)(maxConstMemSize - d_taps.size()*sizeof(float))/(float)dataSize) - d_taps.size();
-/*
-        	if (maxConstItems < imaxItems) {
-        		imaxItems = maxConstItems;
-        	}
 
-        	set_max_noutput_items(imaxItems);
-*/
 			setFilterVariables(imaxItems);
     	}
     	else {
-//			set_output_multiple(prevInputLength);
-
 			setFilterVariables(prevInputLength);
     	}
 }
@@ -237,7 +229,7 @@ namespace gr {
         		// This performance won't be very good.
         		kernelCode +="__kernel void td_FIR_complex\n";
         		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
-        		kernelCode +="__constant float * FilterArray, // Length K\n";
+    			kernelCode +="__constant float * FilterArray, // Length K\n";
         		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
         		kernelCode +=")\n";
         		kernelCode +="{\n";
@@ -262,7 +254,7 @@ namespace gr {
         		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
 
         		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
-        		kernelCodeWithConst +="( __constant SComplex * InputArray, // Length N\n";
+        		kernelCodeWithConst +="( __global const SComplex * restrict InputArray, // Length N\n";
         		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
         		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
         		kernelCodeWithConst +=")\n";
@@ -286,7 +278,7 @@ namespace gr {
         		fnName = "td_FIR_float";
         		kernelCode +="__kernel void td_FIR_float\n";
         		kernelCode +="( __global const float *restrict InputArray, // Length N\n";
-        		kernelCode +="__constant float * FilterArray, // Length K\n";
+        		kernelCode +="__global const float * restrict FilterArray, // Length K\n";
         		kernelCode +="__global float *restrict OutputArray // Length N+K-1\n";
         		kernelCode +=")\n";
         		kernelCode +="{\n";
@@ -300,7 +292,7 @@ namespace gr {
         		kernelCode +="}\n";
 
         		kernelCodeWithConst +="__kernel void td_FIR_float\n";
-        		kernelCodeWithConst +="( __constant float * InputArray, // Length N\n";
+        		kernelCodeWithConst +="( __global const float * restrict InputArray, // Length N\n";
         		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
         		kernelCodeWithConst +="__global float *restrict OutputArray // Length N+K-1\n";
         		kernelCodeWithConst +=")\n";
@@ -320,9 +312,15 @@ namespace gr {
         	lbDefines += "#define K "+ std::to_string(d_ntaps) + "\n";
 
         	std::string tmpKernelCode;
-        	int requiredConstMemSize = ninput_items*dataSize + d_ntaps*sizeof(float);
+        	float tapConstMemUsage = maxConstMemSize - d_taps.size()*sizeof(float);
+        	bool useConst;
 
-        	if (requiredConstMemSize < maxConstMemSize) {
+        	if (tapConstMemUsage > 0)
+				useConst = true;
+        	else
+        		useConst = false;
+
+        	if (useConst) {
         		tmpKernelCode = lbDefines + kernelCodeWithConst;
         		if (debugMode)
             		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;

@@ -66,6 +66,10 @@ namespace gr {
 			if (contextType != CL_DEVICE_TYPE_CPU) {
 				gr::block::set_output_multiple(preferredWorkGroupSizeMultiple);
 			}
+			else {
+				// Keep the IO somewhat aligned
+				gr::block::set_output_multiple(32);
+			}
 		}
         catch (...) {
 
@@ -80,13 +84,14 @@ namespace gr {
     		useConst = false;
     	else
     		useConst = true;
-
+/*
 		if (debugMode) {
 			if (useConst)
 				std::cout << "OpenCL INFO: QuadratureDemod building kernel with __constant params..." << std::endl;
 			else
 				std::cout << "OpenCL INFO: QuadratureDemod - too many items for constant memory.  Building kernel with __global params..." << std::endl;
 		}
+*/
 
         // Now we set up our OpenCL kernel
         std::string srcStdStr="";
@@ -104,10 +109,14 @@ namespace gr {
     	srcStdStr += "float imag; };\n";
     	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
+    	// Has to be in global memory because of the +1 on the atan call.  constant memory doesn't like it.
+/*
     	if (useConst)
     		srcStdStr += "__kernel void quadDemod(__constant SComplex * a, __global float * restrict c) {\n";
     	else
     		srcStdStr += "__kernel void quadDemod(__global SComplex * restrict a, __global float * restrict c) {\n";
+    */
+		srcStdStr += "__kernel void quadDemod(__global SComplex * restrict a, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
     	srcStdStr += "    float a_r=a[index+1].real;\n";
@@ -240,8 +249,9 @@ namespace gr {
 
 		cl::NDRange localWGSize=cl::NullRange;
 
+		// There's something about this call that's messing it up.  Possibly the +1 on the buffer access.
 		if (contextType!=CL_DEVICE_TYPE_CPU) {
-			if ((noutput_items % preferredWorkGroupSizeMultiple == 0) && (noutput_items < 8192)) {
+			if (noutput_items % preferredWorkGroupSizeMultiple == 0) {
 				// for some reason problems start to happen when we're no longer using constant memory
 				localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
 			}

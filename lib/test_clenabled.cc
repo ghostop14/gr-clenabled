@@ -728,7 +728,13 @@ bool testFFT(bool runReverse) {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
 	int fftSize=2048;
-	int fftDataSize=fftSize;
+
+	int fftDataSize;
+
+	fftDataSize = (int)((float)largeBlockSize / (float)fftSize);
+
+	if (fftDataSize == 0)
+		fftDataSize = fftSize;
 
 	std::cout << "Testing Forward FFT size of " << fftSize << " and " << fftDataSize << " data points." << std::endl;
 
@@ -2193,8 +2199,11 @@ main (int argc, char **argv)
 	was_successful = testFFT(true);
 	std::cout << std::endl;
 
-	was_successful = testLowPassFilter();
-	std::cout << std::endl;
+//	if (largeBlockSize <= 16384) {
+		// There's some memory issues in the filters that creep in above 16384.
+		was_successful = testLowPassFilter();
+		std::cout << std::endl;
+//	}
 
 	return was_successful ? 0 : 1;
 }

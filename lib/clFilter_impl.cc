@@ -478,7 +478,6 @@ void clFilter_impl::setBufferLength(int numItems) {
 	}
 	curBufferSize = numItems;
 }
-
 /*
  * determines d_ntaps, d_nsamples, d_fftsize, d_xformed_taps
  */
@@ -729,6 +728,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	int dec_ctr = 0;
     	int j = 0;
     	int err;
+    	const gr_complex *in = (const gr_complex *) input_items[0];
 
     	for(int i = 0; i < ninput_items; i += d_nsamples) {
     	  // Move block of data to forward FFT buffer
@@ -742,7 +742,6 @@ clFilter_impl::filterGPU(int ninput_items,
     	  d_fwdfft->execute();	// compute fwd xform
     */
 
-    	  const gr_complex *in = (const gr_complex *) input_items[0];
     	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_nsamples*dataSize,(void *)&in[i]);
     	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_nsamples*dataSize,(d_fftsize-d_nsamples)*dataSize,(void *)zeroBuff);
     	  err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
@@ -765,7 +764,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	  // THIS Volk Function just does complex multiplication.  c[i]=a[i]*b[i] in the complex domain.
     	  volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
 
-    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fftsize*dataSize);
+//    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fftsize*dataSize);
 
     	  // Run the inverse FFT
     	  //  d_invfft->execute();	// compute inv xform

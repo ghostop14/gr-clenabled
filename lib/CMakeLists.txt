@@ -150,6 +150,7 @@ install(TARGETS clview DESTINATION /usr/bin RUNTIME)
 ########################################################################
 list(APPEND test_clkernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test-clkernel.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/clKernel1To1_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clKernel2To1_impl.cc
 )

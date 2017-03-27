@@ -100,29 +100,7 @@ namespace gr {
     void clMathConst_impl::buildKernel(int numItems) {
     	maxConstItems = (int)((float)maxConstMemSize / ((float)dataSize));
     	bool useConst;
-/*
-    	int imaxItems=gr::block::max_noutput_items();
-    	if (imaxItems==0)
-    		imaxItems=8192;
 
-    	if (maxConstItems < imaxItems) {
-    		try {
-    			gr::block::set_max_noutput_items(maxConstItems);
-    		}
-    		catch(...) {
-
-    		}
-
-    		imaxItems = maxConstItems;
-
-    		if (debugMode)
-    			std::cout << "OpenCL INFO: Math Op Const adjusting gnuradio output buffer for " << maxConstItems << " due to OpenCL constant memory restrictions" << std::endl;
-		}
-		else {
-			if (debugMode)
-				std::cout << "OpenCL INFO: Math Op Const using default gnuradio output buffer of " << imaxItems << "..." << std::endl;
-		}
-*/
     	if (numItems > maxConstItems)
     		useConst = false;
     	else
@@ -414,7 +392,8 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
-//    	std::cout << "math op const noutput_items: " << noutput_items << std::endl;
+    	if (debugMode && CLPRINT_NITEMS)
+    		std::cout << "clMathConst noutput_items: " << noutput_items << std::endl;
 
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
         // Tell runtime system how many input items we consumed on

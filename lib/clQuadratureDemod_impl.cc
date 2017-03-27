@@ -287,6 +287,9 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
+    	if (debugMode && CLPRINT_NITEMS)
+    		std::cout << "clQuadratureDemod noutput_items: " << noutput_items << std::endl;
+
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
         // int retVal = testCPU(noutput_items,ninput_items,input_items,output_items);
 

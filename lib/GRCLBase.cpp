@@ -12,6 +12,8 @@
 namespace gr {
 namespace clenabled {
 
+bool CLPRINT_NITEMS=false;
+
 void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug) {
 
 	debugMode=setDebug;

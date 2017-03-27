@@ -265,8 +265,11 @@ namespace gr {
 		d_angle_pos = d_angle_pos + (d_angle_rate_inc * noutput_items);
 
 		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
-		while (d_angle_pos > (2*M_PI))
+		while (d_angle_pos > (2.0*M_PI))
         	d_angle_pos -= 2.0 * M_PI;
+
+		while (d_angle_pos < (-2.0*M_PI))
+        	d_angle_pos += 2.0 * M_PI;
 
 		return noutput_items;
     }
@@ -277,6 +280,9 @@ namespace gr {
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
+    	if (debugMode && CLPRINT_NITEMS)
+    		std::cout << "clSignalSource noutput_items: " << noutput_items << std::endl;
+
         int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
         // int retVal = testCPU(noutput_items,ninput_items,input_items,output_items);
         // Tell runtime system how many input items we consumed on

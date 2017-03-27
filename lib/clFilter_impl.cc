@@ -878,6 +878,9 @@ clFilter_impl::filterGPU(int ninput_items,
         }
         // filterCPU(noutput_items, input_items,output_items);
 
+    	if (debugMode && CLPRINT_NITEMS)
+    		std::cout << "clFilter_impl ninput_items: " << ninput_items << std::endl;
+
         filterGPU(ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.

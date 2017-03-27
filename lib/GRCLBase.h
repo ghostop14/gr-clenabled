@@ -41,6 +41,8 @@
 namespace gr {
 namespace clenabled {
 
+extern bool CLPRINT_NITEMS;  // Enable this in GRCLBase.cpp to print the number of items passed to the work functions if debug is enabled for the module
+
 class CLENABLED_API GRCLBase {
 protected:
      int dataType;

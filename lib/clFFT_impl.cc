@@ -346,6 +346,9 @@ namespace gr {
 
       int inputSize = noutput_items * d_fft_size;
 
+  	if (debugMode && CLPRINT_NITEMS)
+  		std::cout << "clFFT_impl inputSize: " << inputSize << std::endl;
+
       int retVal = processOpenCL(inputSize,input_items,output_items);
 
       // Tell runtime system how many output items we produced.

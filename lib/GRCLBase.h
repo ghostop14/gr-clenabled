@@ -77,7 +77,7 @@ protected:
     std::vector<std::string> deviceNames;
     std::vector<std::string> deviceTypes;
 
-    void CompileKernel(const char* kernelCode, const char* kernelFunctionName);
+    bool CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail=true);
 
 	virtual void InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
 

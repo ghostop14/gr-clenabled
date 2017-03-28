@@ -312,7 +312,7 @@ cl_device_type GRCLBase::GetContextType() {
 	return contextType;
 }
 
-void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName) {
+bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail) {
 	try {
 		// Create and program from source
 		if (program) {
@@ -339,8 +339,12 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 	}
 	catch(cl::Error& e) {
 		std::cout << "OpenCL Error compiling kernel for " << kernelFunctionName << std::endl;
+		std::cout << "OpenCL Error " << e.err() << ": " << e.what() << std::endl;
 		std::cout << kernelCode << std::endl;
-		exit(0);
+		if (exitOnFail)
+			exit(0);
+		else
+			return false;
 	}
 
 	try {
@@ -348,6 +352,7 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 	}
 	catch(cl::Error& e) {
 		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
+		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
 	}
 
 	try {
@@ -355,7 +360,10 @@ void GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 	}
 	catch(cl::Error& e) {
 		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
+		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
 	}
+
+	return true;
 }
 
 void GRCLBase::cleanup() {

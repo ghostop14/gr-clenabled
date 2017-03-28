@@ -42,9 +42,9 @@ namespace gr {
 		double		d_sampling_freq;
 		int			d_waveform;
 		double		d_frequency;
-		double		d_ampl;
-		double		d_angle_pos;
-		double		d_angle_rate_inc;
+		float		d_ampl;
+		float		d_angle_pos;
+		float		d_angle_rate_inc;
 	    uint32_t  	d_phase;
 	    int32_t 	d_phase_inc;
 

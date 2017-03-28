@@ -110,9 +110,9 @@ namespace gr {
         	// Float data type
         	fnName = "sig_float";
 
-    		srcStdStr = "__kernel void sig_float(const double phase, const double phase_inc,const float ampl, __global float * restrict c) {\n";
+    		srcStdStr = "__kernel void sig_float(const float phase, const float phase_inc,const float ampl, __global float * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
 
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
@@ -129,9 +129,9 @@ namespace gr {
         case DTYPE_INT:
         	fnName = "sig_int";
 
-    		srcStdStr = "__kernel void sig_int(const double phase, const double phase_inc,const double ampl, __global int * restrict c) {\n";
+    		srcStdStr = "__kernel void sig_int(const float phase, const float phase_inc,const float ampl, __global int * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
                 srcStdStr += "    c[index] = (int)(cos(dval) * ampl);\n";
@@ -146,16 +146,16 @@ namespace gr {
         case DTYPE_COMPLEX:
         	srcStdStr = "struct ComplexStruct {\n";
         	srcStdStr += "float real;\n";
-        	srcStdStr += "float imag; };\n";
+        	srcStdStr += "float imag; \n};\n";
         	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
         	fnName = "sig_complex";
 
-    		srcStdStr += "__kernel void sig_complex(const double phase, const double phase_inc, const double ampl, __global SComplex * restrict c) {\n";
+    		srcStdStr += "__kernel void sig_complex(const float phase, const float phase_inc, const float ampl, __global SComplex * restrict c) {\n";
     		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(double)index));\n";
-            srcStdStr += "    c[index].real = (float)(cos(dval) * ampl);\n";
-            srcStdStr += "    c[index].imag = (float)(sin(dval) * ampl);\n";
+    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
+            	srcStdStr += "    c[index].real = (float)(cos(dval) * ampl);\n";
+            	srcStdStr += "    c[index].imag = (float)(sin(dval) * ampl);\n";
         	srcStdStr += "}\n";
         break;
         }

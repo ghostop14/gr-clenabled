@@ -1566,6 +1566,22 @@ bool testMultiply() {
 	return true;
 }
 
+void verifyBuffers(int requiredSize,
+				std::vector<gr_complex>& inputItems, std::vector<gr_complex>& outputItems,
+				std::vector< const void *>& inputPointers,std::vector<void *>& outputPointers) {
+
+	while (inputItems.size() < requiredSize) {
+		inputItems.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(gr_complex(0.0,0.0));
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+
+	inputPointers.push_back((const void *)&inputItems[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+}
+
 bool testLowPassFilter() {
 	gr::clenabled::clFilter_impl *test=NULL;
 	double gain=1.0;
@@ -1621,14 +1637,7 @@ bool testLowPassFilter() {
 
 	int noutputitems;
 
-	// Need 12,000 for 5% CPU filter
-	for (i=1;i<=largeBlockSize;i++) {
-		inputItems.push_back(gr_complex(1.0f,0.5f));
-		outputItems.push_back(gr_complex(0.0,0.0));
-	}
-
-	inputPointers.push_back((const void *)&inputItems[0]);
-	outputPointers.push_back((void *)&outputItems[0]);
+	verifyBuffers(largeBlockSize,inputItems,outputItems,inputPointers,outputPointers);
 
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
 
@@ -1652,6 +1661,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
@@ -1703,6 +1713,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
@@ -1738,6 +1749,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
@@ -1773,6 +1785,7 @@ bool testLowPassFilter() {
 		fdBlockSize = optimalSize;
 	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
@@ -1840,7 +1853,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -1887,6 +1905,10 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
 
 	test->setFilterVariables(tdBufferSize);
@@ -1920,7 +1942,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1953,7 +1980,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1977,6 +2009,7 @@ bool testLowPassFilter() {
 	tdBufferSize = test->getCurrentBufferSize();
 
 	std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
+	std::cout << "Testing CPU-Only filter performance with 10 MSPS sample rate" << std::endl;
 	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 	std::cout << "OpenCL time domain maximum input sample size: " << tdBufferSize << std::endl;
 
@@ -1987,7 +2020,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
@@ -2019,7 +2057,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
@@ -2051,7 +2094,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
@@ -2082,7 +2130,12 @@ bool testLowPassFilter() {
 		tdBufferSize = optimalSize;
 		fdBlockSize = optimalSize;
 	}
+	else {
+		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
+		std::cout << "Running with " << tdBufferSize << " samples." << std::endl;
+	}
 
+	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 

@@ -1840,10 +1840,10 @@ bool testLowPassFilter() {
 	}
 
 
+	fdBlockSize = test->freqDomainSampleBlockSize();
+
 	std::cout << "Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
-	fdBlockSize = test->freqDomainSampleBlockSize();
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -1894,10 +1894,10 @@ bool testLowPassFilter() {
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 
+	fdBlockSize = test->freqDomainSampleBlockSize();
+
 	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
-	fdBlockSize = test->freqDomainSampleBlockSize();
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -1931,10 +1931,10 @@ bool testLowPassFilter() {
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 
+	fdBlockSize = test->freqDomainSampleBlockSize();
+
 	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
 	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
-	fdBlockSize = test->freqDomainSampleBlockSize();
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -1967,12 +1967,13 @@ bool testLowPassFilter() {
 	transition_width = (int)(cutoff_freq*0.05);
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
-	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
-
-	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 
 	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
 	fdBlockSize = test->freqDomainSampleBlockSize();
+
+	std::cout << "Rerunning with Filter parameters: cutoff freq: " << cutoff_freq << " transition width: " << transition_width << " and " << test->taps().size() << " taps..." << std::endl;
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
+
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -2047,9 +2048,9 @@ bool testLowPassFilter() {
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 
-	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
 	fdBlockSize = test->freqDomainSampleBlockSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -2084,9 +2085,9 @@ bool testLowPassFilter() {
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 
-	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
 	fdBlockSize = test->freqDomainSampleBlockSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;
@@ -2120,9 +2121,9 @@ bool testLowPassFilter() {
 	test->set_taps2(gr::clenabled::firdes::low_pass(gain,samp_rate,cutoff_freq,transition_width));
 	test->TestNotifyNewFilter(largeBlockSize);
 
-	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
-
 	fdBlockSize = test->freqDomainSampleBlockSize();
+
+	std::cout << "OpenCL and CPU frequency domain filter nsamples block size: " << fdBlockSize << std::endl;
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	std::cout << "Shared optimal block size: " << optimalSize << " samples." << std::endl;

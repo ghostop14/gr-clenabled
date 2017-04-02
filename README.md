@@ -8,32 +8,57 @@ The following blocks are implemented in this project:
 
 
 1.	Basic Building Blocks
-	a.	Signal Source
-	b.	Multiply
-	c.	Add
-	d.	Subtract
-	e.	Multiply Constant
-	f.	Add Constant
-	g.	Filters
-		i.	Low Pass
-		ii.	High Pass
-		iii.	Band Pass
-		iv.	Band Reject
-		v.	Root-Raised Cosine
-2.	Common Math or Complex Data Functions
-	a.	Complex Conjugate
-	b.	Multiply Conjugate
-	c.	Complex to Arg
-	d.	Complex to Mag Phase
-	e.	Mag Phase to Complex
-	f.	Log10
-	g.	SNR Helper (a custom block performing divide->log10->abs)
-	h.	Forward FFT
-	i.	Reverse FFT
-3.	Digital Signal Processing 
-	a.	Complex to Mag (used for ASK/OOK)
-	b.	Quadrature Demod (used for FSK)
 
+	a.	Signal Source
+	
+	b.	Multiply
+	
+	c.	Add
+	
+	d.	Subtract
+	
+	e.	Multiply Constant
+	
+	f.	Add Constant
+	
+	g.	Filters
+	
+		i.	Low Pass
+		
+		ii.	High Pass
+		
+		iii.	Band Pass
+		
+		iv.	Band Reject
+		
+		v.	Root-Raised Cosine
+		
+2.	Common Math or Complex Data Functions
+
+	a.	Complex Conjugate
+	
+	b.	Multiply Conjugate
+	
+	c.	Complex to Arg
+	
+	d.	Complex to Mag Phase
+	
+	e.	Mag Phase to Complex
+	
+	f.	Log10
+	
+	g.	SNR Helper (a custom block performing divide->log10->abs)
+	
+	h.	Forward FFT
+	
+	i.	Reverse FFT
+	
+3.	Digital Signal Processing 
+
+	a.	Complex to Mag (used for ASK/OOK)
+	
+	b.	Quadrature Demod (used for FSK)
+	
 
 Building gr-clenabled
 This study was meant to give back to the general SDR and open source community to provide a framework for moving towards ever-increasing digital processing speeds.  The module does require clFFT be installed.  Depending on your linux distro you may be able to ‘sudo apt-get install libclfft-dev’ to get all of the libraries and files to build the module.  It can also be installed directly from source.

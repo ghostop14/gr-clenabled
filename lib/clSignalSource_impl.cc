@@ -26,6 +26,9 @@
 #include <gnuradio/fxpt.h>
 #include "clSignalSource_impl.h"
 
+#define CL_TWO_PI 6.28318530717958647692
+#define CL_MINUS_TWO_PI -6.28318530717958647692
+
 namespace gr {
   namespace clenabled {
 
@@ -185,14 +188,14 @@ namespace gr {
       d_frequency = frequency;
       d_phase_inc = gr::fxpt::float_to_fixed(d_angle_rate_inc);
 
-      d_angle_rate_inc=2.0 * M_PI * d_frequency / d_sampling_freq;
+      d_angle_rate_inc=CL_TWO_PI * d_frequency / d_sampling_freq;
     }
 
     void clSignalSource_impl::step() {
         d_phase += d_phase_inc;
         d_angle_pos += d_angle_rate_inc;
-        while (d_angle_pos > (2*M_PI))
-        	d_angle_pos -= 2.0 * M_PI;
+        while (d_angle_pos > CL_TWO_PI)
+        	d_angle_pos -= CL_TWO_PI;
     }
 
     int clSignalSource_impl::testOpenCL(int noutput_items,
@@ -265,11 +268,11 @@ namespace gr {
 		d_angle_pos = d_angle_pos + (d_angle_rate_inc * noutput_items);
 
 		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
-		while (d_angle_pos > (2.0*M_PI))
-        	d_angle_pos -= 2.0 * M_PI;
+		while (d_angle_pos > CL_TWO_PI)
+        	d_angle_pos -= CL_TWO_PI;
 
-		while (d_angle_pos < (-2.0*M_PI))
-        	d_angle_pos += 2.0 * M_PI;
+		while (d_angle_pos < CL_MINUS_TWO_PI)
+        	d_angle_pos += CL_TWO_PI;
 
 		return noutput_items;
     }

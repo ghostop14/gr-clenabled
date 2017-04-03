@@ -193,9 +193,14 @@ namespace gr {
 
     void clSignalSource_impl::step() {
         d_phase += d_phase_inc;
+
         d_angle_pos += d_angle_rate_inc;
+
         while (d_angle_pos > CL_TWO_PI)
         	d_angle_pos -= CL_TWO_PI;
+
+        while (d_angle_pos < -CL_TWO_PI)
+        	d_angle_pos += CL_TWO_PI;
     }
 
     int clSignalSource_impl::testOpenCL(int noutput_items,

@@ -59,6 +59,10 @@ namespace gr {
       ~clSignalSource_impl();
 
       virtual bool stop();
+
+      float getAnglePos() { return d_angle_pos; }
+      float getAngleRate() { return d_angle_rate_inc; }
+
       void setBufferLength(int numItems);
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

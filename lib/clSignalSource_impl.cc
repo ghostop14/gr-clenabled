@@ -114,8 +114,8 @@ namespace gr {
         	fnName = "sig_float";
 
     		srcStdStr = "__kernel void sig_float(const float phase, const float phase_inc,const float ampl, __global float * restrict c) {\n";
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
+    		srcStdStr += "    int index =  get_global_id(0);\n";
+    		srcStdStr += "    float dval = phase+(phase_inc*(float)index);\n";
 
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
@@ -133,8 +133,8 @@ namespace gr {
         	fnName = "sig_int";
 
     		srcStdStr = "__kernel void sig_int(const float phase, const float phase_inc,const float ampl, __global int * restrict c) {\n";
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
+    		srcStdStr += "    int index =  get_global_id(0);\n";
+    		srcStdStr += "    float dval = phase+(phase_inc*(float)index);\n";
     		switch (d_waveform) {
     		case SIGSOURCE_COS:
                 srcStdStr += "    c[index] = (int)(cos(dval) * ampl);\n";
@@ -155,10 +155,10 @@ namespace gr {
         	fnName = "sig_complex";
 
     		srcStdStr += "__kernel void sig_complex(const float phase, const float phase_inc, const float ampl, __global SComplex * restrict c) {\n";
-    		srcStdStr += "    size_t index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval =  (float)(phase+(phase_inc*(float)index));\n";
-            	srcStdStr += "    c[index].real = (float)(cos(dval) * ampl);\n";
-            	srcStdStr += "    c[index].imag = (float)(sin(dval) * ampl);\n";
+    		srcStdStr += "    int index =  get_global_id(0);\n";
+    		srcStdStr += "    float dval = phase+(phase_inc*(float)index);\n";
+            	srcStdStr += "    c[index].real = cos(dval) * ampl;\n";
+            	srcStdStr += "    c[index].imag = sin(dval) * ampl;\n";
         	srcStdStr += "}\n";
         break;
         }
@@ -186,9 +186,9 @@ namespace gr {
     {
         // angle_rate is in radians / step
       d_frequency = frequency;
-      d_phase_inc = gr::fxpt::float_to_fixed(d_angle_rate_inc);
 
-      d_angle_rate_inc=CL_TWO_PI * d_frequency / d_sampling_freq;
+      d_angle_rate_inc=(float)(CL_TWO_PI * d_frequency / d_sampling_freq);
+      d_phase_inc = gr::fxpt::float_to_fixed(d_angle_rate_inc);
     }
 
     void clSignalSource_impl::step() {
@@ -221,6 +221,7 @@ namespace gr {
 
         for(int i = 0; i < noutput_items; i++) {
           output[i] = gr_complex(gr::fxpt::cos(d_phase) * d_ampl, gr::fxpt::sin(d_phase) * d_ampl);
+          //output[i] = gr_complex(cos(d_angle_pos) * d_ampl, sin(d_angle_pos) * d_ampl);
           step();
         }
     	return noutput_items;
@@ -270,7 +271,7 @@ namespace gr {
 		// here.
 
 //		d_phase = d_phase + (d_phase_inc * noutput_items);
-		d_angle_pos = d_angle_pos + (d_angle_rate_inc * noutput_items);
+		d_angle_pos = d_angle_pos + (d_angle_rate_inc * (float)noutput_items);
 
 		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
 		while (d_angle_pos > CL_TWO_PI)

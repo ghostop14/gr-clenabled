@@ -33,6 +33,7 @@
 #include <iostream>
 #include <fstream>
 #include <boost/algorithm/string/replace.hpp>
+#include <math.h>  // fabsf
 
 #include "clSComplex.h"
 #include "clMathConst_impl.h"
@@ -107,17 +108,21 @@ bool testSigSource() {
 
 
 	std::vector<gr_complex> outputItems;
+	std::vector<gr_complex> outputItems2;
 	std::vector<const void *> inputPointers;
 	std::vector<void *> outputPointers;
+	std::vector<void *> outputPointers2;
 
 	gr_complex grZero(0.0,0.0);
 	gr_complex newComplex(1.0,0.5);
 
 	for (i=0;i<largeBlockSize;i++) {
 		outputItems.push_back(grZero);
+		outputItems2.push_back(grZero);
 	}
 
 	outputPointers.push_back((void *)&outputItems[0]);
+	outputPointers2.push_back((void *)&outputItems2[0]);
 
 	// Run empty test
 	int noutputitems;
@@ -172,7 +177,7 @@ bool testSigSource() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl;
 
 	std::cout << std::endl;
 
@@ -181,6 +186,38 @@ bool testSigSource() {
 	if (test != NULL) {
 		delete test;
 	}
+
+	// Test accuracy:
+	gr::clenabled::clSignalSource_impl *test2;
+	test = new gr::clenabled::clSignalSource_impl(DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,2400000.0,SIGSOURCE_COS, 1000.0, 1.0,true);
+	test2 = new gr::clenabled::clSignalSource_impl(DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,2400000.0,SIGSOURCE_COS, 1000.0, 1.0,true);
+	noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	noutputitems = test2->testCPU(largeBlockSize,ninitems,inputPointers,outputPointers2);
+	float delta_r,delta_i;
+	float max_error_r=0.0;
+	float max_error_i=0.0;
+
+	for (i=0;i<largeBlockSize;i++) {
+		/*
+		if ( fabs(outputItems[i].real() - outputItems2[i].real()) > 0.000001) {
+			std::cout << i << ": OpenCL: " << outputItems[i].real() << "/" << outputItems[i].imag() << std::endl;
+			std::cout << "CPU: " << outputItems2[i].real() << "/" << outputItems2[i].imag() << std::endl;
+		}
+		*/
+		delta_r = fabsf(outputItems[i].real() - outputItems2[i].real());
+		delta_i = fabsf(outputItems[i].imag() - outputItems2[i].imag());
+
+		if (delta_r > max_error_r)
+			max_error_r = delta_r;
+
+		if (delta_i > max_error_i)
+			max_error_i = delta_i;
+}
+
+	std::cout << "maximum error OpenCL versus gnuradio table lookup cos/sin: " << max_error_r << "/" << max_error_i << std::endl;
+
+	delete test;
+	delete test2;
 
 	outputPointers.clear();
 	outputItems.clear();
@@ -2258,11 +2295,8 @@ main (int argc, char **argv)
 	was_successful = testFFT(true);
 	std::cout << std::endl;
 
-//	if (largeBlockSize <= 16384) {
-		// There's some memory issues in the filters that creep in above 16384.
-		was_successful = testLowPassFilter();
-		std::cout << std::endl;
-//	}
+	was_successful = testLowPassFilter();
+	std::cout << std::endl;
 
 	return was_successful ? 0 : 1;
 }

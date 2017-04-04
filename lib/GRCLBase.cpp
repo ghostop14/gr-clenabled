@@ -274,6 +274,9 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 	hasSharedVirtualMemory = (err == CL_SUCCESS);
 	hasSVMFineGrained = (err == CL_SUCCESS && (caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER));
 
+	if (debugMode) {
+		std::cout << "OpenCL: using " << platformName << std::endl;
+	}
 	/*
 	if (debugMode) {
 		if (hasSharedVirtualMemory) {

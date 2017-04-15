@@ -240,7 +240,12 @@ namespace gr {
     	if (noutput_items > curBufferSize) {
     		setBufferLength(noutput_items);
     	}
-		// Do the work
+
+
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
+
+    	// Do the work
 
 		// Set kernel args
 		kernel->setArg(0, d_angle_pos);

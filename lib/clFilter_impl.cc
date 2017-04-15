@@ -660,6 +660,10 @@ clFilter_impl::filterGPU(int ninput_items,
 
         int remaining=(curBufferSize+d_ntaps)*dataSize - inputBytes;
 
+
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
+
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
         if (remaining > 0)
         	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
@@ -729,6 +733,10 @@ clFilter_impl::filterGPU(int ninput_items,
     	int j = 0;
     	int err;
     	const gr_complex *in = (const gr_complex *) input_items[0];
+
+
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
 
     	for(int i = 0; i < ninput_items; i += d_nsamples) {
     	  // Move block of data to forward FFT buffer

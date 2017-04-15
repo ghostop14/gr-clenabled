@@ -284,6 +284,10 @@ namespace gr {
         const float *in_float = (const float *) input_items[0];
         float *out_float = (float *) output_items[0];
 
+
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
+
         while(count < noutput_items) {
             // Apply the window if there is one, otherwise just copy to the buffer.
         	// This is the same logic as in the native FFT class, rather than making 2 GPU calls,

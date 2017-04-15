@@ -239,6 +239,10 @@ namespace gr {
     	}
 
     	int inputSize = noutput_items*sizeof(gr_complex);
+
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
+
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
 
 		// Do the work

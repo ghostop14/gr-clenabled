@@ -26,6 +26,8 @@
 #include "clSComplex.h"
 #include "../include/clenabled/api.h"
 
+#include <boost/thread/mutex.hpp>
+
 #define DTYPE_COMPLEX 1
 #define DTYPE_FLOAT 2
 #define DTYPE_INT 3
@@ -59,6 +61,8 @@ protected:
 	 bool debugMode = false;
 
     int platformMode;
+
+    boost::mutex d_mutex;
 
     virtual void cleanup();
 

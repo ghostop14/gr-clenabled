@@ -40,6 +40,7 @@
 #include "qa_clKernel1To1.h"
 #include "qa_clKernel2To1.h"
 #include "qa_clSignalSource.h"
+#include "qa_clCostasLoop.h"
 
 CppUnit::TestSuite *
 qa_clenabled::suite()
@@ -59,6 +60,7 @@ qa_clenabled::suite()
   s->addTest(gr::clenabled::qa_clKernel1To1::suite());
   s->addTest(gr::clenabled::qa_clKernel2To1::suite());
   s->addTest(gr::clenabled::qa_clSignalSource::suite());
+  s->addTest(gr::clenabled::qa_clCostasLoop::suite());
 
   return s;
 }

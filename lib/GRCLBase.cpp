@@ -14,7 +14,7 @@ namespace clenabled {
 
 bool CLPRINT_NITEMS=false;
 
-void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug) {
+void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug,bool outOfOrderQueue) {
 
 	debugMode=setDebug;
 
@@ -295,7 +295,12 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
     // Create command queue
 	try {
 		// devIndex will either be 0 or if a specific platform and device id were specified, that one.
-	    queue = new cl::CommandQueue(*context, devices[devIndex], 0);
+		if (outOfOrderQueue == false)
+			// standard queue used for all parallel data processing streams (SIMD)
+			queue = new cl::CommandQueue(*context, devices[devIndex], 0);
+		else
+			// Used for task-parallel kernels where kernels can execute in any order
+			queue = new cl::CommandQueue(*context, devices[devIndex], CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
 	}
 	catch(...) {
     	std::string errMsg = "OpenCL Error: Unable to create OpenCL command queue on " + platformName;
@@ -303,12 +308,12 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 	}
 }
 
-GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug) {
-	InitOpenCL(idataType,dsize,openCLPlatformType,devSelector,platformId,devId,setDebug);
+GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug,bool outOfOrderQueue) {
+	InitOpenCL(idataType,dsize,openCLPlatformType,devSelector,platformId,devId,setDebug,outOfOrderQueue);
 }
 
-GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug) {
-	InitOpenCL(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,setDebug);
+GRCLBase::GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug,bool outOfOrderQueue) {
+	InitOpenCL(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,setDebug,outOfOrderQueue);
 }
 
 cl_device_type GRCLBase::GetContextType() {

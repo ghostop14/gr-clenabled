@@ -53,6 +53,7 @@
 #include "clComplexToArg_impl.h"
 #include "clMagPhaseToComplex_impl.h"
 #include "clSignalSource_impl.h"
+#include "clCostasLoop_impl.h"
 
 #include "window.h"
 
@@ -1603,6 +1604,116 @@ bool testMultiply() {
 	return true;
 }
 
+bool testCostasLoop() {
+	std::cout << "----------------------------------------------------------" << std::endl;
+	std::cout << "Testing Costas Loop performance with " << largeBlockSize << " items..." << std::endl;
+
+	gr::clenabled::clCostasLoop_impl *test=NULL;
+	try {
+		test = new gr::clenabled::clCostasLoop_impl(opencltype,selectorType,platformId,devId,0.00199,2,true);
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
+
+		if (test != NULL) {
+			delete test;
+		}
+
+		return false;
+	}
+
+	std::cout << "Max constant items: " << test->MaxConstItems() << std::endl;
+	test->setBufferLength(largeBlockSize);
+
+	int i;
+	int numItems=10;
+	std::vector<gr_complex> inputItems1;
+	std::vector<gr_complex> outputItems;
+	std::vector<int> ninitems;
+//	ninitems.push_back(numItems);
+
+	std::vector< const void *> inputPointers;
+	std::vector<void *> outputPointers;
+
+	int noutputitems;
+
+	for (i=1;i<=largeBlockSize;i++) {
+		inputItems1.push_back(gr_complex(1.0f,0.5f));
+		outputItems.push_back(gr_complex(0.0,0.0));
+	}
+
+	inputPointers.push_back((const void *)&inputItems1[0]);
+	outputPointers.push_back((void *)&outputItems[0]);
+
+	std::chrono::time_point<std::chrono::steady_clock> start, end;
+
+	noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	std::chrono::duration<double> elapsed_seconds = end-start;
+
+	switch(test->GetContextType()) {
+	case CL_DEVICE_TYPE_GPU:
+		std::cout << "OpenCL Context: GPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ACCELERATOR:
+		std::cout << "OpenCL Context: Accelerator" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_CPU:
+		std::cout << "OpenCL Context: CPU" << std::endl;
+	break;
+	case CL_DEVICE_TYPE_ALL:
+		std::cout << "OpenCL Context: ALL" << std::endl;
+	break;
+	}
+
+	float elapsed_time,throughput;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+
+	int j;
+
+	noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	for (j=0;j<iterations;j++) {
+		noutputitems = test->testCPU(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = largeBlockSize / elapsed_time;
+
+	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+
+	std::cout << std::endl;
+
+	if (test != NULL) {
+		delete test;
+	}
+
+	inputPointers.clear();
+	outputPointers.clear();
+	inputItems1.clear();
+	outputItems.clear();
+	ninitems.clear();
+
+	return true;
+}
+
 void verifyBuffers(int requiredSize,
 				std::vector<gr_complex>& inputItems, std::vector<gr_complex>& outputItems,
 				std::vector< const void *>& inputPointers,std::vector<void *>& outputPointers) {
@@ -2269,6 +2380,9 @@ main (int argc, char **argv)
 */
 
 	was_successful = testMultiplyConst();
+	std::cout << std::endl;
+
+	was_successful = testCostasLoop();
 	std::cout << std::endl;
 
 	was_successful = testSigSource();

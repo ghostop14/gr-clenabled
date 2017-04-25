@@ -49,6 +49,7 @@ list(APPEND clenabled_sources
     clKernel1To1_impl.cc
     clKernel2To1_impl.cc
     clSignalSource_impl.cc
+    clCostasLoop_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -58,7 +59,7 @@ if(NOT clenabled_sources)
 endif(NOT clenabled_sources)
 
 add_library(gnuradio-clenabled SHARED ${clenabled_sources})
-target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
+target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL gnuradio-blocks ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
 set_target_properties(gnuradio-clenabled PROPERTIES DEFINE_SYMBOL "gnuradio_clenabled_EXPORTS")
 
 if(APPLE)
@@ -83,6 +84,7 @@ include_directories(${CPPUNIT_INCLUDE_DIRS})
 list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test_clenabled.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clenabled.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/qa_clCostasLoop.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clSignalSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clKernel2To1.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_clKernel1To1.cc
@@ -112,6 +114,7 @@ list(APPEND test_clenabled_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/clComplexToMagPhase_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clMagPhaseToComplex_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clSignalSource_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clCostasLoop_impl.cc
 )
 
 add_executable(test-clenabled ${test_clenabled_sources})
@@ -126,7 +129,7 @@ target_link_libraries(
   OpenCL
   gnuradio-clenabled
   clFFT
-  
+  gnuradio-blocks
 )
 
 GR_ADD_TEST(test_clenabled test-clenabled)

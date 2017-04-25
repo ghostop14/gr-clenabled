@@ -83,7 +83,7 @@ protected:
 
     bool CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail=true);
 
-	virtual void InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
+	virtual void InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false,bool outOfOrderQueue=false);
 
 public:
     bool hasSVMAvailable() { return hasSharedVirtualMemory; };
@@ -96,8 +96,8 @@ public:
 
     int ActiveContextType() {return contextType;};
 
-	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false); // selects First of specified type
-	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false);
+	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false,bool outOfOrderQueue=false); // selects First of specified type
+	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false,bool outOfOrderQueue=false);
 	virtual ~GRCLBase();
     virtual bool stop();
 

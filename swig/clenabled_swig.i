@@ -19,6 +19,10 @@
 #include "clenabled/clComplexToMagPhase.h"
 #include "clenabled/clMagPhaseToComplex.h"
 #include "clenabled/clComplexToMag.h"
+#include "clenabled/clKernel1To1.h"
+#include "clenabled/clKernel2To1.h"
+#include "clenabled/clSignalSource.h"
+#include "clenabled/clCostasLoop.h"
 %}
 
 
@@ -44,3 +48,11 @@ GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexToMagPhase);
 GR_SWIG_BLOCK_MAGIC2(clenabled, clMagPhaseToComplex);
 %include "clenabled/clComplexToMag.h"
 GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexToMag);
+%include "clenabled/clKernel1To1.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clKernel1To1);
+%include "clenabled/clKernel2To1.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clKernel2To1);
+%include "clenabled/clSignalSource.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clSignalSource);
+%include "clenabled/clCostasLoop.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clCostasLoop);

@@ -35,5 +35,7 @@ install(FILES
     clComplexToMag.h
     clKernel1To1.h
     clKernel2To1.h
-    clSignalSource.h DESTINATION include/clenabled
+    clSignalSource.h
+    clCostasLoop.h 
+    DESTINATION include/clenabled
 )

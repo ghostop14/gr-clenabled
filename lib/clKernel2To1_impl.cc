@@ -24,6 +24,7 @@
 
 #include <gnuradio/io_signature.h>
 #include "clKernel2To1_impl.h"
+#include <fstream>
 
 namespace gr {
   namespace clenabled {

@@ -45,7 +45,7 @@ namespace gr {
      * The private constructor
      */
     clSNR_impl::clSNR_impl(int openCLPlatformType,int devSelector,int platformId, int devId,float nValue,float kValue,bool setDebug)
-      : gr::block("clSNR",
+      : gr::sync_block("clSNR",
               gr::io_signature::make(2, 2, sizeof(float)),
               gr::io_signature::make(1, 1, sizeof(float))),
 			  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -176,12 +176,6 @@ namespace gr {
     	return GRCLBase::stop();
     }
 
-    void
-    clSNR_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int clSNR_impl::testCPU(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
@@ -273,18 +267,14 @@ namespace gr {
 
 
     int
-    clSNR_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+    clSNR_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clSNR noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-        // Tell runtime system how many input items we consumed on
-        // each input stream.
-        consume_each (noutput_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.
         return retVal;

@@ -60,7 +60,7 @@ namespace gr {
      */
     clKernel1To1_impl::clKernel1To1_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId,
     		const char *kernelFnName, const char *filename, bool setDebug)
-      : gr::block("clKernel1To1",
+      : gr::sync_block("clKernel1To1",
               gr::io_signature::make(1,1, iDataSize),
               gr::io_signature::make(1,1, iDataSize)),
 			  GRCLBase(idataType, iDataSize,openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -156,12 +156,6 @@ namespace gr {
     	stop();
     }
 
-    void
-    clKernel1To1_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int clKernel1To1_impl::processOpenCL(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
@@ -211,18 +205,14 @@ namespace gr {
     }
 
     int
-    clKernel1To1_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+    clKernel1To1_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clKernel1To1 noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-        // Tell runtime system how many input items we consumed on
-        // each input stream.
-        consume_each (noutput_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.
         return retVal;

@@ -35,6 +35,8 @@ namespace gr {
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 
+		gr_vector_int d_ninput_items;  // backward compatibility item moving from block to sync_block.
+
      public:
       std::string srcStdStr;
       std::string fnName = "";
@@ -45,16 +47,14 @@ namespace gr {
 
       virtual bool stop();
       void setBufferLength(int numItems);
-      // Where all the action really happens
-      void forecast (int noutput_items, gr_vector_int &ninput_items_required);
+
 
       int processOpenCL(int noutput_items,
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
 
-      int general_work(int noutput_items,
-           gr_vector_int &ninput_items,
+      int work(int noutput_items,
            gr_vector_const_void_star &input_items,
            gr_vector_void_star &output_items);
     };

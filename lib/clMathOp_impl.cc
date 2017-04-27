@@ -87,7 +87,7 @@ namespace gr {
      * The private constructor
      */
     clMathOp_impl::clMathOp_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType, bool setDebug)
-      : gr::block("clMathOp",
+      : gr::sync_block("clMathOp",
               gr::io_signature::make(2, 2, dsize),
               gr::io_signature::make(1, 1, dsize)),
 			  GRCLBase(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -344,12 +344,6 @@ namespace gr {
     		stop();
     }
 
-    void
-    clMathOp_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int clMathOp_impl::testLog10(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
@@ -493,18 +487,14 @@ namespace gr {
     }
 
     int
-	clMathOp_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+	clMathOp_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clMathOp noutput_items: " << noutput_items << std::endl;
 
-      int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-      // Tell runtime system how many input items we consumed on
-      // each input stream.
-      consume_each (noutput_items);
+      int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
       // Tell runtime system how many output items we produced.
       return retVal;

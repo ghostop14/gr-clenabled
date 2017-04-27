@@ -64,7 +64,7 @@ namespace gr {
      * The private constructor
      */
     clMathConst_impl::clMathConst_impl(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId,float fValue,int operatorType,bool setDebug)
-      : gr::block("clMathConst",
+      : gr::sync_block("clMathConst",
               gr::io_signature::make(1, 1, dsize),
               gr::io_signature::make(1, 1, dsize)),
 			  GRCLBase(idataType, dsize,openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -271,12 +271,6 @@ namespace gr {
     	return GRCLBase::stop();
     }
 
-    void
-    clMathConst_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int clMathConst_impl::testCPU(int noutput_items,
             gr_vector_int &ninput_items,
             gr_vector_const_void_star &input_items,
@@ -382,27 +376,20 @@ namespace gr {
           *cBuffer,
           (void *) output);
 */
-      // Tell runtime system how many input items we consumed on
-      // each input stream.
-      // consume_each (noutput_items);
 
       // Tell runtime system how many output items we produced.
       return noutput_items;
     }
 
     int
-	clMathConst_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+	clMathConst_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clMathConst noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-        // Tell runtime system how many input items we consumed on
-        // each input stream.
-        consume_each (noutput_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.
         return retVal;
@@ -416,9 +403,9 @@ namespace gr {
         rpcbasic_sptr(new rpcbasic_register_get<clMathConst, float>(
 	  alias(), "Constant",
 	  &clMathConst::k,
-	  -1024.0f,
-          1024.0f,
-          0.0f,
+	  pmt::from_complex(-4.29e9, 0),
+          pmt::from_complex(4.29e9, 0),
+          pmt::from_complex(0, 0),
 	  "", "Constant", RPC_PRIVLVL_MIN,
           DISPTIME | DISPOPTCPLX | DISPOPTSTRIP)));
 
@@ -426,9 +413,9 @@ namespace gr {
         rpcbasic_sptr(new rpcbasic_register_set<clMathConst, float>(
 	  alias(), "Constant",
 	  &clMathConst::set_k,
-	  -1024.0f,
-          1024.0f,
-          0.0f,
+	  pmt::from_complex(-4.29e9, 0),
+          pmt::from_complex(4.29e9, 0),
+          pmt::from_complex(0, 0),
 	  "", "Constant",
 	  RPC_PRIVLVL_MIN, DISPNULL)));
 #endif /* GR_CTRLPORT */

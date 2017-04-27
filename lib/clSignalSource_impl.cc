@@ -62,7 +62,7 @@ namespace gr {
      * The private constructor
      */
     clSignalSource_impl::clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,bool setDebug)
-      : gr::block("clSignalSource",
+      : gr::sync_block("clSignalSource",
               gr::io_signature::make(0, 0, 0),
               gr::io_signature::make(1, 1, iDataSize)),
 			  GRCLBase(idataType, iDataSize,openCLPlatformType,devSelector,platformId,devId,setDebug),
@@ -176,12 +176,6 @@ namespace gr {
     }
 
     void
-    clSignalSource_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
-    void
 	clSignalSource_impl::set_frequency(double frequency)
     {
         // angle_rate is in radians / step
@@ -289,19 +283,15 @@ namespace gr {
     }
 
     int
-    clSignalSource_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+    clSignalSource_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clSignalSource noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
         // int retVal = testCPU(noutput_items,ninput_items,input_items,output_items);
-        // Tell runtime system how many input items we consumed on
-        // each input stream.
-        consume_each (noutput_items);
 
         // Tell runtime system how many output items we produced.
         return noutput_items;

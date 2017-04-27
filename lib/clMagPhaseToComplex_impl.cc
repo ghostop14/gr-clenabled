@@ -43,7 +43,7 @@ namespace gr {
      * The private constructor
      */
     clMagPhaseToComplex_impl::clMagPhaseToComplex_impl(int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug)
-      : gr::block("clMagPhaseToComplex",
+      : gr::sync_block("clMagPhaseToComplex",
               gr::io_signature::make(2, 2, sizeof(float)),
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
   	  	  	  GRCLBase(DTYPE_FLOAT, sizeof(float),openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -291,24 +291,15 @@ namespace gr {
     }
 
 
-    void
-    clMagPhaseToComplex_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int
-    clMagPhaseToComplex_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+    clMagPhaseToComplex_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clMagPhaseToComplex noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-
-      consume_each (noutput_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
       // Tell runtime system how many output items we produced.
       return retVal;

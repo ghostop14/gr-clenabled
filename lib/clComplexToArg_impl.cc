@@ -44,7 +44,7 @@ namespace gr {
      * The private constructor
      */
     clComplexToArg_impl::clComplexToArg_impl(int openCLPlatformType, int devSelector,int platformId, int devId,bool setDebug)
-      : gr::block("clComplexToArg",
+      : gr::sync_block("clComplexToArg",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(float))),
 	  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug)
@@ -261,24 +261,15 @@ namespace gr {
       return noutput_items;
     }
 
-    void
-    clComplexToArg_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
-    {
-      /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-    }
-
     int
-    clComplexToArg_impl::general_work (int noutput_items,
-                       gr_vector_int &ninput_items,
+    clComplexToArg_impl::work (int noutput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clComplexToArg noutput_items: " << noutput_items << std::endl;
 
-        int retVal = processOpenCL(noutput_items,ninput_items,input_items,output_items);
-
-      consume_each (noutput_items);
+        int retVal = processOpenCL(noutput_items,d_ninput_items,input_items,output_items);
 
       // Tell runtime system how many output items we produced.
       return retVal;

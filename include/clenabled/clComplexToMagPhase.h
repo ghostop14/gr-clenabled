@@ -23,7 +23,7 @@
 #define INCLUDED_CLENABLED_CLCOMPLEXTOMAGPHASE_H
 
 #include <clenabled/api.h>
-#include <gnuradio/block.h>
+#include <gnuradio/sync_block.h>
 
 namespace gr {
   namespace clenabled {
@@ -33,7 +33,7 @@ namespace gr {
      * \ingroup clenabled
      *
      */
-    class CLENABLED_API clComplexToMagPhase : virtual public gr::block
+    class CLENABLED_API clComplexToMagPhase : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<clComplexToMagPhase> sptr;

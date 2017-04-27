@@ -23,7 +23,7 @@
 #define INCLUDED_CLENABLED_CLMATHOP_H
 
 #include <clenabled/api.h>
-#include <gnuradio/block.h>
+#include <gnuradio/sync_block.h>
 #include "clMathOpTypes.h"
 
 namespace gr {
@@ -34,7 +34,7 @@ namespace gr {
      * \ingroup clenabled
      *
      */
-    class CLENABLED_API clMathOp : virtual public gr::block
+    class CLENABLED_API clMathOp : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<clMathOp> sptr;

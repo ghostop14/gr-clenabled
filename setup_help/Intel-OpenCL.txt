@@ -1,0 +1,46 @@
+Intel OpenCL Notes
+
+Intel has a number of OpenCL platforms including their graphics cards, Intel CPU's, and FPGA's.
+
+The easiest way to get up and running on debian is to take these steps:
+
+-------------------------
+Setting up drivers and SDK
+-------------------------
+Go to Intel's web site and download the latest: https://software.intel.com/en-us/intel-opencl.
+
+Note: The Ubuntu installer has been used on debian as well and it worked fine.
+
+Once installed, reboot and make sure everything comes up.
+
+-------------------------
+Installing gr-clenabled
+-------------------------
+
+Now that the build environment is all set up you should be all set.  You can either use pybombs or git clone it from github.
+
+-------------------------
+pybombs
+-------------------------
+pybombs install gr-clenabled
+
+-------------------------
+git
+-------------------------
+
+There is one prerequisite for building, and that's libclfft-dev.  You'll want to 'sudo apt install libclfft-dev' before proceeding.  (pybombs takes care of that for you)
+
+cd /tmp   (or wherever you'd like it)
+https://github.com/ghostop14/gr-clenabled.git gr-clenabled
+cd gr-clenabled
+mkdir build
+cd build
+cmake ..
+make
+
+* Install Note: If you installed gnuradio from pybombs and have the environment variables set up okay you shouldn't need to 'sudo make install', just 'make install' should work.  However if you installed gnuradio from the repo (although not recommended) or another way, you may need to 'sudo make install'
+
+make install
+sudo ldconfig
+
+DONE!  Fire up gnuradio and enjoy.

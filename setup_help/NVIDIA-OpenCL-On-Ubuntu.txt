@@ -1,17 +1,19 @@
-# NVIDIA OpenCL on Ubuntu Notes
+NVIDIA OpenCL on Ubuntu Notes
 
 The easiest way to get up and running on Ubuntu is to take these steps:
 
-
-## Setting up NVIDIA driver
-
-### Adding the driver repo
+-------------------------
+Setting up NVIDIA driver
+-------------------------
+Adding the driver repo
+-------------------------
 
 sudo add-apt-repository ppa:graphics-drivers/ppa
-
 sudo apt update
 
-### Finding the latest driver
+-------------------------
+Finding the latest driver
+-------------------------
 
 apt search nvidia-*
 
@@ -21,8 +23,9 @@ sudo apt install nvidia-381
 
 Once this is done, reboot and make sure your system/display work.  If all is well then continue on.
 
-
-## Installing OpenCL Dev Files
+-------------------------
+Installing OpenCL Dev Files
+-------------------------
 
 This is a 3-step process.  First install the repo opencl dev packages and headers:
 
@@ -38,35 +41,34 @@ Once that downloads, install it.  If you take the defaults, it'll put the header
 If they're there, run this:
 ln -s /usr/local/cuda-8.0/include/CL/cl.hpp /usr/include/CL/cl.hpp
 
-## Installing gr-clenabled
+-------------------------
+Installing gr-clenabled
+-------------------------
 
 Now that the build environment is all set up you should be all set.  You can either use pybombs or git clone it from github.
 
-### pybombs
+-------------------------
+pybombs
+-------------------------
 pybombs install gr-clenabled
 
-### git
+-------------------------
+git
+-------------------------
 
 There is one prerequisite for building, and that's libclfft-dev.  You'll want to 'sudo apt install libclfft-dev' before proceeding.  (pybombs takes care of that for you)
 
 cd /tmp   (or wherever you'd like it)
-
 https://github.com/ghostop14/gr-clenabled.git gr-clenabled
-
 cd gr-clenabled
-
 mkdir build
-
 cd build
-
 cmake ..
-
 make
 
-Install Note: If you installed gnuradio from pybombs and have the environment variables set up okay you shouldn't need to 'sudo make install', just 'make install' should work.  However if you installed gnuradio from the repo (although not recommended) or another way, you may need to 'sudo make install'
+* Install Note: If you installed gnuradio from pybombs and have the environment variables set up okay you shouldn't need to 'sudo make install', just 'make install' should work.  However if you installed gnuradio from the repo (although not recommended) or another way, you may need to 'sudo make install'
 
 make install
-
-ldconfig
+sudo ldconfig
 
 DONE!  Fire up gnuradio and enjoy.

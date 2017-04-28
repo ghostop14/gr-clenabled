@@ -1,4 +1,4 @@
-gr-clenabled - OpenCL-enabled common blocks for GNURadio
+# gr-clenabled - OpenCL-enabled common blocks for GNURadio
 
 
 Gr-clenabled had a number of lofty goals at the project’s onset.  the goal was to go through as many GNURadio blocks as possible that are used in common digital communications processing (ASK, FSK, and PSK), convert them to OpenCL, and provide scalability by allowing each OpenCL-enabled block to be assigned to a user-selectable OpenCL device.  This latter scalability feature would allow a system that has 3 graphics cards, or even a combination of GPU’s and FPGA’s, to have different blocks assigned to run on different cards all within the same flowgraph.  This flexibility would also allow lower-end cards to drive less computational blocks and allow FPGA’s to handle the more intensive blocks.  
@@ -76,29 +76,7 @@ Now that you have OpenCL correctly set up, clfft installed, and a working GNURad
 
 For a more detailed discussion of the command-line tools available in this module, see the study paper in the docs directory.
 
+## Building
 
-To build gr-clenabled, simply follow the standard module build process.  Git clone it to a directory, close GNURadio if you have it open, then use the following build steps:
-
-[apt or apt-get] install libclfft-dev
-
-cd <clone directory>
-
-mkdir build
-
-cd build
-
-cmake ..
-
-make
-
-sudo make install
-
-sudo ldconfig
-
-If each step was successful (don’t overlook the ‘sudo ldconfig’ step).
-
-
-Note:
-
-If you install clFFT via git at https://github.com/clMathLibraries/clFFT.git, if you get an error finding the libraries running test-clenabled, the libraries you may need to create links to them.  They install by default into /usr/local/lib64/.
+In the setup_help directory there are some installation notes for various configurations with details to get set up and any prerequisites.
 

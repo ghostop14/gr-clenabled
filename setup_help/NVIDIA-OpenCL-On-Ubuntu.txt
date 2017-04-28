@@ -47,6 +47,8 @@ pybombs install gr-clenabled
 
 ### git
 
+There is one prerequisite for building, and that's libclfft-dev.  You'll want to 'sudo apt install libclfft-dev' before proceeding.  (pybombs takes care of that for you)
+
 cd /tmp   (or wherever you'd like it)
 
 https://github.com/ghostop14/gr-clenabled.git gr-clenabled

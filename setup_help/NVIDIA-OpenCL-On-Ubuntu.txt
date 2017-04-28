@@ -1,0 +1,70 @@
+# NVIDIA OpenCL on Ubuntu Notes
+
+The easiest way to get up and running on Ubuntu is to take these steps:
+
+
+## Setting up NVIDIA driver
+
+### Adding the driver repo
+
+sudo add-apt-repository ppa:graphics-drivers/ppa
+
+sudo apt update
+
+### Finding the latest driver
+
+apt search nvidia-*
+
+You should find a number of them coming back as nvidia-<###>.  When I put these instructions together, 381 looked like the latest, so I installed that like this:
+
+sudo apt install nvidia-381
+
+Once this is done, reboot and make sure your system/display work.  If all is well then continue on.
+
+
+## Installing OpenCL Dev Files
+
+This is a 3-step process.  First install the repo opencl dev packages and headers:
+
+sudo apt install nvidia-opencl-dev nvidia-cuda-dev
+
+Now go over to NVIDIA and download their Cuda Toolkit:
+https://developer.nvidia.com/cuda-downloads
+
+For me I selected Linux - x86_64 - Ubuntu - 16.04 - runfile (local).
+
+Once that downloads, install it.  If you take the defaults, it'll put the headers in /usr/local/cuda-8.0/include/CL/
+
+If they're there, run this:
+ln -s /usr/local/cuda-8.0/include/CL/cl.hpp /usr/include/CL/cl.hpp
+
+## Installing gr-clenabled
+
+Now that the build environment is all set up you should be all set.  You can either use pybombs or git clone it from github.
+
+### pybombs
+pybombs install gr-clenabled
+
+### git
+
+cd /tmp   (or wherever you'd like it)
+
+https://github.com/ghostop14/gr-clenabled.git gr-clenabled
+
+cd gr-clenabled
+
+mkdir build
+
+cd build
+
+cmake ..
+
+make
+
+Install Note: If you installed gnuradio from pybombs and have the environment variables set up okay you shouldn't need to 'sudo make install', just 'make install' should work.  However if you installed gnuradio from the repo (although not recommended) or another way, you may need to 'sudo make install'
+
+make install
+
+ldconfig
+
+DONE!  Fire up gnuradio and enjoy.

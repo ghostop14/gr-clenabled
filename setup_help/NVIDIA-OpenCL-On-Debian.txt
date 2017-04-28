@@ -1,0 +1,63 @@
+NVIDIA OpenCL on Debian Notes
+
+The easiest way to get up and running on debian is to take these steps:
+
+-------------------------
+Setting up NVIDIA driver
+-------------------------
+sudo apt-get update
+sudo apt-get install linux-headers-$(uname -r) nvidia-kernel-dkms nvidia-opencl-icd nvidia-opencl-dev
+
+Now, the NVIDIA driver will conflict with the Noveau driver so we have to disable it.
+
+Edit /etc/default/grub and see if you have a line that says "nouveau.modeset=0".  If not you can use these lines to add it:
+
+sed 's/quiet/quiet nouveau.modeset=0/g' -i /etc/default/grub
+update-grub
+
+reboot
+
+---------------------------
+If your video stops working
+---------------------------
+
+I do occasionally run into issues with NVIDIA drivers on debian so if you find your display no longer works, you may need to back the drivers back out to get your system back.  Reboot and at the boot screen boot with extra parameters.  You can add these to the kernel boot in single-user console mode:
+
+nomodeset nosplash text single
+
+Once in, run this to purge the NVIDIA drivers and start fresh again:
+sudo apt-get remove --purge nvidia-*
+
+reboot and see if it comes back.  Repeat this install/fix process until you get a working NVIDIA setup.
+
+-------------------------
+Installing gr-clenabled
+-------------------------
+
+Now that the build environment is all set up you should be all set.  You can either use pybombs or git clone it from github.
+
+-------------------------
+pybombs
+-------------------------
+pybombs install gr-clenabled
+
+-------------------------
+git
+-------------------------
+
+There is one prerequisite for building, and that's libclfft-dev.  You'll want to 'sudo apt install libclfft-dev' before proceeding.  (pybombs takes care of that for you)
+
+cd /tmp   (or wherever you'd like it)
+https://github.com/ghostop14/gr-clenabled.git gr-clenabled
+cd gr-clenabled
+mkdir build
+cd build
+cmake ..
+make
+
+* Install Note: If you installed gnuradio from pybombs and have the environment variables set up okay you shouldn't need to 'sudo make install', just 'make install' should work.  However if you installed gnuradio from the repo (although not recommended) or another way, you may need to 'sudo make install'
+
+make install
+sudo ldconfig
+
+DONE!  Fire up gnuradio and enjoy.

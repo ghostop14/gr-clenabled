@@ -136,7 +136,7 @@ target_link_libraries(
 
 GR_ADD_TEST(test_clenabled test-clenabled)
 
-install(TARGETS test-clenabled DESTINATION /usr/bin RUNTIME)
+install(TARGETS test-clenabled DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
 # Build and register clview
@@ -148,7 +148,7 @@ target_link_libraries(
   OpenCL
 )
 
-install(TARGETS clview DESTINATION /usr/bin RUNTIME)
+install(TARGETS clview DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
 # Build and register test-clkernel
@@ -171,7 +171,7 @@ target_link_libraries(
   gnuradio-clenabled
 )
 
-install(TARGETS test-clkernel DESTINATION /usr/bin RUNTIME)
+install(TARGETS test-clkernel DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
 # Print summary

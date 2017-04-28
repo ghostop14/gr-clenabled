@@ -1,17 +1,42 @@
 Intel OpenCL Notes
 
-Intel has a number of OpenCL platforms including their graphics cards, Intel CPU's, and FPGA's.
+Intel has a number of OpenCL platforms including their graphics cards, Intel CPU's, and FPGA's.  This process has been tested
+on both Ubuntu 16.0.4 LTS and debian.
 
-The easiest way to get up and running on debian is to take these steps:
+The easiest way to get up and running is to take these steps:
 
--------------------------
+--------------------------
 Setting up drivers and SDK
--------------------------
+--------------------------
 Go to Intel's web site and download the latest: https://software.intel.com/en-us/intel-opencl.
 
 Note: The Ubuntu installer has been used on debian as well and it worked fine.
 
 Once installed, reboot and make sure everything comes up.
+-----------------------------------------------
+[Optional / Not Recommended] OpenCL CPU Drivers
+-----------------------------------------------
+You can use OpenCL on Intel processors.
+
+HOWEVER: **** OpenCL Trig Function accuracy isn't sufficient in Intel's CPU-only implementation and it can impact results ****
+
+With that warning in place, if you'd like to install the Intel CPU OpenCL drivers, go to this site and download the runtime driver: https://software.intel.com/en-us/articles/opencl-drivers
+
+It has a prerequisite for lsb-core so 'apt (or apt-get) install lsb-core' before running the install.
+
+Once installed, reboot and make sure everything comes up.
+
+-------------------------
+Installing clinfo
+-------------------------
+clinfo is a command-line tool that will let you list your OpenCL devices.   It's a great way to make sure your OS and drivers are
+all working together correctly and everything sees the hardware.  
+
+You can install it with:
+
+[apt or apt-get] install clinfo
+
+Once it's installed, type 'clinfo' and make sure your device(s) show up.
 
 -------------------------
 Installing gr-clenabled

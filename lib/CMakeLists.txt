@@ -21,6 +21,13 @@ set(VOLK_LIBRARIES volk)
 
 set (CMAKE_CXX_STANDARD 11)
 
+IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+	MESSAGE(STATUS "building for debug...")
+ELSE(CMAKE_BUILD_TYPE MATCHES DEBUG)
+	MESSAGE(STATUS "Release mode: increasing compiler optimizations...")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+ENDIF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+
 ########################################################################
 # Setup library
 ########################################################################

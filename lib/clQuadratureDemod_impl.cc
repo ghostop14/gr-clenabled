@@ -55,7 +55,7 @@ namespace gr {
     	if (imaxItems==0)
     		imaxItems=8192;
 
-		setBufferLength(imaxItems);
+		setBufferLength(imaxItems+1);  // have 1 history item there.  set_history(N) saves N-1 items.
 
         // And finally optimize the data we get based on the preferred workgroup size.
         // Note: We can't do this until the kernel is compiled and since it's in the block class
@@ -74,6 +74,11 @@ namespace gr {
         catch (...) {
 
         }
+
+        // we need to look at the previous value.
+        // If you set the history to 'N', this means you always have the last (N-1)
+        // input values kept in your buffer.
+        set_history(2);
 }
 
     void clQuadratureDemod_impl::buildKernel(int numItems) {
@@ -154,11 +159,14 @@ namespace gr {
             CL_MEM_READ_ONLY,
 			(numItems+1) * sizeof(gr_complex));  // complex conj is of index+1.
 
+    	/*
+    	 * Didn't understand set_history.  Don't need to do this.
     	// Zero out the last entry
     	float zeroBuff[2];
     	zeroBuff[0] = zeroBuff[1] = 0.0;
 
     	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,numItems*sizeof(gr_complex),sizeof(gr_complex),(void *)&zeroBuff[0]);
+		*/
 
         cBuffer = new cl::Buffer(
             *context,
@@ -234,11 +242,13 @@ namespace gr {
 			return 0;
 		}
 
-    	if (noutput_items > curBufferSize) {
-    		setBufferLength(noutput_items);
+		int items_with_history = noutput_items + 1;
+
+    	if (items_with_history > curBufferSize) {
+    		setBufferLength(items_with_history);
     	}
 
-    	int inputSize = noutput_items*sizeof(gr_complex);
+    	int inputSize = items_with_history*sizeof(gr_complex);
 
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);

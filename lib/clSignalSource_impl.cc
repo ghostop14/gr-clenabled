@@ -67,7 +67,8 @@ namespace gr {
               gr::io_signature::make(1, 1, iDataSize)),
 			  GRCLBase(idataType, iDataSize,openCLPlatformType,devSelector,platformId,devId,setDebug),
 			  d_phase(0), d_phase_inc(0),d_sampling_freq((double)samp_rate), d_waveform(waveform),
-		      d_frequency(freq),d_ampl((double)amplitude),d_angle_pos(0.0),d_angle_rate_inc(0.0)
+		      d_frequency(freq),d_float_ampl(amplitude),d_float_angle_pos(0.0),d_float_angle_rate_inc(0.0),
+			  d_double_ampl((double)amplitude),d_double_angle_pos(0.0),d_double_angle_rate_inc(0.0)
     {
     	set_frequency(freq);
 
@@ -108,6 +109,11 @@ namespace gr {
     }
 
     void clSignalSource_impl::buildKernel(int numItems) {
+
+    	if (!hasDoublePrecisionSupport) {
+    		std::cout << "OpenCL Signal Source Warning: Your selected OpenCL platform doesn't support double precision math.  The resulting output from this block is going to contain potentially impactful 'noise' (plot it on a frequency plot versus native block for comparison)." << std::endl;
+    	}
+
         switch(dataType) {
         case DTYPE_FLOAT:
         	// Float data type
@@ -116,21 +122,40 @@ namespace gr {
         	srcStdStr = "";
         	//srcStdStr = "#define CL_TWO_PI 6.28318530717958647692\n";
 
-    		srcStdStr += "__kernel void sig_float(const float phase, const float phase_inc,const float ampl, __global float * restrict c) {\n";
-    		srcStdStr += "    int index =  get_global_id(0);\n";
-    		srcStdStr += "    float dval = phase+(phase_inc*(float)index);\n";
-    		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
-    		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+        	if (hasDoublePrecisionSupport) {
+        		srcStdStr += "__kernel void sig_float(const double phase, const double phase_inc,const double ampl, __global float * restrict c) {\n";
+        		srcStdStr += "    int index =  get_global_id(0);\n";
+        		srcStdStr += "    double dval = phase+(phase_inc*(double)index);\n";
+        		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+        		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
 
-    		switch (d_waveform) {
-    		case SIGSOURCE_COS:
-                srcStdStr += "    c[index] = (float)(cos(dval) * ampl);\n";
-    		break;
-    		case SIGSOURCE_SIN:
-                srcStdStr += "    c[index] = (float)(sin(dval) * ampl);\n";
-    		break;
-    		}
-        	srcStdStr += "}\n";
+        		switch (d_waveform) {
+        		case SIGSOURCE_COS:
+                    srcStdStr += "    c[index] = (float)(cos(dval) * ampl);\n";
+        		break;
+        		case SIGSOURCE_SIN:
+                    srcStdStr += "    c[index] = (float)(sin(dval) * ampl);\n";
+        		break;
+        		}
+            	srcStdStr += "}\n";
+        	}
+        	else {
+        		srcStdStr += "__kernel void sig_float(const float phase, const float phase_inc,const float ampl, __global float * restrict c) {\n";
+        		srcStdStr += "    int index =  get_global_id(0);\n";
+        		srcStdStr += "    float dval = phase+(phase_inc*(float)index);\n";
+        		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+        		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+
+        		switch (d_waveform) {
+        		case SIGSOURCE_COS:
+                    srcStdStr += "    c[index] = (float)(cos(dval) * ampl);\n";
+        		break;
+        		case SIGSOURCE_SIN:
+                    srcStdStr += "    c[index] = (float)(sin(dval) * ampl);\n";
+        		break;
+        		}
+            	srcStdStr += "}\n";
+        	}
         break;
 
 
@@ -157,28 +182,54 @@ namespace gr {
         break;
 
         case DTYPE_COMPLEX:
-        	srcStdStr = "";
-        	//srcStdStr = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n";
-        	srcStdStr += "struct ComplexStruct {\n";
-        	srcStdStr += "float real;\n";
-        	srcStdStr += "float imag; \n};\n";
-        	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+        	if (hasDoublePrecisionSupport) {
+            	srcStdStr = "";
+            	//srcStdStr = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n";
+            	srcStdStr += "struct ComplexStruct {\n";
+            	srcStdStr += "float real;\n";
+            	srcStdStr += "float imag; \n};\n";
+            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
-        	fnName = "sig_complex";
+            	fnName = "sig_complex";
 
-        	srcStdStr += "#define CL_TWO_PI 6.28318530717958647692\n";
+            	srcStdStr += "#define CL_TWO_PI 6.28318530717958647692\n";
 
-    		srcStdStr += "__kernel void sig_complex(const float phase, const float phase_inc, const float ampl, __global SComplex * restrict c) {\n";
-    		srcStdStr += "		int index =  get_global_id(0);\n";
-    		// Step
-    		srcStdStr += "		float dval = phase+(phase_inc*(float)index);\n";
-    		// Bound rollover
-    		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
-    		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+        		srcStdStr += "__kernel void sig_complex(const double phase, const double phase_inc, const double ampl, __global SComplex * restrict c) {\n";
+        		srcStdStr += "		int index =  get_global_id(0);\n";
+        		// Step
+        		srcStdStr += "		double dval = phase+(phase_inc*(double)index);\n";
+        		// Bound rollover
+        		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+        		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
 
-            srcStdStr += "		c[index].real = cos(dval) * ampl;\n";
-            srcStdStr += "		c[index].imag = sin(dval) * ampl;\n";
-        	srcStdStr += "}\n";
+                srcStdStr += "		c[index].real = (float)(cos(dval) * ampl);\n";
+                srcStdStr += "		c[index].imag = (float)(sin(dval) * ampl);\n";
+            	srcStdStr += "}\n";
+        	}
+        	else {
+            	srcStdStr = "";
+            	//srcStdStr = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n";
+            	srcStdStr += "struct ComplexStruct {\n";
+            	srcStdStr += "float real;\n";
+            	srcStdStr += "float imag; \n};\n";
+            	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+            	fnName = "sig_complex";
+
+            	srcStdStr += "#define CL_TWO_PI 6.28318530717958647692\n";
+
+        		srcStdStr += "__kernel void sig_complex(const float phase, const float phase_inc, const float ampl, __global SComplex * restrict c) {\n";
+        		srcStdStr += "		int index =  get_global_id(0);\n";
+        		// Step
+        		srcStdStr += "		float dval = phase+(phase_inc*(float)index);\n";
+        		// Bound rollover
+        		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+        		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+
+                srcStdStr += "		c[index].real = cos(dval) * ampl;\n";
+                srcStdStr += "		c[index].imag = sin(dval) * ampl;\n";
+            	srcStdStr += "}\n";
+        	}
         break;
         }
     }
@@ -200,20 +251,53 @@ namespace gr {
         // angle_rate is in radians / step
       d_frequency = frequency;
 
-      d_angle_rate_inc=(float)(CL_TWO_PI * d_frequency / d_sampling_freq);
-      d_phase_inc = gr::fxpt::float_to_fixed(d_angle_rate_inc);
+      // Set up our new params
+      d_float_angle_rate_inc=(float)(CL_TWO_PI * d_frequency / d_sampling_freq);
+      d_double_angle_rate_inc=CL_TWO_PI * d_frequency / d_sampling_freq;
+
+      d_phase_inc = gr::fxpt::float_to_fixed(d_float_angle_rate_inc);
+    }
+
+    float clSignalSource_impl::getAnglePos() {
+    	if (hasDoublePrecisionSupport) {
+        	return (float)d_double_angle_pos;
+    	}
+    	else {
+        	return d_float_angle_pos;
+    	}
+    }
+    float clSignalSource_impl::getAngleRate() {
+    	if (hasDoublePrecisionSupport) {
+        	return (float)d_double_angle_rate_inc;
+    	}
+    	else {
+        	return d_float_angle_rate_inc;
+    	}
     }
 
     void clSignalSource_impl::step() {
         d_phase += d_phase_inc;
 
-        d_angle_pos += d_angle_rate_inc;
+        if (hasDoublePrecisionSupport) {
+            d_double_angle_pos += d_double_angle_rate_inc;
 
-        while (d_angle_pos > CL_TWO_PI)
-        	d_angle_pos -= CL_TWO_PI;
+            // don't speed this up, this is for work test comparisons.
+            while (d_double_angle_pos > CL_TWO_PI)
+            	d_double_angle_pos -= CL_TWO_PI;
 
-        while (d_angle_pos < -CL_TWO_PI)
-        	d_angle_pos += CL_TWO_PI;
+            while (d_double_angle_pos < -CL_TWO_PI)
+            	d_double_angle_pos += CL_TWO_PI;
+        }
+        else {
+            d_float_angle_pos += d_float_angle_rate_inc;
+
+            // don't speed this up, this is for work test comparisons.
+            while (d_float_angle_pos > CL_TWO_PI)
+            	d_float_angle_pos -= CL_TWO_PI;
+
+            while (d_float_angle_pos < -CL_TWO_PI)
+            	d_float_angle_pos += CL_TWO_PI;
+        }
     }
 
     int clSignalSource_impl::testOpenCL(int noutput_items,
@@ -233,7 +317,7 @@ namespace gr {
     	// For complex, sin and cos is generated.  For float it's really sin or cos
 
         for(int i = 0; i < noutput_items; i++) {
-          output[i] = gr_complex(gr::fxpt::cos(d_phase) * d_ampl, gr::fxpt::sin(d_phase) * d_ampl);
+          output[i] = gr_complex(gr::fxpt::cos(d_phase) * d_float_ampl, gr::fxpt::sin(d_phase) * d_float_ampl);
           //output[i] = gr_complex(cos(d_angle_pos) * d_ampl, sin(d_angle_pos) * d_ampl);
           step();
         }
@@ -261,10 +345,18 @@ namespace gr {
     	// Do the work
 
 		// Set kernel args
-		kernel->setArg(0, d_angle_pos);
-		kernel->setArg(1, d_angle_rate_inc);
-		kernel->setArg(2, d_ampl);
-		kernel->setArg(3, *cBuffer);
+        if (hasDoublePrecisionSupport) {
+    		kernel->setArg(0, d_double_angle_pos);
+    		kernel->setArg(1, d_double_angle_rate_inc);
+    		kernel->setArg(2, d_double_ampl);
+    		kernel->setArg(3, *cBuffer);
+        }
+        else {
+    		kernel->setArg(0, d_float_angle_pos);
+    		kernel->setArg(1, d_float_angle_rate_inc);
+    		kernel->setArg(2, d_float_ampl);
+    		kernel->setArg(3, *cBuffer);
+        }
 
 		cl::NDRange localWGSize=cl::NullRange;
 
@@ -289,34 +381,67 @@ namespace gr {
 		// here.
 
 //		d_phase = d_phase + (d_phase_inc * noutput_items);
-		d_angle_pos = d_angle_pos + (d_angle_rate_inc * (float)noutput_items);
+        if (hasDoublePrecisionSupport) {
+    		d_double_angle_pos = d_double_angle_pos + (d_double_angle_rate_inc * (float)noutput_items);
 
-		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
-		// Bound rollover
-		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
-		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+    		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
+    		// Bound rollover
+    		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+    		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
 
 
-		// bound rollover
-		if ((d_angle_pos > CL_TWO_PI) || (d_angle_pos < CL_MINUS_TWO_PI)) {
-			d_angle_pos = d_angle_pos / CL_TWO_PI - (float)((int)(d_angle_pos / CL_TWO_PI));
-			d_angle_pos = d_angle_pos * CL_TWO_PI;
-		}
-		/*
-		if (d_angle_pos > CL_TWO_PI) {
-			// std::cout << "d_angle_pos > CL_TWO_PI" << std::endl;
+    		// bound rollover
+    		if ((d_double_angle_pos > CL_TWO_PI) || (d_double_angle_pos < CL_MINUS_TWO_PI)) {
+    			d_double_angle_pos = d_double_angle_pos / CL_TWO_PI - (double)((int)(d_double_angle_pos / CL_TWO_PI));
+    			d_double_angle_pos = d_double_angle_pos * CL_TWO_PI;
+    		}
+    		/*
+    		if (d_angle_pos > CL_TWO_PI) {
+    			// std::cout << "d_angle_pos > CL_TWO_PI" << std::endl;
 
-			while (d_angle_pos > CL_TWO_PI) {
-				d_angle_pos -= CL_TWO_PI;
-			}
-		}
-		else if (d_angle_pos < CL_MINUS_TWO_PI) {
-			// std::cout << "d_angle_pos < CL_MINUS_TWO_PI" << std::endl;
-			while (d_angle_pos < CL_MINUS_TWO_PI) {
-				d_angle_pos += CL_TWO_PI;
-			}
-		}
-    	*/
+    			while (d_angle_pos > CL_TWO_PI) {
+    				d_angle_pos -= CL_TWO_PI;
+    			}
+    		}
+    		else if (d_angle_pos < CL_MINUS_TWO_PI) {
+    			// std::cout << "d_angle_pos < CL_MINUS_TWO_PI" << std::endl;
+    			while (d_angle_pos < CL_MINUS_TWO_PI) {
+    				d_angle_pos += CL_TWO_PI;
+    			}
+    		}
+        	*/
+        }
+        else {
+    		d_float_angle_pos = d_float_angle_pos + (d_float_angle_rate_inc * (float)noutput_items);
+
+    		// keep the number from growing to out-of-bounds since S(n)=S(n+m*(2*M_PI))  [where m is an integer - m cycles ahead]
+    		// Bound rollover
+    		//srcStdStr += "		dval = dval / CL_TWO_PI - (float)((int)(dval / CL_TWO_PI));\n";
+    		//srcStdStr += "		dval = dval * CL_TWO_PI;\n";
+
+
+    		// bound rollover
+    		if ((d_float_angle_pos > CL_TWO_PI) || (d_float_angle_pos < CL_MINUS_TWO_PI)) {
+    			d_float_angle_pos = d_float_angle_pos / CL_TWO_PI - (float)((int)(d_float_angle_pos / CL_TWO_PI));
+    			d_float_angle_pos = d_float_angle_pos * CL_TWO_PI;
+    		}
+    		/*
+    		if (d_angle_pos > CL_TWO_PI) {
+    			// std::cout << "d_angle_pos > CL_TWO_PI" << std::endl;
+
+    			while (d_angle_pos > CL_TWO_PI) {
+    				d_angle_pos -= CL_TWO_PI;
+    			}
+    		}
+    		else if (d_angle_pos < CL_MINUS_TWO_PI) {
+    			// std::cout << "d_angle_pos < CL_MINUS_TWO_PI" << std::endl;
+    			while (d_angle_pos < CL_MINUS_TWO_PI) {
+    				d_angle_pos += CL_TWO_PI;
+    			}
+    		}
+        	*/
+        }
+
 		return noutput_items;
     }
 

@@ -58,9 +58,11 @@ namespace gr {
 			  // Last param here says use an out-of-order queue.  This is to facilitate task-parallel vs data-parallel processing
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,setDebug,true),
 			  blocks::control_loop(loop_bw, 1.0, -1.0),
-			  d_order(order), d_error(0), d_noise(1.0), d_phase_detector(NULL),
+			  d_order(order), d_float_error(0), d_float_noise(1.0), d_double_error(0), d_double_noise(1.0), d_phase_detector(NULL),
 			  d_loopbw(loop_bw)
     {
+    	d_double_freq = d_freq;  // d_freq is in control_loop as a float
+
         // Set up the phase detector to use based on the constellation order
         switch(d_order) {
         	case 2:
@@ -150,80 +152,165 @@ namespace gr {
 		else
 			srcStdStr += "__kernel void costasloop(__global SComplex * restrict iptr, const int noutput_items, __global SComplex * restrict optr,\n";
 
-		srcStdStr += "							__global float * restrict d_phase, __global float * restrict d_error,__global float * restrict d_freq) {\n";
-		srcStdStr += "	float i_r,i_i,n_r,n_i,o_r,o_i;\n";
-		srcStdStr += "	float x1,x2;\n";
-		srcStdStr += "	int i;\n";
-		srcStdStr += "\n";
-		srcStdStr += "  float l_phase=*d_phase;\n";
-		srcStdStr += "  float l_error=*d_error;\n";
-		srcStdStr += "  float l_freq=*d_freq;\n";
+    	if (hasDoublePrecisionSupport) {
+    		srcStdStr += "							__global double * restrict d_phase, __global double * restrict d_error,__global double * restrict d_freq) {\n";
+    		srcStdStr += "	double i_r,i_i,n_r,n_i,o_r,o_i;\n";
+    		srcStdStr += "	double x1,x2;\n";
+    		srcStdStr += "	int i;\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "  double l_phase=*d_phase;\n";
+    		srcStdStr += "  double l_error=*d_error;\n";
+    		srcStdStr += "  double l_freq=*d_freq;\n";
 
-		srcStdStr += "	for(i = 0; i < noutput_items; i++) {\n";
-		srcStdStr += "	  n_i = sin(-l_phase);\n";
-		srcStdStr += "	  n_r = cos(-l_phase);\n";
-		srcStdStr += "\n";
-		srcStdStr += "	  //optr[i] = iptr[i] * nco_out;\n";
-		srcStdStr += "	  i_r = iptr[i].real;\n";
-		srcStdStr += "	  i_i = iptr[i].imag;\n";
-		srcStdStr += "	  o_r = (i_r * n_r) - (i_i*n_i);\n";
-		srcStdStr += "	  o_i = (i_r * n_i) + (i_i * n_r);\n";
-		srcStdStr += "	  optr[i].real = o_r;\n";
-		srcStdStr += "	  optr[i].imag = o_i;\n";
-		srcStdStr += "\n";
+    		srcStdStr += "	for(i = 0; i < noutput_items; i++) {\n";
+    		srcStdStr += "	  n_i = sin(-l_phase);\n";
+    		srcStdStr += "	  n_r = cos(-l_phase);\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //optr[i] = iptr[i] * nco_out;\n";
+    		srcStdStr += "	  i_r = iptr[i].real;\n";
+    		srcStdStr += "	  i_i = iptr[i].imag;\n";
 
-		if (d_order == 2) {
-			//d_error = (*this.*d_phase_detector)(optr[i]);\n";
-			// 2nd order in-place\n";
-			srcStdStr += "	  l_error = o_r*o_i;\n";
-		}
-		else {
-	          // 4th order in-place
-	          // d_error = (optr[i].real()>0 ? 1.0 : -1.0) * optr[i].imag() - (optr[i].imag()>0 ? 1.0 : -1.0) * optr[i].real();
-			srcStdStr += "	  l_error = (o_r>0 ? 1.0 : -1.0) * o_i - (o_i>0 ? 1.0 : -1.0) * o_r;\n";
+    		if (hasDoubleFMASupport) {
+        		srcStdStr += "	  o_r = fma((double)iptr[i].real,n_r,-((double)iptr[i].imag)*n_i);\n";
+        		srcStdStr += "	  o_i = fma((double)iptr[i].real,n_i,(double)iptr[i].imag*n_r);\n";
+    		}
+    		else {
+        		srcStdStr += "	  o_r = (i_r * n_r) - (i_i*n_i);\n";
+        		srcStdStr += "	  o_i = (i_r * n_i) + (i_i * n_r);\n";
+    		}
+    		srcStdStr += "	  optr[i].real = o_r;\n";
+    		srcStdStr += "	  optr[i].imag = o_i;\n";
+    		srcStdStr += "\n";
 
-		}
+    		if (d_order == 2) {
+    			//d_error = (*this.*d_phase_detector)(optr[i]);\n";
+    			// 2nd order in-place\n";
+    			srcStdStr += "	  l_error = o_r*o_i;\n";
+    		}
+    		else {
+    	          // 4th order in-place
+    	          // d_error = (optr[i].real()>0 ? 1.0 : -1.0) * optr[i].imag() - (optr[i].imag()>0 ? 1.0 : -1.0) * optr[i].real();
+    			srcStdStr += "	  l_error = (o_r>0 ? 1.0 : -1.0) * o_i - (o_i>0 ? 1.0 : -1.0) * o_r;\n";
 
-		srcStdStr += "\n";
-		srcStdStr += "	  // d_error = gr::branchless_clip(d_error, 1.0);\n";
-		srcStdStr += "	  x1 = fabs(l_error+1);\n";
-		srcStdStr += "	  x2 = fabs(l_error-1);\n";
-		srcStdStr += "	  x1 -= x2;\n";
-		srcStdStr += "	  l_error = 0.5*x1;\n";
-		srcStdStr += "\n";
-		srcStdStr += "	  //advance_loop(d_error);\n";
-		srcStdStr += "	  l_freq = l_freq + d_beta * l_error;\n";
-		srcStdStr += "	  l_phase = l_phase + l_freq + d_alpha * l_error;\n";
-		srcStdStr += "\n";
-		srcStdStr += "	  //phase_wrap();\n";
-		/*
-		srcStdStr += "	  if (l_phase > CL_TWO_PI) {\n";
-		srcStdStr += "		while(l_phase>CL_TWO_PI)\n";
-		srcStdStr += "		  l_phase -= CL_TWO_PI;\n";
-		srcStdStr += "	  }\n";
-		srcStdStr += "	  else {\n";
-		srcStdStr += "		while(l_phase< CL_MINUS_TWO_PI)\n";
-		srcStdStr += "		  l_phase += CL_TWO_PI;\n";
-		srcStdStr += "	  }\n";
-		*/
-		srcStdStr += "if ((l_phase > CL_TWO_PI) || (l_phase < CL_MINUS_TWO_PI)) {\n";
-		srcStdStr += "	l_phase = l_phase / CL_TWO_PI - (float)((int)(l_phase / CL_TWO_PI));\n";
-		srcStdStr += "	l_phase = l_phase * CL_TWO_PI;\n";
-		srcStdStr += "}\n";
+    		}
 
-		srcStdStr += "\n";
-		srcStdStr += "	  //frequency_limit();\n";
-		srcStdStr += "	  if(l_freq > d_max_freq)\n";
-		srcStdStr += "		l_freq = d_max_freq;\n";
-		srcStdStr += "	  else if(l_freq < d_min_freq)\n";
-		srcStdStr += "		l_freq = d_min_freq;\n";
-		srcStdStr += "	}\n";
-		srcStdStr += "\n";
-		srcStdStr += "	*d_phase = l_phase;\n";
-		srcStdStr += "	*d_freq = l_freq;\n";
-		srcStdStr += "	*d_error = l_error;\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	  // d_error = gr::branchless_clip(d_error, 1.0);\n";
+    		srcStdStr += "	  l_error = 0.5 * (fabs(l_error+1) - fabs(l_error-1));\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //advance_loop(d_error);\n";
 
-		srcStdStr += "}\n";
+    		if (hasDoubleFMASupport) {
+        		srcStdStr += "	  l_freq = fma(d_beta,l_error,l_freq);\n";
+        		srcStdStr += "	  l_phase = l_phase + fma(d_alpha,l_error,l_freq);\n";
+    		}
+    		else {
+        		srcStdStr += "	  l_freq = l_freq + d_beta * l_error;\n";
+        		srcStdStr += "	  l_phase = l_phase + l_freq + d_alpha * l_error;\n";
+    		}
+
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //phase_wrap();\n";
+
+    		srcStdStr += "if ((l_phase > CL_TWO_PI) || (l_phase < CL_MINUS_TWO_PI)) {\n";
+    		srcStdStr += "	l_phase = l_phase / CL_TWO_PI - (float)((int)(l_phase / CL_TWO_PI));\n";
+    		srcStdStr += "	l_phase = l_phase * CL_TWO_PI;\n";
+    		srcStdStr += "}\n";
+
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //frequency_limit();\n";
+    		srcStdStr += "	  if(l_freq > d_max_freq)\n";
+    		srcStdStr += "		l_freq = d_max_freq;\n";
+    		srcStdStr += "	  else if(l_freq < d_min_freq)\n";
+    		srcStdStr += "		l_freq = d_min_freq;\n";
+    		srcStdStr += "	}\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	*d_phase = l_phase;\n";
+    		srcStdStr += "	*d_freq = l_freq;\n";
+    		srcStdStr += "	*d_error = l_error;\n";
+
+    		srcStdStr += "}\n";
+    	}
+    	else {
+    		srcStdStr += "							__global float * restrict d_phase, __global float * restrict d_error,__global float * restrict d_freq) {\n";
+    		srcStdStr += "	float i_r,i_i,n_r,n_i,o_r,o_i;\n";
+    		srcStdStr += "	float x1,x2;\n";
+    		srcStdStr += "	int i;\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "  float l_phase=*d_phase;\n";
+    		srcStdStr += "  float l_error=*d_error;\n";
+    		srcStdStr += "  float l_freq=*d_freq;\n";
+
+    		srcStdStr += "	for(i = 0; i < noutput_items; i++) {\n";
+    		srcStdStr += "	  n_i = sin(-l_phase);\n";
+    		srcStdStr += "	  n_r = cos(-l_phase);\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //optr[i] = iptr[i] * nco_out;\n";
+    		srcStdStr += "	  i_r = iptr[i].real;\n";
+    		srcStdStr += "	  i_i = iptr[i].imag;\n";
+
+    		if (hasDoubleFMASupport) {
+        		srcStdStr += "	  o_r = fma((double)iptr[i].real,n_r,-((double)iptr[i].imag)*n_i);\n";
+        		srcStdStr += "	  o_i = fma((double)iptr[i].real,n_i,(double)iptr[i].imag*n_r);\n";
+    		}
+    		else {
+        		srcStdStr += "	  o_r = (i_r * n_r) - (i_i*n_i);\n";
+        		srcStdStr += "	  o_i = (i_r * n_i) + (i_i * n_r);\n";
+    		}
+    		srcStdStr += "	  optr[i].real = o_r;\n";
+    		srcStdStr += "	  optr[i].imag = o_i;\n";
+    		srcStdStr += "\n";
+
+    		if (d_order == 2) {
+    			//d_error = (*this.*d_phase_detector)(optr[i]);\n";
+    			// 2nd order in-place\n";
+    			srcStdStr += "	  l_error = o_r*o_i;\n";
+    		}
+    		else {
+    	          // 4th order in-place
+    	          // d_error = (optr[i].real()>0 ? 1.0 : -1.0) * optr[i].imag() - (optr[i].imag()>0 ? 1.0 : -1.0) * optr[i].real();
+    			srcStdStr += "	  l_error = (o_r>0 ? 1.0 : -1.0) * o_i - (o_i>0 ? 1.0 : -1.0) * o_r;\n";
+
+    		}
+
+    		srcStdStr += "\n";
+    		srcStdStr += "	  // d_error = gr::branchless_clip(d_error, 1.0);\n";
+    		srcStdStr += "	  l_error = 0.5 * (fabs(l_error+1) - fabs(l_error-1));\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //advance_loop(d_error);\n";
+
+    		if (hasDoubleFMASupport) {
+        		srcStdStr += "	  l_freq = fma(d_beta,l_error,l_freq);\n";
+        		srcStdStr += "	  l_phase = l_phase + fma(d_alpha,l_error,l_freq);\n";
+    		}
+    		else {
+        		srcStdStr += "	  l_freq = l_freq + d_beta * l_error;\n";
+        		srcStdStr += "	  l_phase = l_phase + l_freq + d_alpha * l_error;\n";
+    		}
+
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //phase_wrap();\n";
+
+    		srcStdStr += "if ((l_phase > CL_TWO_PI) || (l_phase < CL_MINUS_TWO_PI)) {\n";
+    		srcStdStr += "	l_phase = l_phase / CL_TWO_PI - (float)((int)(l_phase / CL_TWO_PI));\n";
+    		srcStdStr += "	l_phase = l_phase * CL_TWO_PI;\n";
+    		srcStdStr += "}\n";
+
+    		srcStdStr += "\n";
+    		srcStdStr += "	  //frequency_limit();\n";
+    		srcStdStr += "	  if(l_freq > d_max_freq)\n";
+    		srcStdStr += "		l_freq = d_max_freq;\n";
+    		srcStdStr += "	  else if(l_freq < d_min_freq)\n";
+    		srcStdStr += "		l_freq = d_min_freq;\n";
+    		srcStdStr += "	}\n";
+    		srcStdStr += "\n";
+    		srcStdStr += "	*d_phase = l_phase;\n";
+    		srcStdStr += "	*d_freq = l_freq;\n";
+    		srcStdStr += "	*d_error = l_error;\n";
+
+    		srcStdStr += "}\n";
+    	}
+
     }
 
 
@@ -253,20 +340,28 @@ namespace gr {
 		if (buff_freq)
 			delete buff_freq;
 
+		int param_buff_size;
+    	if (hasDoublePrecisionSupport) {
+    		param_buff_size = sizeof(double);
+    	}
+    	else {
+    		param_buff_size = sizeof(float);
+    	}
+
 		buff_phase = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-			sizeof(float));
+			param_buff_size);
 
 		buff_error = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-			sizeof(float));
+			param_buff_size);
 
 		buff_freq = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-			sizeof(float));
+			param_buff_size);
 
 		buildKernel(numItems);
     	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
@@ -383,10 +478,10 @@ namespace gr {
 
             optr[i] = iptr[i] * nco_out;
 
-            d_error = phase_detector_2(optr[i]);
-            d_error = gr::branchless_clip(d_error, 1.0);
+            d_float_error = phase_detector_2(optr[i]);
+            d_float_error = gr::branchless_clip(d_float_error, 1.0);
 
-            advance_loop(d_error);
+            advance_loop(d_float_error);
             phase_wrap();
             frequency_limit();
 
@@ -408,10 +503,10 @@ namespace gr {
             optr[i] = iptr[i] * nco_out;
 
             // EXPENSIVE LINE
-            d_error = (*this.*d_phase_detector)(optr[i]);
-            d_error = gr::branchless_clip(d_error, 1.0);
+            d_float_error = (*this.*d_phase_detector)(optr[i]);
+            d_float_error = gr::branchless_clip(d_float_error, 1.0);
 
-            advance_loop(d_error);
+            advance_loop(d_float_error);
             phase_wrap();
             frequency_limit();
           }
@@ -441,6 +536,7 @@ namespace gr {
 
     	int inputSize = noutput_items*dataSize;
     	int sizeFloat = sizeof(float);
+    	int sizeDouble = sizeof(double);
 
     	// Not worried about multiple queueing for task-parallel so don't worry about the mutex here.
 
@@ -449,16 +545,29 @@ namespace gr {
 
         // Set kernel args
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
-        queue->enqueueWriteBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
-        queue->enqueueWriteBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)&d_error);
-        queue->enqueueWriteBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)&d_freq);
-
         kernel->setArg(0, *aBuffer);
         kernel->setArg(1, noutput_items);
         kernel->setArg(2, *cBuffer);
-        kernel->setArg(3, *buff_phase);
-        kernel->setArg(4, *buff_error);
-        kernel->setArg(5, *buff_freq);
+
+    	if (hasDoublePrecisionSupport) {
+            queue->enqueueWriteBuffer(*buff_phase,CL_TRUE,0,sizeDouble,(void *)&d_double_phase);
+            queue->enqueueWriteBuffer(*buff_error,CL_TRUE,0,sizeDouble,(void *)&d_double_error);
+            queue->enqueueWriteBuffer(*buff_freq,CL_TRUE,0,sizeDouble,(void *)&d_double_freq);
+
+            kernel->setArg(3, *buff_phase);
+            kernel->setArg(4, *buff_error);
+            kernel->setArg(5, *buff_freq);
+    	}
+    	else {
+            queue->enqueueWriteBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
+            queue->enqueueWriteBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)&d_float_error);
+            queue->enqueueWriteBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)&d_freq);
+
+            kernel->setArg(3, *buff_phase);
+            kernel->setArg(4, *buff_error);
+            kernel->setArg(5, *buff_freq);
+
+    	}
 
         cl::NDRange localWGSize = cl::NDRange(1);
 
@@ -470,9 +579,16 @@ namespace gr {
 			localWGSize);
 
     	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
-    	queue->enqueueReadBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
-    	queue->enqueueReadBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)(void *)&d_error);
-    	queue->enqueueReadBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)(void *)&d_freq);
+    	if (hasDoublePrecisionSupport) {
+        	queue->enqueueReadBuffer(*buff_phase,CL_TRUE,0,sizeDouble,(void *)&d_double_phase);
+        	queue->enqueueReadBuffer(*buff_error,CL_TRUE,0,sizeDouble,(void *)(void *)&d_double_error);
+        	queue->enqueueReadBuffer(*buff_freq,CL_TRUE,0,sizeDouble,(void *)(void *)&d_double_freq);
+    	}
+    	else {
+        	queue->enqueueReadBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
+        	queue->enqueueReadBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)(void *)&d_float_error);
+        	queue->enqueueReadBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)(void *)&d_freq);
+    	}
 
       return noutput_items;
     }

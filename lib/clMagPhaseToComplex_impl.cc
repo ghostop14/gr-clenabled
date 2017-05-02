@@ -146,6 +146,10 @@ namespace gr {
     	else
     		useConst = true;
 
+    	if (!hasDoublePrecisionSupport) {
+    		std::cout << "OpenCL Mag/Phase to Complex Warning: Your selected OpenCL platform doesn't support double precision math.  The resulting output from this block is going to contain potentially impactful 'noise' (plot it on a frequency plot versus native block for comparison)." << std::endl;
+    	}
+
 		if (debugMode) {
 			if (useConst)
 				std::cout << "OpenCL INFO: MagPhaseToComplex building kernel with __constant params..." << std::endl;
@@ -167,10 +171,22 @@ namespace gr {
     		srcStdStr += "__kernel void magphasetocomplex(__global float * restrict a, __global float * restrict b, __global SComplex * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float mag = a[index];\n";
-    	srcStdStr += "    float phase = b[index];\n";
-    	srcStdStr += "    float real = mag*cos(phase);\n";
-    	srcStdStr += "    float imag = mag*sin(phase);\n";
+
+    	if (hasDoublePrecisionSupport) {
+        	srcStdStr += "    double mag = (double)a[index];\n";
+        	srcStdStr += "    double phase = (double)b[index];\n";
+
+        	srcStdStr += "    float real = (float)(mag*cos(phase));\n";
+        	srcStdStr += "    float imag = (float)(mag*sin(phase));\n";
+    	}
+    	else {
+        	srcStdStr += "    float mag = a[index];\n";
+        	srcStdStr += "    float phase = b[index];\n";
+
+        	srcStdStr += "    float real = mag*cos(phase);\n";
+        	srcStdStr += "    float imag = mag*sin(phase);\n";
+    	}
+
     	srcStdStr += "    c[index].real = real;\n";
     	srcStdStr += "    c[index].imag = imag;\n";
     	srcStdStr += "}\n";

@@ -127,6 +127,10 @@ namespace gr {
     	else
     		useConst = true;
 
+    	if (!hasDoublePrecisionSupport) {
+    		std::cout << "OpenCL Complex To Mag/Phase Warning: Your selected OpenCL platform doesn't support double precision math.  The resulting output from this block is going to contain potentially impactful 'noise' (plot it on a frequency plot versus native block for comparison)." << std::endl;
+    	}
+
 		if (debugMode) {
 			if (useConst)
 				std::cout << "OpenCL INFO: ComplexToMag Const building kernel with __constant params..." << std::endl;
@@ -152,7 +156,12 @@ namespace gr {
     	srcStdStr += "    float aval = a[index].imag;\n";
     	srcStdStr += "    float bval = a[index].real;\n";
     	srcStdStr += "    b[index] = sqrt((aval*aval)+(bval*bval));\n";
-    	srcStdStr += "    c[index] = atan2(aval,bval);\n";
+    	if (hasDoublePrecisionSupport) {
+        	srcStdStr += "    c[index] = (float)atan2((double)aval,(double)bval);\n";
+    	}
+    	else {
+        	srcStdStr += "    c[index] = atan2(aval,bval);\n";
+    	}
     	srcStdStr += "}\n";
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());

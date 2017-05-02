@@ -116,6 +116,10 @@ namespace gr {
     	else
     		useConst = true;
 
+    	if (!hasDoublePrecisionSupport) {
+    		std::cout << "OpenCL Complex To Arg Warning: Your selected OpenCL platform doesn't support double precision math.  The resulting output from this block is going to contain potentially impactful 'noise' (plot it on a frequency plot versus native block for comparison)." << std::endl;
+    	}
+
 		if (debugMode) {
 			if (useConst)
 				std::cout << "OpenCL INFO: MComplexToArg building kernel with __constant params..." << std::endl;
@@ -137,7 +141,13 @@ namespace gr {
     		srcStdStr += "__kernel void complextoarg(__global SComplex * restrict a, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    c[index] = atan2(a[index].imag,a[index].real);\n";
+
+    	if (hasDoublePrecisionSupport) {
+        	srcStdStr += "    c[index] = (float)atan2((double)a[index].imag,(double)a[index].real);\n";
+    	}
+    	else {
+        	srcStdStr += "    c[index] = atan2(a[index].imag,a[index].real);\n";
+    	}
     	srcStdStr += "}\n";
 
     	int imaxItems=gr::block::max_noutput_items();

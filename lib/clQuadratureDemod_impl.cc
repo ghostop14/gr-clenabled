@@ -124,24 +124,62 @@ namespace gr {
 		srcStdStr += "__kernel void quadDemod(__global SComplex * restrict a, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-    	srcStdStr += "    float a_r=a[index+1].real;\n";
-    	srcStdStr += "    float a_i=a[index+1].imag;\n";
-    	srcStdStr += "    float b_r=a[index].real;\n";
-    	srcStdStr += "    float b_i=-1.0 * a[index].imag;\n";
-    	srcStdStr += "    float multCCreal = (a_r * b_r) - (a_i*b_i);\n";
-    	srcStdStr += "    float multCCimag = (a_r * b_i) + (a_i * b_r);\n";
-        if (f_gain != 1.0)
-        	srcStdStr += "    c[index] = GAIN * atan2(multCCimag,multCCreal);\n";
-        else
-        	srcStdStr += "    c[index] = atan2(multCCimag,multCCreal);\n";
-/*// Debug Code
-    	srcStdStr += "    if (a_r != 0.0 || a_i != 0.0) {\n";
-    	srcStdStr += "       printf(\"Kernel: input real=%f input imag=%f\\n\",a_r,a_i);\n";
-    	srcStdStr += "       printf(\"Kernel: multCC real=%f multCC imag=%f\\n\",multCCreal,multCCimag);\n";
-    	srcStdStr += "       printf(\"Kernel: atan2=%f\\n\",c[index]);\n";
-    	srcStdStr += "    }\n";
-*/
-    	srcStdStr += "}\n";
+    	if (hasDoublePrecisionSupport) {
+        	srcStdStr += "    double a_r=a[index+1].real;\n";
+        	srcStdStr += "    double a_i=a[index+1].imag;\n";
+        	srcStdStr += "    double b_r=a[index].real;\n";
+        	srcStdStr += "    double b_i=-1.0 * a[index].imag;\n";
+
+    		if (hasDoubleFMASupport) {
+        		srcStdStr += "	  double multCCreal = fma(a_r,b_r,-(a_i*b_i));\n";
+        		srcStdStr += "	  double multCCimag = fma(a_r,b_i,a_i*b_r);\n";
+    		}
+    		else {
+            	srcStdStr += "    double multCCreal = (a_r * b_r) - (a_i*b_i);\n";
+            	srcStdStr += "    double multCCimag = (a_r * b_i) + (a_i * b_r);\n";
+    		}
+
+            if (f_gain != 1.0)
+            	srcStdStr += "    c[index] = (float)(GAIN * atan2(multCCimag,multCCreal));\n";
+            else
+            	srcStdStr += "    c[index] = (float)(atan2(multCCimag,multCCreal));\n";
+    /*// Debug Code
+        	srcStdStr += "    if (a_r != 0.0 || a_i != 0.0) {\n";
+        	srcStdStr += "       printf(\"Kernel: input real=%f input imag=%f\\n\",a_r,a_i);\n";
+        	srcStdStr += "       printf(\"Kernel: multCC real=%f multCC imag=%f\\n\",multCCreal,multCCimag);\n";
+        	srcStdStr += "       printf(\"Kernel: atan2=%f\\n\",c[index]);\n";
+        	srcStdStr += "    }\n";
+    */
+        	srcStdStr += "}\n";
+    	}
+    	else {
+        	srcStdStr += "    float a_r=a[index+1].real;\n";
+        	srcStdStr += "    float a_i=a[index+1].imag;\n";
+        	srcStdStr += "    float b_r=a[index].real;\n";
+        	srcStdStr += "    float b_i=-1.0 * a[index].imag;\n";
+
+    		if (hasSingleFMASupport) {
+        		srcStdStr += "	  float multCCreal = fma(a_r,b_r,-(a_i*b_i));\n";
+        		srcStdStr += "	  float multCCimag = fma(a_r,b_i,a_i*b_r);\n";
+    		}
+    		else {
+            	srcStdStr += "    float multCCreal = (a_r * b_r) - (a_i*b_i);\n";
+            	srcStdStr += "    float multCCimag = (a_r * b_i) + (a_i * b_r);\n";
+    		}
+
+        	if (f_gain != 1.0)
+            	srcStdStr += "    c[index] = GAIN * atan2(multCCimag,multCCreal);\n";
+            else
+            	srcStdStr += "    c[index] = atan2(multCCimag,multCCreal);\n";
+    /*// Debug Code
+        	srcStdStr += "    if (a_r != 0.0 || a_i != 0.0) {\n";
+        	srcStdStr += "       printf(\"Kernel: input real=%f input imag=%f\\n\",a_r,a_i);\n";
+        	srcStdStr += "       printf(\"Kernel: multCC real=%f multCC imag=%f\\n\",multCCreal,multCCimag);\n";
+        	srcStdStr += "       printf(\"Kernel: atan2=%f\\n\",c[index]);\n";
+        	srcStdStr += "    }\n";
+    */
+        	srcStdStr += "}\n";
+    	}
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 

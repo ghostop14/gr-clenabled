@@ -45,8 +45,13 @@ namespace gr {
         float d_loopbw;
         int d_order;
 
-        float d_error;
-        float d_noise;
+        float d_float_error;
+        float d_float_noise;
+
+        double d_double_phase;
+        double d_double_error;
+        double d_double_noise;
+        double d_double_freq;
 
         float (clCostasLoop_impl::*d_phase_detector)(gr_complex sample) const;
 

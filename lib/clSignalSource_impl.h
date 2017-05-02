@@ -42,12 +42,17 @@ namespace gr {
 		double		d_sampling_freq;
 		int			d_waveform;
 		double		d_frequency;
-		float		d_ampl;
-		float		d_angle_pos;
-		float		d_angle_rate_inc;
 	    uint32_t  	d_phase;
 	    int32_t 	d_phase_inc;
 
+		// May have to adapt to the OpenCL hardware
+		float		d_float_ampl;
+		float		d_float_angle_pos;
+		float		d_float_angle_rate_inc;
+
+		double		d_double_ampl;
+		double		d_double_angle_pos;
+		double		d_double_angle_rate_inc;
 
 		gr_vector_int d_ninput_items;  // backward compatibility item moving from block to sync_block.
 
@@ -62,8 +67,8 @@ namespace gr {
 
       virtual bool stop();
 
-      float getAnglePos() { return d_angle_pos; }
-      float getAngleRate() { return d_angle_rate_inc; }
+      float getAnglePos();
+      float getAngleRate();
 
       void setBufferLength(int numItems);
 

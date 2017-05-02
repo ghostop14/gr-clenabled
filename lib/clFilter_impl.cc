@@ -92,7 +92,7 @@ namespace gr {
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),
 			  d_updated(false)
     {
-        set_history(1);
+        set_history(1);  // one means no history
         try {
         set_output_multiple(d_nsamples);
         }
@@ -121,6 +121,10 @@ namespace gr {
     	else {
 			setFilterVariables(prevInputLength);
     	}
+
+    	// We call a volk function here so we have to worry about alignment.
+        const int alignment_multiple = volk_get_alignment() / sizeof(gr_complex);
+        set_alignment(std::max(1, alignment_multiple));
 }
 
     /*
@@ -731,6 +735,7 @@ clFilter_impl::filterGPU(int ninput_items,
 
     	int dec_ctr = 0;
     	int j = 0;
+    	int k;
     	int err;
     	const gr_complex *in = (const gr_complex *) input_items[0];
 
@@ -770,8 +775,10 @@ clFilter_impl::filterGPU(int ninput_items,
     	  c=(gr_complex *)ifftBuff;
 
     	  // THIS Volk Function just does complex multiplication.  c[i]=a[i]*b[i] in the complex domain.
-    	  volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
-
+    	  // volk_32fc_x2_multiply_32fc_a(c, a, b, d_fftsize);
+    	  for (k=0;k<d_fftsize;k++) {
+    		  c[i] = a[i] * b[i];
+    	  }
 //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fftsize*dataSize);
 
     	  // Run the inverse FFT

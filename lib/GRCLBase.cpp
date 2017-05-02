@@ -292,6 +292,53 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 		}
 	}
 	*/
+
+
+	// ---- now check if we support double precision
+	size_t retSize;
+
+	err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+	if (err == CL_SUCCESS) {
+		char extensions[retSize];
+		// returns a char[] string of extension names
+		// https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clGetDeviceInfo.html
+		err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_EXTENSIONS, retSize, extensions, &retSize);
+
+		std::string dev_extensions(extensions);
+
+		if (dev_extensions.find("cl_khr_fp64")) {
+			hasDoublePrecisionSupport = true;
+
+			// Query if we support FMA in double
+			err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+			if (err == CL_SUCCESS) {
+				cl_device_fp_config config_properties;
+
+				err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_DOUBLE_FP_CONFIG, sizeof(cl_device_fp_config),&config_properties,NULL);
+
+				if (config_properties & CL_FP_FMA)
+					hasDoubleFMASupport = true;
+			}
+
+		}
+	}
+
+	// ----- now check if we support fused multiply / add
+	err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+	if (err == CL_SUCCESS) {
+		cl_device_fp_config config_properties;
+
+		err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config),&config_properties,NULL);
+
+		if (config_properties & CL_FP_FMA)
+			hasSingleFMASupport = true;
+	}
+
+
+
     // Create command queue
 	try {
 		// devIndex will either be 0 or if a specific platform and device id were specified, that one.

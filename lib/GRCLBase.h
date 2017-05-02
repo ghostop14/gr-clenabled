@@ -56,6 +56,10 @@ protected:
 	 bool hasSVMFineGrained;
 	 int optimalBufferType = CL_MEM_USE_HOST_PTR;
 
+	 bool hasSingleFMASupport=false;  // Fused Multiply/Add
+	 bool hasDoubleFMASupport=false;  // Fused Multiply/Add
+	 bool hasDoublePrecisionSupport= false;
+
 	 int maxConstItems = 0;
 
 	 bool debugMode = false;

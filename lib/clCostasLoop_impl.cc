@@ -196,6 +196,7 @@ namespace gr {
 		srcStdStr += "	  l_phase = l_phase + l_freq + d_alpha * l_error;\n";
 		srcStdStr += "\n";
 		srcStdStr += "	  //phase_wrap();\n";
+		/*
 		srcStdStr += "	  if (l_phase > CL_TWO_PI) {\n";
 		srcStdStr += "		while(l_phase>CL_TWO_PI)\n";
 		srcStdStr += "		  l_phase -= CL_TWO_PI;\n";
@@ -204,6 +205,12 @@ namespace gr {
 		srcStdStr += "		while(l_phase< CL_MINUS_TWO_PI)\n";
 		srcStdStr += "		  l_phase += CL_TWO_PI;\n";
 		srcStdStr += "	  }\n";
+		*/
+		srcStdStr += "if ((l_phase > CL_TWO_PI) || (l_phase < CL_MINUS_TWO_PI)) {\n";
+		srcStdStr += "	l_phase = l_phase / CL_TWO_PI - (float)((int)(l_phase / CL_TWO_PI));\n";
+		srcStdStr += "	l_phase = l_phase * CL_TWO_PI;\n";
+		srcStdStr += "}\n";
+
 		srcStdStr += "\n";
 		srcStdStr += "	  //frequency_limit();\n";
 		srcStdStr += "	  if(l_freq > d_max_freq)\n";

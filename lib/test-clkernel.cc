@@ -373,23 +373,30 @@ bool testkernel1to1() {
 }
 
 
+void displayHelp() {
+	std::cout << std::endl;
+	std::cout << "Usage: <[--1to1] [--2to1]> <[--complex] [--float] [--int]> [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] --kernelfile=<file> --fnname=<kernel function name> [number of samples (default is 8192)]" << std::endl;
+	std::cout << "Where:" << std::endl;
+	std::cout << "	--1to1 says use the 1 input stream to 1 output stream module" << std::endl;
+	std::cout << "	--2to1 says use the 2 input streams to 1 output stream module" << std::endl;
+	std::cout << "	--complex/float/int defines the data type of the streams (in matches out)" << std::endl;
+	std::cout << "	--fnname is the kernel function name to call in the provided kernel file (e.g. what's on the __kernel line" << std::endl;
+	std::cout << "	--kernelfile is the file containing a valid OpenCL kernel matching the stream format 2-in/1-out or 1-in/2-out" << std::endl;
+	std::cout << "	--gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
+	std::cout << "The optional --device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
+	std::cout << std::endl;
+	std::cout << "Example:" <<std::endl;
+	std::cout << "test-clkernel --1to1 --complex --kernelfile=kernel1to1_sincos.cl --fnname=fn_sin_cos" << std::endl;
+	std::cout << std::endl;
+}
+
 int
 main (int argc, char **argv)
 {
 	if (argc > 1) {
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
-			std::cout << std::endl;
-			std::cout << "Usage: <[--1to1] [--2to1]> <[--complex] [--float] [--int]> [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [number of samples (default is 8192)]" << std::endl;
-			std::cout << "Where:" << std::endl;
-			std::cout << "--1to1 says use the 1 input stream to 1 output stream module" << std::endl;
-			std::cout << "--2to1 says use the 2 input streams to 1 output stream module" << std::endl;
-			std::cout << "complex/float/int defines the data type of the streams (in matches out)" << std::endl;
-			std::cout << "--fnname is the kernel function name to call in the provided kernel file (e.g. what's on the __kernel line" << std::endl;
-			std::cout << "--kernelfile is the file containing a valid OpenCL kernel matching the stream format 2-in/1-out or 1-in/2-out" << std::endl;
-			std::cout << "--gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
-			std::cout << "The optional --device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
-			std::cout << std::endl;
+			displayHelp();
 			exit(0);
 		}
 
@@ -455,6 +462,10 @@ main (int argc, char **argv)
 
 			}
 		}
+	}
+	else {
+		displayHelp();
+		exit(1);
 	}
 
 	if (inputStreams == 0) {

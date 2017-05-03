@@ -110,6 +110,77 @@ main (int argc, char **argv)
             	std::cout << "Device Type: " << deviceType << std::endl;
             	std::cout << "Constant Memory: " << memInK << "K (" << (maxConstMemSize/4) << " floats)" << std::endl;
             	std::cout << "Local Memory: " << localMemInK << "K (" << (localMemSize/4) << " floats)" << std::endl;
+
+
+            	// ---- now check if we support double precision
+            	size_t retSize;
+            	bool hasDoublePrecisionSupport = false;
+            	bool hasDoubleFMASupport = false;
+            	err = clGetDeviceInfo(devices[j](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+            	if (err == CL_SUCCESS) {
+            		char extensions[retSize];
+            		// returns a char[] string of extension names
+            		// https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clGetDeviceInfo.html
+            		err = clGetDeviceInfo(devices[j](),CL_DEVICE_EXTENSIONS, retSize, extensions, &retSize);
+
+            		std::string dev_extensions(extensions);
+
+            		if (dev_extensions.find("cl_khr_fp64")) {
+            			hasDoublePrecisionSupport = true;
+
+            			// Query if we support FMA in double
+            			err = clGetDeviceInfo(devices[j](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+            			if (err == CL_SUCCESS) {
+            				cl_device_fp_config config_properties;
+
+            				err = clGetDeviceInfo(devices[j](),CL_DEVICE_DOUBLE_FP_CONFIG, sizeof(cl_device_fp_config),&config_properties,NULL);
+
+            				if (config_properties & CL_FP_FMA)
+            					hasDoubleFMASupport = true;
+            			}
+
+            		}
+            	}
+
+            	if (hasDoublePrecisionSupport) {
+            		std::cout << "Double Precision Math Support: Yes" << std::endl;
+                	if (hasDoubleFMASupport) {
+                		std::cout << "Double Precision Fused Multiply/Add [FMA] Support: Yes" << std::endl;
+                	}
+                	else {
+                		std::cout << "Double Precision Fused Multiply/Add [FMA] Support: No" << std::endl;
+                	}
+            	}
+            	else {
+            		std::cout << "Double Precision Math Support: No  [WARNING THIS WILL NEGATIVELY IMPACT TRIG FUNCTIONS]" << std::endl;
+            		std::cout << "Double Precision Fused Multiply/Add [FMA] Support: No" << std::endl;
+            	}
+
+            	// ----- now check if we support fused multiply / add
+            	bool hasSingleFMASupport = false;
+
+            	err = clGetDeviceInfo(devices[j](),CL_DEVICE_EXTENSIONS, 0, NULL, &retSize);
+
+            	if (err == CL_SUCCESS) {
+            		cl_device_fp_config config_properties;
+
+            		err = clGetDeviceInfo(devices[j](),CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config),&config_properties,NULL);
+
+            		if (config_properties & CL_FP_FMA)
+            			hasSingleFMASupport = true;
+            	}
+
+            	if (hasSingleFMASupport) {
+            		std::cout << "Single Precision Fused Multiply/Add [FMA] Support: Yes" << std::endl;
+            	}
+            	else {
+            		std::cout << "Single Precision Fused Multiply/Add [FMA] Support: No" << std::endl;
+            	}
+
+            	/*
+            	// OpenCL 2.0 Capabilities
             	std::cout << "OpenCL 2.0 Capabilities:" << std::endl;
             	if (hasSharedVirtualMemory) {
             		std::cout << "Shared Virtual Memory (SVM): Yes" << std::endl;
@@ -124,6 +195,7 @@ main (int argc, char **argv)
             	else {
             		std::cout << "Fine-grained SVM: No" << std::endl;
             	}
+				*/
 
             	std::cout << std::endl;
             }

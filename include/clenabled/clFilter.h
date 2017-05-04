@@ -29,6 +29,8 @@
 namespace gr {
   namespace clenabled {
 
+	const bool DEFAULT_USE_TIME_DOMAIN_SETTING=false;  // frequency domain is still faster.
+
     /*!
      * \brief <+description of block+>
      * \ingroup clenabled
@@ -48,7 +50,7 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int openclPlatform, int devSelector,int platformId, int devId, int decimation,
-              const std::vector<float> &taps,int nthreads=1,int setDebug=0);
+              const std::vector<float> &taps,int nthreads=1,int setDebug=0,bool use_time = DEFAULT_USE_TIME_DOMAIN_SETTING);
 
   	virtual void set_taps2(const std::vector<float> &taps)=0;
     virtual std::vector<float> taps() const = 0;

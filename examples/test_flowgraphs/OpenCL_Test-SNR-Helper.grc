@@ -231,7 +231,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>2.4e6</value>
+      <value>10.7622e6</value>
     </param>
   </block>
   <block>
@@ -246,7 +246,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(400, 208)</value>
+      <value>(312, 172)</value>
     </param>
     <param>
       <key>_rotation</key>

@@ -181,6 +181,26 @@ target_link_libraries(
 install(TARGETS test-clkernel DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
+# Build and register test-clenabled-fft
+########################################################################
+list(APPEND test_clsingle_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-clenabled-fft.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clFFT_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/window.cc
+)
+
+add_executable(test-clenabled-fft ${test_clsingle_sources})
+
+
+target_link_libraries(
+  test-clenabled-fft
+  OpenCL
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gnuradio-clenabled
+)
+########################################################################
 # Print summary
 ########################################################################
 message(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")

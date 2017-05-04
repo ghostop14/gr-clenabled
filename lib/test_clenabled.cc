@@ -1810,7 +1810,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+	test->setTimeDomainFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1862,7 +1862,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+	test->setTimeDomainFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1898,7 +1898,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+	test->setTimeDomainFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -1934,7 +1934,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+	test->setTimeDomainFilterVariables(tdBufferSize);
 
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
@@ -2059,7 +2059,7 @@ bool testLowPassFilter() {
 	}
 
 
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2096,7 +2096,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2135,7 +2135,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2175,7 +2175,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2212,7 +2212,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2249,7 +2249,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
@@ -2285,7 +2285,7 @@ bool testLowPassFilter() {
 	}
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setFilterVariables(tdBufferSize);
+//	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();

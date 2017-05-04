@@ -47,22 +47,21 @@ namespace gr {
        */
       class CLENABLED_API fft_filter_ccf
       {
-      protected:
-		int			 d_ntaps;
-		int			 d_nsamples;
-		int			 d_fftsize;         // fftsize = ntaps + nsamples - 1
+      public:
 		int                      d_decimation;
 		fft_complex        *d_fwdfft;	    // forward "plan"
 		fft_complex        *d_invfft;          // inverse "plan"
 		int                      d_nthreads;        // number of FFTW threads to use
-		std::vector<gr_complex>  d_tail;	    // state carried between blocks for overlap-add
-		std::vector<float>       d_taps;            // stores time domain taps
 		gr_complex              *d_xformed_taps;    // Fourier xformed taps
 
 		virtual void compute_sizes(int ntaps);
 		int tailsize() const { return d_ntaps - 1; }
 
-	  public:
+		std::vector<gr_complex>  d_tail;	    // state carried between blocks for overlap-add
+		std::vector<float>       d_taps;            // stores time domain taps
+		int			 d_ntaps;
+		int			 d_nsamples;
+		int			 d_fftsize;         // fftsize = ntaps + nsamples - 1
 		/*!
 		 * \brief Construct an FFT filter for complex vectors with the given taps and decimation rate.
 		 *

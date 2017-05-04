@@ -25,15 +25,16 @@
 #include "fft_filter.h"
 #include "GRCLBase.h"
 #include <clFFT.h>
+#include "fft.h"
 
 namespace gr {
   namespace clenabled {
 
-  	const bool DEFAULT_USE_TIME_DOMAIN_SETTING=false;  // frequency domain is still faster.
-
-    class clFilter_impl : public clFilter, public fft_filter_ccf, public GRCLBase
+    class clFilter_impl : public clFilter, public GRCLBase
     {
      private:
+        fft_filter_ccf *d_fir;
+
         bool d_updated;
         bool USE_TIME_DOMAIN;
         std::vector<float> d_new_taps;
@@ -55,7 +56,6 @@ namespace gr {
 		clfftPlanHandle planHandle;
 		clfftDim dim = CLFFT_1D;
 
-        int prevTaps=0;
         int prevInputLength=0;  // numinputs
 
         // Precalculated values
@@ -95,7 +95,8 @@ namespace gr {
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
      public:
-        void setFilterVariables(int noutput_items);
+        void setFreqDomainFilterVariables(int noutput_items);
+        void setTimeDomainFilterVariables(int noutput_items);
 
     	clFilter_impl(int openclPlatform,int devSelector,int platformId, int devId, int decimation,
               const std::vector<float> &taps,
@@ -110,8 +111,8 @@ namespace gr {
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
 
-      int getFFTSize() { return d_fftsize; };
-      int freqDomainSampleBlockSize() { return d_nsamples; };
+      int getFFTSize() { return d_fir->d_fftsize; };
+      int freqDomainSampleBlockSize() { return d_fir->d_nsamples; };
       int getCurrentBufferSize() { return curBufferSize; };
 
       void TestNotifyNewFilter(int noutput_items);
@@ -119,8 +120,6 @@ namespace gr {
 
       // overrides for fft_filter_ccf implementation to support complex and floats
       virtual int set_taps(const std::vector<float> &taps);
-      virtual void compute_sizes(int ntaps);
-
 
       virtual void set_nthreads(int n);
       virtual std::vector<float> taps() const;

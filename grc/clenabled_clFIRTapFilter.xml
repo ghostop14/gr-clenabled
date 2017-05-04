@@ -1,0 +1,140 @@
+<block>
+  <name>OpenCL Tap-based FIR Filter</name>
+  <key>clenabled_cltapfirfilter</key>
+  <category>[OpenCL-Enabled]</category>
+  <import>import clenabled</import>
+  <import>from gnuradio.filter import firdes</import>
+  <make>#if $devices == 1
+  clenabled.clFilter($openCLPlatform,1,0,0,$decimation,$taps,1,$setDebug)
+	#else
+  clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,$taps,1,$setDebug)
+	#end if
+	</make>
+	
+	<callback>set_taps2($taps)</callback>
+	<param>
+		<name>OpenCL Platform Type</name>
+		<key>openCLPlatform</key>
+		<type>enum</type>
+		<option>
+			<name>GPU</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>Accelerator</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>CPU</name>
+			<key>3</key>
+		</option>
+		<option>
+			<name>Any</name>
+			<key>4</key>
+		</option>
+	</param>
+	<param>
+		<name>OpenCL Device</name>
+		<key>devices</key>
+		<type>enum</type>
+		<option>
+			<name>Any</name>
+			<key>1</key>
+			<opt>hide_specific:all</opt>
+		</option>
+		<option>
+			<name>Specific</name>
+			<key>2</key>
+			<opt>hide_specific:</opt>
+		</option>
+	</param>
+	<param>
+		<name>Platform Id</name>
+		<key>platformId</key>
+		<type>enum</type>
+		<hide>$devices.hide_specific</hide>
+		<option>
+			<name>0</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>1</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>2</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>3</name>
+			<key>3</key>
+		</option>
+	</param>
+	<param>
+		<name>Device Id</name>
+		<key>deviceId</key>
+		<type>enum</type>
+		<hide>$devices.hide_specific</hide>
+		<option>
+			<name>0</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>1</name>
+			<key>1</key>
+		</option>
+		<option>
+			<name>2</name>
+			<key>2</key>
+		</option>
+		<option>
+			<name>3</name>
+			<key>3</key>
+		</option>
+	</param>
+	<param>
+		<name>Taps</name>
+		<key>taps</key>
+		<type>real_vector</type>
+	</param>
+  <param>
+    <name>Decimation</name>
+    <key>decimation</key>
+    <value>1</value>
+    <type>int</type>
+  </param>
+	<param>
+		<name>Sample Rate</name>
+		<key>samp_rate</key>
+		<value>samp_rate</value>
+		<type>real</type>
+	</param>
+	<param>
+		<name>Debug</name>
+		<key>setDebug</key>
+		<type>enum</type>
+		<option>
+			<name>Off</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>On</name>
+			<key>1</key>
+		</option>
+	</param>
+  <sink>
+    <name>in</name>
+    <type>complex</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>complex</type>
+  </source>
+	<doc>
+This filter is an OpenCL enabled version of the built-in low pass filter.
+
+Sample rate, cutoff frequency, and transition width are in Hertz.
+
+The beta paramater only applies to the Kaiser window.
+	</doc>
+</block>

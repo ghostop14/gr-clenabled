@@ -28,6 +28,7 @@ install(FILES
     clenabled_clComplexToMag.xml 
     clenabled_clComplexToMagPhase.xml
     clenabled_clFFT.xml
+	clenabled_clFIRTapFilter.xml
     clenabled_clHighPassFilter.xml
     clenabled_clLog10.xml
     clenabled_clLowPassFilter.xml

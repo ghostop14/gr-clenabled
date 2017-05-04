@@ -45,7 +45,9 @@ namespace gr {
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
-		int inputSize=0;
+		int fft_times_data_size;
+		int fft_times_data_times_batch;
+		int maxBatchSize;
 		void *windowBuffer=NULL;
 
 		// clFFT
@@ -55,7 +57,11 @@ namespace gr {
 
 		void setBufferLength(int numItems);
 
+		float round(float input, int precision);
+
      public:
+		int FFTValidationTest(bool fwdXForm);
+
     int testCPU(int noutput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items);

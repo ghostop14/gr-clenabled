@@ -5,9 +5,9 @@
   <import>import clenabled</import>
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
-  clenabled.clFilter($openCLPlatform,1,0,0,$decimation,$taps,1,$setDebug)
+  clenabled.clFilter($openCLPlatform,1,0,0,$decimation,$taps,1,$setDebug,$use_time)
 	#else
-  clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,$taps,1,$setDebug)
+  clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,$taps,1,$setDebug,$use_time)
 	#end if
 	</make>
 	
@@ -96,6 +96,19 @@
 		<name>Taps</name>
 		<key>taps</key>
 		<type>real_vector</type>
+	</param>
+	<param>
+		<name>Filter Method</name>
+		<key>use_time</key>
+		<type>enum</type>
+		<option>
+			<name>Frequency Domain</name>
+			<key>False</key>
+		</option>
+		<option>
+			<name>Time Domain (slower as ntaps increases)</name>
+			<key>True</key>
+		</option>
 	</param>
   <param>
     <name>Decimation</name>

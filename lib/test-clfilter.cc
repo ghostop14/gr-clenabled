@@ -146,7 +146,7 @@ bool testFilter() {
 	break;
 	}
 
-	std::cout << "\"Test Type                 \"	throughput (sps)" << std::endl;
+	std::cout << "Test Type                 	throughput (sps)" << std::endl;
 
 	int fdBlockSize, tdBufferSize;
 	int optimalSize;
@@ -202,7 +202,7 @@ bool testFilter() {
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "\"OpenCL Time Domain Filter\"	" << std::fixed << std::setw(11)
+	std::cout << "OpenCL Time Domain Filter	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	// -------------------------  FREQUENCY DOMAIN FILTER -------------------------------------------------
@@ -261,7 +261,7 @@ bool testFilter() {
 
 	elapsed_seconds = end-start;
 	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "\"OpenCL Freq Domain Filter\"	" << std::fixed << std::setw(11)
+	std::cout << "OpenCL Freq Domain Filter	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	// ---------------------- CPU TESTS -----------------------------------------
@@ -293,7 +293,7 @@ bool testFilter() {
 
 	elapsed_seconds = end-start;
 	throughput = fdBlockSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "\"CPU Freq Domain Filter\"	" << std::fixed << std::setw(11)
+	std::cout << "CPU Freq Domain Filter    	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	if (test != NULL) {

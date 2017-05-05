@@ -168,7 +168,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		// This performance won't be very good.
 		kernelCode +="__kernel void td_FIR_complex\n";
 		kernelCode +="( __global const SComplex *restrict InputArray, // Length N\n";
-		kernelCode +="__constant float * FilterArray, // Length K\n";
+		kernelCode +="__global const float * FilterArray, // Length K\n";
 		kernelCode +="__global SComplex *restrict OutputArray // Length N+K-1\n";
 		kernelCode +=")\n";
 		kernelCode +="{\n";
@@ -179,6 +179,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	result.imag=0.0f;\n";
 		kernelCode +="	for (int i=0; i<K; i++) {\n";
 		if (hasSingleFMASupport) {
+			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
 			kernelCode +="		result.real = fma(FilterArray[K-1-i],InputArray[gid+i].real,result.real);\n";
 			kernelCode +="		result.imag = fma(FilterArray[K-1-i],InputArray[gid+i].imag,result.imag);\n";
 		}
@@ -211,6 +212,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCodeWithConst +="	result.imag=0.0f;\n";
 		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
 		if (hasSingleFMASupport) {
+			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
 			kernelCodeWithConst +="		result.real = fma(FilterArray[K-1-i],InputArray[gid+i].real,result.real);\n";
 			kernelCodeWithConst +="		result.imag = fma(FilterArray[K-1-i],InputArray[gid+i].imag,result.imag);\n";
 		}
@@ -238,6 +240,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	float result=0.0f;\n";
 		kernelCode +="	for (int i=0; i<K; i++) {\n";
 		if (hasSingleFMASupport) {
+			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
 			kernelCode +="		result = fma(FilterArray[K-1-i],InputArray[gid+i],result);\n";
 		}
 		else {
@@ -258,6 +261,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCodeWithConst +="	float result=0.0f;\n";
 		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
 		if (hasSingleFMASupport) {
+			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
 			kernelCodeWithConst +="		result = fma(FilterArray[K-1-i],InputArray[gid+i],result);\n";
 		}
 		else {
@@ -510,6 +514,29 @@ clFilter_impl::set_taps2(const std::vector<float> &taps) {
 		imaxItems=8192;
 
     if (USE_TIME_DOMAIN) {
+    	/* In fir_filter.cc set_taps reverses the taps.
+    	 * We do it with [K-1-i] in our OpenCL loop iterator so we don't need to reverse them ahead of time.
+    	 *
+  	  	*/
+    	/*
+		d_ntaps = (int)taps.size();
+		d_taps = taps;
+
+		std::reverse(d_taps.begin(), d_taps.end());
+
+		// Make a set of taps at all possible arch alignments
+		d_aligned_taps = (float**)malloc(d_naligned*sizeof(float*));
+
+		for(int i = 0; i < d_naligned; i++) {
+			d_aligned_taps[i] = (float*)volk_malloc((d_ntaps+d_naligned-1)*sizeof(float), d_align);
+
+			memset(d_aligned_taps[i], 0, sizeof(float)*(d_ntaps+d_naligned-1));
+
+			for(unsigned int j = 0; j < d_ntaps; j++)
+				d_aligned_taps[i][i+j] = d_taps[j];
+		}
+
+    	 */
     	// Buffer sizes need to match up with blocks based on the number of taps...
     	// This matches up with FFT Size
     	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fir->ntaps())) / log(2.0))));;
@@ -555,6 +582,11 @@ clFilter_impl::filterGPU(int ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
 
+    	// Protect context from switching
+        gr::thread::scoped_lock guard(d_mutex);
+
+  	  	ninput_items = ninput_items * d_fir->d_decimation;
+
     	if (ninput_items > curBufferSize) {
     		// This could get expensive if we have to rebuild kernels
     		// in GNURadio min input items and max items should be
@@ -569,12 +601,8 @@ clFilter_impl::filterGPU(int ninput_items,
     	// See https://www.altera.com/support/support-resources/design-examples/design-software/opencl/td-fir.html
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
-
+    	// Zero out the excess buffer
         int remaining=(curBufferSize+d_fir->ntaps())*dataSize - inputBytes;
-
-
-    	// Protect context from switching
-        gr::thread::scoped_lock guard(d_mutex);
 
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
         if (remaining > 0)
@@ -585,6 +613,18 @@ clFilter_impl::filterGPU(int ninput_items,
 		kernel->setArg(2, *cBuffer);
 
 		// Do the work
+		// in fir_filter.cc  from fir_filter_ccf::filter,
+		// this is simply a dot product.  set_taps reverses the taps to match the logic in our OpenCL implementation.
+		/*
+			const gr_complex *ar = (gr_complex *)((size_t) input & ~(d_align-1));
+			unsigned al = input - ar;
+
+			volk_32fc_32f_dot_prod_32fc_a(d_output, ar,
+							  d_aligned_taps[al],
+							  (d_ntaps+al));
+			return *d_output;
+		*/
+
 		queue->enqueueNDRangeKernel(
 			*kernel,
 			cl::NullRange,
@@ -602,7 +642,6 @@ clFilter_impl::filterGPU(int ninput_items,
 			retVal = ninput_items;
 		}
 		else {
-
 			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
 
 			// copy results to output buffer and increment for decimation!
@@ -680,12 +719,13 @@ clFilter_impl::filterGPU(int ninput_items,
     	  c=(gr_complex *)ifftBuff;
 
     	  // Original volk call.  Might as well use SIMD / SSE
-    	  volk_32fc_x2_multiply_32fc_a(c, a, b, d_fir->d_fftsize);
-    	  /*
+    	  // I've tried, but this VOLK CALL JUST CRASHES!  DON"T USE IT UNTIL I KNOW WHY
+    	  //volk_32fc_x2_multiply_32fc_a(c, a, b, d_fir->d_fftsize);
+
     	  for (k=0;k<d_fir->d_fftsize;k++) {
     		  c[k] = a[k] * b[k];
     	  }
-    	  */
+
 
  //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fir->d_fftsize*dataSize);
     	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fir->d_fftsize*dataSize,(void *)ifftBuff);

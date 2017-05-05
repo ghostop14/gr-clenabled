@@ -153,6 +153,9 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	kernelCodeWithConst = "";
     std::string fnName = "";
 
+    hasDoublePrecisionSupport = false;
+    hasSingleFMASupport = false;
+
 	if (dataType==DTYPE_COMPLEX) {
 		fnName = "td_FIR_complex";
 		kernelCode +="struct ComplexStruct {\n";
@@ -175,8 +178,14 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	result.real=0.0f;\n";
 		kernelCode +="	result.imag=0.0f;\n";
 		kernelCode +="	for (int i=0; i<K; i++) {\n";
-		kernelCode +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
-		kernelCode +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+		if (hasSingleFMASupport) {
+			kernelCode +="		result.real = fma(FilterArray[K-1-i],InputArray[gid+i].real,result.real);\n";
+			kernelCode +="		result.imag = fma(FilterArray[K-1-i],InputArray[gid+i].imag,result.imag);\n";
+		}
+		else {
+			kernelCode +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
+			kernelCode +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+		}
 		kernelCode +="	}\n";
 		kernelCode +="	OutputArray[gid].real = result.real;\n";
 		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
@@ -201,8 +210,14 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCodeWithConst +="	result.real=0.0f;\n";
 		kernelCodeWithConst +="	result.imag=0.0f;\n";
 		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
-		kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
-		kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+		if (hasSingleFMASupport) {
+			kernelCodeWithConst +="		result.real = fma(FilterArray[K-1-i],InputArray[gid+i].real,result.real);\n";
+			kernelCodeWithConst +="		result.imag = fma(FilterArray[K-1-i],InputArray[gid+i].imag,result.imag);\n";
+		}
+		else {
+			kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
+			kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
+		}
 		kernelCodeWithConst +="	}\n";
 		kernelCodeWithConst +="	OutputArray[gid].real = result.real;\n";
 		kernelCodeWithConst +="	OutputArray[gid].imag = result.imag;\n";
@@ -222,7 +237,12 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	// Perform Compute\n";
 		kernelCode +="	float result=0.0f;\n";
 		kernelCode +="	for (int i=0; i<K; i++) {\n";
-		kernelCode +="		result += FilterArray[K-1-i]*InputArray[gid+i];\n";
+		if (hasSingleFMASupport) {
+			kernelCode +="		result = fma(FilterArray[K-1-i],InputArray[gid+i],result);\n";
+		}
+		else {
+			kernelCode +="		result = FilterArray[K-1-i]*InputArray[gid+i] + result;\n";
+		}
 		kernelCode +="	}\n";
 		kernelCode +="	OutputArray[gid] = result;\n";
 		kernelCode +="}\n";
@@ -237,7 +257,12 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCodeWithConst +="	// Perform Compute\n";
 		kernelCodeWithConst +="	float result=0.0f;\n";
 		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
-		kernelCodeWithConst +="		result += FilterArray[K-1-i]*InputArray[gid+i];\n";
+		if (hasSingleFMASupport) {
+			kernelCodeWithConst +="		result = fma(FilterArray[K-1-i],InputArray[gid+i],result);\n";
+		}
+		else {
+			kernelCodeWithConst +="		result = FilterArray[K-1-i]*InputArray[gid+i] + result;\n";
+		}
 		kernelCodeWithConst +="	}\n";
 		kernelCodeWithConst +="	OutputArray[gid] = result;\n";
 		kernelCodeWithConst +="}\n";
@@ -655,10 +680,12 @@ clFilter_impl::filterGPU(int ninput_items,
     	  c=(gr_complex *)ifftBuff;
 
     	  // Original volk call.  Might as well use SIMD / SSE
-    	  // volk_32fc_x2_multiply_32fc_a(c, a, b, d_fir->d_fftsize);
+    	  volk_32fc_x2_multiply_32fc_a(c, a, b, d_fir->d_fftsize);
+    	  /*
     	  for (k=0;k<d_fir->d_fftsize;k++) {
     		  c[k] = a[k] * b[k];
     	  }
+    	  */
 
  //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fir->d_fftsize*dataSize);
     	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fir->d_fftsize*dataSize,(void *)ifftBuff);

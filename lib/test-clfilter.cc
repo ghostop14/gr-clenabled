@@ -99,8 +99,6 @@ bool testFilter() {
 		filtertaps.push_back(((float)i)/1000.0);
 	}
 
-	std::cout << "\"Test Type                 \"	throughput (sps)" << std::endl;
-
 	// Add comma's to numbers
 	 std::locale comma_locale(std::locale(), new comma_numpunct());
 
@@ -147,6 +145,8 @@ bool testFilter() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	std::cout << "\"Test Type                 \"	throughput (sps)" << std::endl;
 
 	int fdBlockSize, tdBufferSize;
 	int optimalSize;
@@ -204,8 +204,6 @@ bool testFilter() {
 	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "\"OpenCL Time Domain Filter\"	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
-
-	std::cout << std::endl;
 
 	// -------------------------  FREQUENCY DOMAIN FILTER -------------------------------------------------
 	int fftSize;
@@ -266,8 +264,6 @@ bool testFilter() {
 	std::cout << "\"OpenCL Freq Domain Filter\"	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
-	std::cout << std::endl;
-
 	// ---------------------- CPU TESTS -----------------------------------------
 	test->TestNotifyNewFilter(largeBlockSize);
 	fdBlockSize = test->freqDomainSampleBlockSize();
@@ -299,8 +295,6 @@ bool testFilter() {
 	throughput = fdBlockSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "\"CPU Freq Domain Filter\"	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
-
-	std::cout << std::endl;
 
 	if (test != NULL) {
 		delete test;

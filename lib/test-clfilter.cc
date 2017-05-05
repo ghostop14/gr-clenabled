@@ -131,6 +131,8 @@ bool testFilter() {
 		return false;
 	}
 
+	std::cout << std::endl;
+
 	switch(test->GetContextType()) {
 	case CL_DEVICE_TYPE_GPU:
 		std::cout << "OpenCL Context: GPU" << std::endl;
@@ -145,8 +147,10 @@ bool testFilter() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
-	std::cout << "Test Type                 	throughput (sps)" << std::endl;
+	std::cout << "Test Type              	throughput (sps)" << std::endl;
 
 	int fdBlockSize, tdBufferSize;
 	int optimalSize;
@@ -202,7 +206,22 @@ bool testFilter() {
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "OpenCL Time Domain Filter	" << std::fixed << std::setw(11)
+	std::cout << "OpenCL FIR Filter	" << std::fixed << std::setw(11)
+    << std::setprecision(2) << throughput << std::endl;
+
+	// CPU FIR Filter
+	noutputitems = test->testCPUFIR(tdBufferSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testCPUFIR(tdBufferSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
+	std::cout << "GNURadio FIR Filter	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	// -------------------------  FREQUENCY DOMAIN FILTER -------------------------------------------------
@@ -235,7 +254,6 @@ bool testFilter() {
 		return false;
 	}
 
-
 	fdBlockSize = test->freqDomainSampleBlockSize();
 
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
@@ -261,7 +279,7 @@ bool testFilter() {
 
 	elapsed_seconds = end-start;
 	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "OpenCL Freq Domain Filter	" << std::fixed << std::setw(11)
+	std::cout << "OpenCL FFT Filter	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	// ---------------------- CPU TESTS -----------------------------------------
@@ -281,19 +299,19 @@ bool testFilter() {
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
-	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
 
 	elapsed_seconds = end-start;
 	throughput = fdBlockSize / (elapsed_seconds.count()/(float)iterations);
-	std::cout << "CPU Freq Domain Filter    	" << std::fixed << std::setw(11)
+	std::cout << "GNURadio FFT Filter    	" << std::fixed << std::setw(11)
     << std::setprecision(2) << throughput << std::endl;
 
 	if (test != NULL) {

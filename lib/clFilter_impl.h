@@ -23,6 +23,7 @@
 
 #include <clenabled/clFilter.h>
 #include "fft_filter.h"
+#include "fir_filter.h"
 #include "GRCLBase.h"
 #include <clFFT.h>
 #include "fft.h"
@@ -33,7 +34,8 @@ namespace gr {
     class clFilter_impl : public clFilter, public GRCLBase
     {
      private:
-        fft_filter_ccf *d_fir;
+        fft_filter_ccf *d_fft_filter;
+        gr::filter::kernel::fir_filter_ccf *d_fir_filter;
 
         bool d_updated;
         bool USE_TIME_DOMAIN;
@@ -79,7 +81,10 @@ namespace gr {
 		void * paddedResultPtr = NULL;
 		float * filterPtr = NULL;
 
-    	virtual int filterCPU(int noutput_items,
+    	virtual int filterCPUFFT(int noutput_items,
+                gr_vector_const_void_star &input_items,
+                gr_vector_void_star &output_items);
+    	virtual int filterCPUFIR(int noutput_items,
                 gr_vector_const_void_star &input_items,
                 gr_vector_void_star &output_items);
     	virtual int filterCPU2(int noutput_items,
@@ -104,15 +109,18 @@ namespace gr {
       virtual ~clFilter_impl();
       virtual bool stop();
 
-      int testCPU(int noutput_items,
+      int testCPUFFT(int noutput_items,
+              gr_vector_const_void_star &input_items,
+              gr_vector_void_star &output_items);
+      int testCPUFIR(int noutput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
       int testOpenCL(int noutput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
 
-      int getFFTSize() { return d_fir->d_fftsize; };
-      int freqDomainSampleBlockSize() { return d_fir->d_nsamples; };
+      int getFFTSize() { return d_fft_filter->d_fftsize; };
+      int freqDomainSampleBlockSize() { return d_fft_filter->d_nsamples; };
       int getCurrentBufferSize() { return curBufferSize; };
 
       void TestNotifyNewFilter(int noutput_items);

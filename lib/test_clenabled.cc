@@ -154,6 +154,8 @@ bool testSigSource() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	float elapsed_time,throughput;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
@@ -306,6 +308,9 @@ bool testMagPhaseToComplex() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	float elapsed_time,throughput;
 
@@ -551,6 +556,8 @@ bool testComplexToArg() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	float elapsed_time,throughput;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
@@ -857,6 +864,8 @@ bool testFFT(bool runReverse) {
 	break;
 	}
 
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 	float elapsed_time,throughput;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
@@ -1059,6 +1068,8 @@ bool testQuadDemod() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	float elapsed_time,throughput;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
@@ -1195,6 +1206,8 @@ bool testMultiplyConst() {
 	break;
 	}
 
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 	float elapsed_time;
 	float throughput;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
@@ -1302,6 +1315,8 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
 
@@ -1433,6 +1448,8 @@ bool testMultiplyConst() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
 
@@ -1561,6 +1578,8 @@ bool testMultiply() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	float elapsed_time,throughput;
 
@@ -1673,6 +1692,8 @@ bool testCostasLoop() {
 	break;
 	}
 
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 	float elapsed_time,throughput;
 
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
@@ -1835,6 +1856,8 @@ bool testLowPassFilter() {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	std::cout << "OpenCL Run Time for 20% transition filter with " << tdBufferSize << " samples:   " << std::fixed << std::setw(11)
@@ -2176,12 +2199,12 @@ bool testLowPassFilter() {
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
-	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -2213,12 +2236,12 @@ bool testLowPassFilter() {
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
-	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -2250,12 +2273,12 @@ bool testLowPassFilter() {
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
-	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -2286,12 +2309,12 @@ bool testLowPassFilter() {
 
 	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
-	noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPU(fdBlockSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -2408,10 +2431,10 @@ main (int argc, char **argv)
 
 	was_successful = testFFT(true);
 	std::cout << std::endl;
-
+/*
 	was_successful = testLowPassFilter();
 	std::cout << std::endl;
-
+*/
 	return was_successful ? 0 : 1;
 }
 

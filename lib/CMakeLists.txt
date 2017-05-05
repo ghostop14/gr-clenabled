@@ -68,7 +68,7 @@ if(NOT clenabled_sources)
 endif(NOT clenabled_sources)
 
 add_library(gnuradio-clenabled SHARED ${clenabled_sources})
-target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL gnuradio-blocks ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
+target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL gnuradio-blocks gnuradio-filter ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
 set_target_properties(gnuradio-clenabled PROPERTIES DEFINE_SYMBOL "gnuradio_clenabled_EXPORTS")
 
 if(APPLE)
@@ -139,6 +139,7 @@ target_link_libraries(
   gnuradio-clenabled
   clFFT
   gnuradio-blocks
+  gnuradio-filter
 )
 
 GR_ADD_TEST(test_clenabled test-clenabled)
@@ -196,6 +197,7 @@ target_link_libraries(
   test-clfilter
   OpenCL
   ${GNURADIO_RUNTIME_LIBRARIES}
+  gnuradio-filter
   ${Boost_LIBRARIES}
   gnuradio-clenabled
 )

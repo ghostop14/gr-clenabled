@@ -52,7 +52,8 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug)
     {
-        d_fir = new fft_filter_ccf(decimation,taps,nthreads);
+        d_fft_filter = new fft_filter_ccf(decimation,taps,nthreads);
+        d_fir_filter = new gr::filter::kernel::fir_filter_ccf(decimation,taps);
 
     	// -------------------------------------------------------------
     	// Set up depending on freq or time-domain filter
@@ -70,7 +71,7 @@ namespace gr {
         	// So the amount of items we have for the constant space is:
         	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
         	// Since we can't control the n_taps, we can control the noutput_items.
-        	maxConstItems = (int)((float)(maxConstMemSize - d_fir->ntaps()*sizeof(float))/(float)dataSize) - d_fir->ntaps();
+        	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
 
         	setTimeDomainFilterVariables(imaxItems);
     	}
@@ -81,7 +82,7 @@ namespace gr {
     	// -------------------------------------------------------------
     	// straight from fir_filter_XXX_impl.cc.t
         d_updated = false;
-        set_history(d_fir->ntaps());
+        set_history(d_fft_filter->ntaps());
 
         const int alignment_multiple = volk_get_alignment() / sizeof(float);
         set_alignment(std::max(1, alignment_multiple));
@@ -106,7 +107,7 @@ void clFilter_impl::setFreqDomainFilterVariables(int ninput_items) {
     }
 
     size_t clLengths[1];
-    clLengths[0]=(size_t)d_fir->d_fftsize;  // calculated in set_taps then compute_sizes
+    clLengths[0]=(size_t)d_fft_filter->d_fftsize;  // calculated in set_taps then compute_sizes
 
     err = clfftCreateDefaultPlan(&planHandle, (*context)(), dim, clLengths);
 
@@ -137,17 +138,17 @@ void clFilter_impl::setFreqDomainFilterVariables(int ninput_items) {
 void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 
 	// remember sethistory(N) saves N-1.  sethistory(1) disables history.
-	// Therefore sethistory(d_fir->ntaps()) saves paddingLength samples since paddingLenght = ntaps - 1
+	// Therefore sethistory(d_fft_filter->ntaps()) saves paddingLength samples since paddingLenght = ntaps - 1
 
-	paddingLength = d_fir->ntaps() - 1;
+	paddingLength = d_fft_filter->ntaps() - 1;
 	paddingBytes = dataSize*paddingLength;
 
-	resultLengthPoints = ninput_items + d_fir->ntaps() - 1;
+	resultLengthPoints = ninput_items + d_fft_filter->ntaps() - 1;
 
 	inputLengthBytes = ninput_items*dataSize;
 	paddedBufferLengthBytes=resultLengthPoints*dataSize;
 
-	filterLengthBytes=d_fir->ntaps() * sizeof(float);
+	filterLengthBytes=d_fft_filter->ntaps() * sizeof(float);
 
 	kernelCode = "";
 	kernelCodeWithConst = "";
@@ -273,10 +274,10 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	}
 
 	std::string lbDefines;
-	lbDefines = "#define K "+ std::to_string(d_fir->ntaps()) + "\n";
+	lbDefines = "#define K "+ std::to_string(d_fft_filter->ntaps()) + "\n";
 
 	std::string tmpKernelCode;
-	float tapConstMemUsage = maxConstMemSize - d_fir->d_ntaps*sizeof(float);
+	float tapConstMemUsage = maxConstMemSize - d_fft_filter->d_ntaps*sizeof(float);
 	bool useConst;
 
 	if (tapConstMemUsage > 0)
@@ -298,7 +299,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
 
 	if (debugMode) {
-		std::cout << "OpenCL filter: max input items to use constant memory with the specified " << d_fir->d_ntaps << " taps: " << maxConstItems << std::endl;
+		std::cout << "OpenCL filter: max input items to use constant memory with the specified " << d_fft_filter->d_ntaps << " taps: " << maxConstItems << std::endl;
 	}
 
 	setBufferLength(ninput_items);
@@ -324,7 +325,7 @@ void clFilter_impl::setBufferLength(int numItems) {
 		aBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_WRITE,
-			(numItems+d_fir->ntaps())*dataSize);
+			(numItems+d_fft_filter->ntaps())*dataSize);
 
 		zeroBuff=new char[paddedBufferLengthBytes];
 		memset(zeroBuff,0x00,paddedBufferLengthBytes);
@@ -332,9 +333,9 @@ void clFilter_impl::setBufferLength(int numItems) {
 		bBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_ONLY,
-			d_fir->ntaps()*sizeof(float));
+			d_fft_filter->ntaps()*sizeof(float));
 
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_fir->d_ntaps*sizeof(float),&(d_fir->d_taps[0]));
+        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_fft_filter->d_ntaps*sizeof(float),&(d_fft_filter->d_taps[0]));
 
 		cBuffer = new cl::Buffer(
 			*context,
@@ -354,27 +355,27 @@ void clFilter_impl::setBufferLength(int numItems) {
 			}
         }
 
-        zeroBuff=new char[(d_fir->d_fftsize-d_fir->d_nsamples)*dataSize];
-		memset(zeroBuff,0x00,(d_fir->d_fftsize-d_fir->d_nsamples)*dataSize);
+        zeroBuff=new char[(d_fft_filter->d_fftsize-d_fft_filter->d_nsamples)*dataSize];
+		memset(zeroBuff,0x00,(d_fft_filter->d_fftsize-d_fft_filter->d_nsamples)*dataSize);
 
-		// std::cout << "d_fir->d_nsamples: " << d_fir->d_nsamples << " d_fir->d_fftsize: " << d_fir->d_fftsize << std::endl;
+		// std::cout << "d_fft_filter->d_nsamples: " << d_fft_filter->d_nsamples << " d_fft_filter->d_fftsize: " << d_fft_filter->d_fftsize << std::endl;
 
 		aBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_WRITE,  // needs to be read/write for clFFT
-			d_fir->d_fftsize*dataSize);
+			d_fft_filter->d_fftsize*dataSize);
 
 		cBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_WRITE,
-			d_fir->d_fftsize*dataSize);
+			d_fft_filter->d_fftsize*dataSize);
 
-		tmpFFTBuff = new char[d_fir->d_fftsize*dataSize];
+		tmpFFTBuff = new char[d_fft_filter->d_fftsize*dataSize];
         if (dataType == DTYPE_COMPLEX) {
-        	ifftBuff = new gr_complex[d_fir->d_fftsize];
+        	ifftBuff = new gr_complex[d_fft_filter->d_fftsize];
         }
         else {
-        	ifftBuff = new float[d_fir->d_fftsize];
+        	ifftBuff = new float[d_fft_filter->d_fftsize];
         }
 
 	}
@@ -391,9 +392,14 @@ void clFilter_impl::setBufferLength(int numItems) {
 
     bool clFilter_impl::stop()
     {
-    	if (d_fir) {
-    		delete d_fir;
-    		d_fir = NULL;
+    	if (d_fft_filter) {
+    		delete d_fft_filter;
+    		d_fft_filter = NULL;
+    	}
+
+    	if (d_fir_filter) {
+    		delete d_fir_filter;
+    		d_fir_filter = NULL;
     	}
 
 		if (dataType==DTYPE_FLOAT) {
@@ -459,11 +465,11 @@ void clFilter_impl::setBufferLength(int numItems) {
     }
 
     std::vector<float> clFilter_impl::taps() const {
-    	return d_fir->taps();
+    	return d_fft_filter->taps();
     }
 
     void clFilter_impl::set_nthreads(int n) {
-    	d_fir->set_nthreads(n);
+    	d_fft_filter->set_nthreads(n);
     }
     /*
      * The private constructor
@@ -476,7 +482,9 @@ clFilter_impl::set_taps(const std::vector<float> &taps)
 	// Protect context from switching
     gr::thread::scoped_lock guard(d_mutex);
 
-    d_fir->set_taps(taps);
+    d_fft_filter->set_taps(taps);
+    d_fir_filter->set_taps(taps);
+
     d_updated = true;
 
 	int imaxItems=gr::block::max_noutput_items();
@@ -486,12 +494,12 @@ clFilter_impl::set_taps(const std::vector<float> &taps)
     if (USE_TIME_DOMAIN) {
     	// Buffer sizes need to match up with blocks based on the number of taps...
     	// This matches up with FFT Size
-    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fir->ntaps())) / log(2.0))));;
+    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fft_filter->ntaps())) / log(2.0))));;
 
     	// So the amount of items we have for the constant space is:
     	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
     	// Since we can't control the n_taps, we can control the noutput_items.
-    	maxConstItems = (int)((float)(maxConstMemSize - d_fir->ntaps()*sizeof(float))/(float)dataSize) - d_fir->ntaps();
+    	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
 
     	setTimeDomainFilterVariables(imaxItems);
     }
@@ -499,14 +507,15 @@ clFilter_impl::set_taps(const std::vector<float> &taps)
     	setFreqDomainFilterVariables(imaxItems);
     }
 
-    return d_fir->ntaps();
+    return d_fft_filter->ntaps();
 }
 
 void
 clFilter_impl::set_taps2(const std::vector<float> &taps) {
     gr::thread::scoped_lock l(d_setlock);
     d_updated = true;
-    d_fir->set_taps(taps);
+    d_fft_filter->set_taps(taps);
+    d_fir_filter->set_taps(taps);
 
     // FFT and tap size may have changed.  Recalc
 	int imaxItems=gr::block::max_noutput_items();
@@ -539,12 +548,12 @@ clFilter_impl::set_taps2(const std::vector<float> &taps) {
     	 */
     	// Buffer sizes need to match up with blocks based on the number of taps...
     	// This matches up with FFT Size
-    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fir->ntaps())) / log(2.0))));;
+    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fft_filter->ntaps())) / log(2.0))));;
 
     	// So the amount of items we have for the constant space is:
     	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
     	// Since we can't control the n_taps, we can control the noutput_items.
-    	maxConstItems = (int)((float)(maxConstMemSize - d_fir->ntaps()*sizeof(float))/(float)dataSize) - d_fir->ntaps();
+    	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
 
     	setTimeDomainFilterVariables(imaxItems);
     }
@@ -557,7 +566,7 @@ void
 clFilter_impl::TestNotifyNewFilter(int noutput_items) {
 	// This is only used in our test app since work isn't called.
     if (d_updated){
-    	// set_taps sets d_fir->d_nsamples so changed this line.
+    	// set_taps sets d_fft_filter->d_nsamples so changed this line.
 		d_updated = false;
 
 		if (USE_TIME_DOMAIN) {
@@ -585,7 +594,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);
 
-  	  	ninput_items = ninput_items * d_fir->d_decimation;
+  	  	ninput_items = ninput_items * d_fft_filter->d_decimation;
 
     	if (ninput_items > curBufferSize) {
     		// This could get expensive if we have to rebuild kernels
@@ -602,7 +611,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
     	// Zero out the excess buffer
-        int remaining=(curBufferSize+d_fir->ntaps())*dataSize - inputBytes;
+        int remaining=(curBufferSize+d_fft_filter->ntaps())*dataSize - inputBytes;
 
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
         if (remaining > 0)
@@ -634,7 +643,7 @@ clFilter_impl::filterGPU(int ninput_items,
 		cl_int err;
 		int retVal;
 
-		if (d_fir->d_decimation == 1) {
+		if (d_fft_filter->d_decimation == 1) {
 			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
 
 			// # in=# out. Do it the quick way
@@ -661,7 +670,7 @@ clFilter_impl::filterGPU(int ninput_items,
 					out[i++] = ResultPtr[j];
 				}
 
-				j += d_fir->d_decimation;
+				j += d_fft_filter->d_decimation;
 			}
 
 			retVal = i;
@@ -677,7 +686,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	const gr_complex *input = (const gr_complex *) input_items[0];
         gr_complex *output = (gr_complex *) output_items[0];
 
-    	if (!d_fir->d_fwdfft || !d_fir->d_invfft)
+    	if (!d_fft_filter->d_fwdfft || !d_fft_filter->d_invfft)
     		return 0;
 
     	int dec_ctr = 0;
@@ -686,32 +695,32 @@ clFilter_impl::filterGPU(int ninput_items,
     	int err;
     	const gr_complex *in = (const gr_complex *) input_items[0];
 
-  	  	ninput_items = ninput_items * d_fir->d_decimation;
+  	  	ninput_items = ninput_items * d_fft_filter->d_decimation;
 
-    	for(int i = 0; i < ninput_items; i += d_fir->d_nsamples) {
+    	for(int i = 0; i < ninput_items; i += d_fft_filter->d_nsamples) {
     	  // Move block of data to forward FFT buffer
     	/*
-    	  memcpy(d_fwdfft->get_inbuf(), &input[i], d_fir->d_nsamples * sizeof(gr_complex));
+    	  memcpy(d_fwdfft->get_inbuf(), &input[i], d_fft_filter->d_nsamples * sizeof(gr_complex));
 
-    	  // zero out any data past d_fir->d_nsamples to fft_size
-    	  for(j = d_fir->d_nsamples; j < d_fir->d_fftsize; j++)
+    	  // zero out any data past d_fft_filter->d_nsamples to fft_size
+    	  for(j = d_fft_filter->d_nsamples; j < d_fft_filter->d_fftsize; j++)
     		d_fwdfft->get_inbuf()[j] = 0;
     	  // Run the transform
     	  d_fwdfft->execute();	// compute fwd xform
     */
 
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fir->d_nsamples*dataSize,(void *)&in[i]);
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_fir->d_nsamples*dataSize,(d_fir->d_fftsize-d_fir->d_nsamples)*dataSize,(void *)zeroBuff);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fft_filter->d_nsamples*dataSize,(void *)&in[i]);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_fft_filter->d_nsamples*dataSize,(d_fft_filter->d_fftsize-d_fft_filter->d_nsamples)*dataSize,(void *)zeroBuff);
     	  err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
     	  err = clFinish((*queue)());
 
     	  // Get the fwd FFT data out
     //	  gr_complex *a = d_fwdfft->get_outbuf();
-    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fir->d_fftsize*dataSize,(void *)tmpFFTBuff);
+    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)tmpFFTBuff);
     	  gr_complex *a;
     	  a=(gr_complex *)tmpFFTBuff;
 
-    	  gr_complex *b = d_fir->d_xformed_taps;
+    	  gr_complex *b = d_fft_filter->d_xformed_taps;
 
     	  // set up the inv FFT buffer to receive the complex multiplied data
     //	  gr_complex *c = d_invfft->get_inbuf();
@@ -720,15 +729,15 @@ clFilter_impl::filterGPU(int ninput_items,
 
     	  // Original volk call.  Might as well use SIMD / SSE
     	  // I've tried, but this VOLK CALL JUST CRASHES!  DON"T USE IT UNTIL I KNOW WHY
-    	  //volk_32fc_x2_multiply_32fc_a(c, a, b, d_fir->d_fftsize);
+    	  //volk_32fc_x2_multiply_32fc_a(c, a, b, d_fft_filter->d_fftsize);
 
-    	  for (k=0;k<d_fir->d_fftsize;k++) {
+    	  for (k=0;k<d_fft_filter->d_fftsize;k++) {
     		  c[k] = a[k] * b[k];
     	  }
 
 
- //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fir->d_fftsize*dataSize);
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fir->d_fftsize*dataSize,(void *)ifftBuff);
+ //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fft_filter->d_fftsize*dataSize);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)ifftBuff);
 
     	  // Run the inverse FFT
     	  //  d_invfft->execute();	// compute inv xform
@@ -736,39 +745,33 @@ clFilter_impl::filterGPU(int ninput_items,
     	  err = clFinish((*queue)());
 
       	  // outdata = (gr_complex *)d_invfft->get_outbuf();
-    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fir->d_fftsize*dataSize,(void *)tmpFFTBuff);
+    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)tmpFFTBuff);
       	  gr_complex *outdata;
     	  outdata=(gr_complex *)tmpFFTBuff;
 
     	  // ------------------------------------------------------------------
     	  // Unmodified GNURadio flow
     	  // add in the overlapping tail
-    	  for(j = 0; j < d_fir->tailsize(); j++)
-    		outdata[j] += d_fir->d_tail[j];
+    	  for(j = 0; j < d_fft_filter->tailsize(); j++)
+    		outdata[j] += d_fft_filter->d_tail[j];
 
-    	  // copy d_fir->d_nsamples to output buffer and increment for decimation!
+    	  // copy d_fft_filter->d_nsamples to output buffer and increment for decimation!
     	  j = dec_ctr;
-    	  while(j < d_fir->d_nsamples) {
+    	  while(j < d_fft_filter->d_nsamples) {
     		*output++ = outdata[j];
     		j += decimation();
     	  }
-    	  dec_ctr = (j - d_fir->d_nsamples);
+    	  dec_ctr = (j - d_fft_filter->d_nsamples);
 
     	  // ------------------------------------------------------------------
     	  // stash the tail
-    	  // memcpy(&d_tail[0], outdata + d_fir->d_nsamples,tailsize() * sizeof(gr_complex));
-    	  memcpy(&d_fir->d_tail[0], outdata + d_fir->d_nsamples,d_fir->tailsize() * dataSize);
+    	  // memcpy(&d_tail[0], outdata + d_fft_filter->d_nsamples,tailsize() * sizeof(gr_complex));
+    	  memcpy(&d_fft_filter->d_tail[0], outdata + d_fft_filter->d_nsamples,d_fft_filter->tailsize() * dataSize);
     	}
 
     	return ninput_items;
     }
 
-
-    int clFilter_impl::testCPU(int noutput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items) {
-    	return filterCPU(noutput_items,input_items,output_items);
-    }
 
     int clFilter_impl::testOpenCL(int noutput_items,
             gr_vector_const_void_star &input_items,
@@ -776,8 +779,14 @@ clFilter_impl::filterGPU(int ninput_items,
     	return filterGPU(noutput_items,input_items,output_items);
     }
 
+    int clFilter_impl::testCPUFFT(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items) {
+    	return filterCPUFFT(noutput_items,input_items,output_items);
+    }
+
     int
-	clFilter_impl::filterCPU(int noutput_items,
+	clFilter_impl::filterCPUFFT(int noutput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items)
     {
@@ -786,7 +795,32 @@ clFilter_impl::filterGPU(int ninput_items,
 
         int retVal=0;
         try {
-        retVal = d_fir->filter(noutput_items,in,out);
+        retVal = d_fft_filter->filter(noutput_items,in,out);
+        }
+        catch (...) {
+        	std::cout << "Exception in fft_filter_ccf::filter()" << std::endl;
+        }
+		return retVal;
+    }
+
+    int clFilter_impl::testCPUFIR(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items) {
+    	return filterCPUFIR(noutput_items,input_items,output_items);
+    }
+
+    int
+	clFilter_impl::filterCPUFIR(int noutput_items,
+            gr_vector_const_void_star &input_items,
+            gr_vector_void_star &output_items)
+    {
+        const gr_complex *in = (const gr_complex *) input_items[0];
+        gr_complex *out = (gr_complex *) output_items[0];
+
+        int retVal=0;
+        try {
+        	d_fir_filter->filterN(out,in,noutput_items);
+        	retVal = noutput_items;
         }
         catch (...) {
         	std::cout << "Exception in fft_filter_ccf::filter()" << std::endl;
@@ -808,10 +842,10 @@ clFilter_impl::filterGPU(int ninput_items,
     		SComplex result;
     		result.real=0.0f;
     		result.imag=0.0f;
-    		for (int i=0; i<d_fir->ntaps(); i++) {
-    			tapId=d_fir->ntaps()-1-i;
-    			result.real += d_fir->d_taps[tapId]*in[N+i].real();
-    			result.imag += d_fir->d_taps[tapId]*in[N+i].imag();
+    		for (int i=0; i<d_fft_filter->ntaps(); i++) {
+    			tapId=d_fft_filter->ntaps()-1-i;
+    			result.real += d_fft_filter->d_taps[tapId]*in[N+i].real();
+    			result.imag += d_fft_filter->d_taps[tapId]*in[N+i].imag();
     		}
     		out[N]=gr_complex(result.real,result.imag);
         }
@@ -827,10 +861,10 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);
 
-    	int ninput_items = noutput_items * d_fir->d_decimation;
+    	int ninput_items = noutput_items * d_fft_filter->d_decimation;
         if (d_updated){
         	// GNURadio filter code
-        	// set_taps sets d_fir->d_nsamples so changed this line.
+        	// set_taps sets d_fft_filter->d_nsamples so changed this line.
 			d_updated = false;
 
 			// Additions for our filter
@@ -839,17 +873,14 @@ clFilter_impl::filterGPU(int ninput_items,
 				prevInputLength = ninput_items;
 			}
 
-			set_history(d_fir->ntaps());
+			set_history(d_fft_filter->ntaps());
 			return 0;
         }
 
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clFilter_impl ninput_items: " << ninput_items << std::endl;
 
-        if (USE_TIME_DOMAIN)
-        	filterCPU(ninput_items, input_items,output_items);
-        else
-        	filterGPU(ninput_items,input_items,output_items);
+        filterGPU(ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.
         return noutput_items;

@@ -265,6 +265,8 @@ bool testFFT(bool runReverse) {
 
 	elapsed_seconds = end-start;
 
+	std::cout << std::endl;
+
 	switch(test->GetContextType()) {
 	case CL_DEVICE_TYPE_GPU:
 		std::cout << "OpenCL Context: GPU" << std::endl;
@@ -279,6 +281,9 @@ bool testFFT(bool runReverse) {
 		std::cout << "OpenCL Context: ALL" << std::endl;
 	break;
 	}
+
+	std::cout << "Running on: " << test->getPlatformName() << std::endl;
+	std::cout << std::endl;
 
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;

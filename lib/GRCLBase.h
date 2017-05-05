@@ -100,6 +100,9 @@ public:
 
     int ActiveContextType() {return contextType;};
 
+    std::string getPlatformName() { return platformName; };
+    std::string getVendorName() { return platformVendor; };
+
 	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, bool setDebug=false,bool outOfOrderQueue=false); // selects First of specified type
 	GRCLBase(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false,bool outOfOrderQueue=false);
 	virtual ~GRCLBase();

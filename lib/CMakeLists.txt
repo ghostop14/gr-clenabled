@@ -181,6 +181,28 @@ target_link_libraries(
 install(TARGETS test-clkernel DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
+# Build and register test-clfilter
+########################################################################
+list(APPEND test_clfilter_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-clfilter.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clFilter_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/window.cc
+)
+
+add_executable(test-clfilter ${test_clfilter_sources})
+
+target_link_libraries(
+  test-clfilter
+  OpenCL
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gnuradio-clenabled
+)
+
+install(TARGETS test-clfilter DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
+
+########################################################################
 # Build and register test-clenabled-fft
 ########################################################################
 list(APPEND test_clsingle_sources

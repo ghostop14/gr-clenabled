@@ -107,7 +107,7 @@ bool testFilter() {
 
 	// -------------------------  OPENCL TIME DOMAIN FILTER -------------------------------------------------
 	try {
-		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,nthreads,
+		test = new gr::clenabled::clFilter_impl(opencltype,selectorType,platformId,devId,1,
 				filtertaps,1,false,true);
 	}
 	catch(const std::runtime_error& re)
@@ -150,7 +150,7 @@ bool testFilter() {
 	std::cout << "Running on: " << test->getPlatformName() << std::endl;
 	std::cout << std::endl;
 
-	std::cout << "Test Type              	throughput (sps)" << std::endl;
+	std::cout << "Test Type              	Throughput (sps)	Samples Tested" << std::endl;
 
 	int fdBlockSize, tdBufferSize;
 	int optimalSize;
@@ -176,53 +176,43 @@ bool testFilter() {
 	outputPointers.push_back((void *)&outputItems[0]);
 
 	verifyBuffers(largeBlockSize,inputItems,outputItems,inputPointers,outputPointers);
-
 	std::chrono::time_point<std::chrono::steady_clock> start, end;
 
 	fdBlockSize = test->freqDomainSampleBlockSize();
 	tdBufferSize = test->getCurrentBufferSize();
 
-	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
-	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
-	if (optimalSize > largeBlockSize)
-		optimalSize = largeBlockSize;
+	// OpenCL FIR Filter
+	verifyBuffers(largeBlockSize,inputItems,outputItems,inputPointers,outputPointers);
+	test->setTimeDomainFilterVariables(largeBlockSize);
 
-	if (optimalSize > 0) {
-		tdBufferSize = optimalSize;
-		fdBlockSize = optimalSize;
-	}
-
-	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	test->setTimeDomainFilterVariables(tdBufferSize);
-
-	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(largeBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
 	std::chrono::duration<double> elapsed_seconds = end-start;
-	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
+	throughput = largeBlockSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "OpenCL FIR Filter	" << std::fixed << std::setw(11)
-    << std::setprecision(2) << throughput << std::endl;
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << largeBlockSize << std::endl;
 
 	// CPU FIR Filter
-	noutputitems = test->testCPUFIR(tdBufferSize,inputPointers,outputPointers);
+	noutputitems = test->testCPUFIR(largeBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testCPUFIR(tdBufferSize,inputPointers,outputPointers);
+		noutputitems = test->testCPUFIR(largeBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
-	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
+	throughput = largeBlockSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "GNURadio FIR Filter	" << std::fixed << std::setw(11)
-    << std::setprecision(2) << throughput << std::endl;
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << largeBlockSize << std::endl;
 
 	// -------------------------  FREQUENCY DOMAIN FILTER -------------------------------------------------
 	int fftSize;
@@ -259,45 +249,27 @@ bool testFilter() {
 	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
 	// So the number of samples used has to be a value that satisfies both of these
 
-	if (optimalSize > 0) {
-		tdBufferSize = optimalSize;
-		fdBlockSize = optimalSize;
-	}
-	else {
-		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
-	}
+	fdBlockSize = optimalSize;
 
-	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
-	noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+	verifyBuffers(fdBlockSize,inputItems,outputItems,inputPointers,outputPointers);
+	noutputitems = test->testOpenCL(fdBlockSize,inputPointers,outputPointers);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(tdBufferSize,inputPointers,outputPointers);
+		noutputitems = test->testOpenCL(fdBlockSize,inputPointers,outputPointers);
 	}
 	end = std::chrono::steady_clock::now();
 
 	elapsed_seconds = end-start;
-	throughput = tdBufferSize / (elapsed_seconds.count()/(float)iterations);
+	throughput = fdBlockSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "OpenCL FFT Filter	" << std::fixed << std::setw(11)
-    << std::setprecision(2) << throughput << std::endl;
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << fdBlockSize << std::endl;
 
 	// ---------------------- CPU TESTS -----------------------------------------
 	test->TestNotifyNewFilter(largeBlockSize);
-	fdBlockSize = test->freqDomainSampleBlockSize();
-	tdBufferSize = test->getCurrentBufferSize();
 
-	// if nsamples block size > max input sample size we'll need to go to the next multiple we have a problem.
-	optimalSize = (int)((float)tdBufferSize / (float)fdBlockSize) * fdBlockSize;
-	if (optimalSize > 0) {
-		tdBufferSize = optimalSize;
-		fdBlockSize = optimalSize;
-	}
-	else {
-		tdBufferSize = fdBlockSize;  // the block is bigger.  We'll segfault if we don't do this.
-	}
-
-	verifyBuffers(tdBufferSize,inputItems,outputItems,inputPointers,outputPointers);
+	verifyBuffers(fdBlockSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);
 
@@ -308,11 +280,10 @@ bool testFilter() {
 	}
 	end = std::chrono::steady_clock::now();
 
-
 	elapsed_seconds = end-start;
 	throughput = fdBlockSize / (elapsed_seconds.count()/(float)iterations);
 	std::cout << "GNURadio FFT Filter    	" << std::fixed << std::setw(11)
-    << std::setprecision(2) << throughput << std::endl;
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << fdBlockSize << std::endl;
 
 	if (test != NULL) {
 		delete test;

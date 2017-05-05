@@ -52,6 +52,8 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug)
     {
+    	d_decimation = decimation;
+
         d_fft_filter = new fft_filter_ccf(decimation,taps,nthreads);
         d_fir_filter = new gr::filter::kernel::fir_filter_ccf(decimation,taps);
 
@@ -594,8 +596,6 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);
 
-  	  	ninput_items = ninput_items * d_fft_filter->d_decimation;
-
     	if (ninput_items > curBufferSize) {
     		// This could get expensive if we have to rebuild kernels
     		// in GNURadio min input items and max items should be
@@ -611,7 +611,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
     	// Zero out the excess buffer
-        int remaining=(curBufferSize+d_fft_filter->ntaps())*dataSize - inputBytes;
+        int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
 
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
         if (remaining > 0)
@@ -643,7 +643,7 @@ clFilter_impl::filterGPU(int ninput_items,
 		cl_int err;
 		int retVal;
 
-		if (d_fft_filter->d_decimation == 1) {
+		if (d_decimation == 1) {
 			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
 
 			// # in=# out. Do it the quick way
@@ -656,21 +656,20 @@ clFilter_impl::filterGPU(int ninput_items,
 			// copy results to output buffer and increment for decimation!
 			int j=0;
 			int i=0;
+	        gr_complex *outcc = (gr_complex *)output_items[0];
+	        gr_complex *ResultPtrCC = (gr_complex *)tmpFFTBuff;
+	        float *outf = (float *)output_items[0];
+	        float *ResultPtrF = (float *)tmpFFTBuff;
 			while(j < ninput_items) {
 				if (dataType==DTYPE_COMPLEX) {
-			        gr_complex *out = (gr_complex *)output_items[0];
-			        gr_complex *ResultPtr = (gr_complex *)tmpFFTBuff;
-
-					out[i++] = ResultPtr[j];
+					outcc[i] = ResultPtrCC[j];
 				}
 				else {
-			        float *out = (float *)output_items[0];
-			        float *ResultPtr = (float *)tmpFFTBuff;
-
-					out[i++] = ResultPtr[j];
+					outf[i] = ResultPtrF[j];
 				}
 
-				j += d_fft_filter->d_decimation;
+				i++;
+				j = j + d_decimation;
 			}
 
 			retVal = i;
@@ -694,8 +693,6 @@ clFilter_impl::filterGPU(int ninput_items,
     	int k;
     	int err;
     	const gr_complex *in = (const gr_complex *) input_items[0];
-
-  	  	ninput_items = ninput_items * d_fft_filter->d_decimation;
 
     	for(int i = 0; i < ninput_items; i += d_fft_filter->d_nsamples) {
     	  // Move block of data to forward FFT buffer
@@ -861,7 +858,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);
 
-    	int ninput_items = noutput_items * d_fft_filter->d_decimation;
+    	int ninput_items = noutput_items * d_decimation;
         if (d_updated){
         	// GNURadio filter code
         	// set_taps sets d_fft_filter->d_nsamples so changed this line.

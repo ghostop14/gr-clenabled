@@ -52,6 +52,8 @@ namespace gr {
 		cl::Buffer *bBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 
+		int d_decimation;
+
 		// clFFT
 		bool hasInitialized_clFFT = false;
 

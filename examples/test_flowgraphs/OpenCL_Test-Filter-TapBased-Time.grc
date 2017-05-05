@@ -273,11 +273,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>True</value>
+      <value>1</value>
     </param>
     <param>
       <key>use_time</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -321,7 +321,7 @@
     </param>
   </block>
   <block>
-    <key>fft_filter_xxx</key>
+    <key>fir_filter_xxx</key>
     <param>
       <key>alias</key>
       <value></value>
@@ -344,7 +344,7 @@
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(624, 284)</value>
+      <value>(672, 300)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -352,7 +352,7 @@
     </param>
     <param>
       <key>id</key>
-      <value>fft_filter_xxx_0</value>
+      <value>fir_filter_xxx_0</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -361,10 +361,6 @@
     <param>
       <key>minoutbuf</key>
       <value>0</value>
-    </param>
-    <param>
-      <key>nthreads</key>
-      <value>1</value>
     </param>
     <param>
       <key>samp_delay</key>
@@ -491,7 +487,7 @@
     </param>
     <param>
       <key>label2</key>
-      <value>GNURadio</value>
+      <value>GNU and OpenCL Freq</value>
     </param>
     <param>
       <key>width2</key>
@@ -507,7 +503,7 @@
     </param>
     <param>
       <key>label3</key>
-      <value>OpenCL</value>
+      <value>OpenCL Time Domain</value>
     </param>
     <param>
       <key>width3</key>
@@ -692,7 +688,7 @@
   </connection>
   <connection>
     <source_block_id>blocks_throttle_0</source_block_id>
-    <sink_block_id>fft_filter_xxx_0</sink_block_id>
+    <sink_block_id>fir_filter_xxx_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>
@@ -709,7 +705,7 @@
     <sink_key>2</sink_key>
   </connection>
   <connection>
-    <source_block_id>fft_filter_xxx_0</source_block_id>
+    <source_block_id>fir_filter_xxx_0</source_block_id>
     <sink_block_id>qtgui_freq_sink_x_0</sink_block_id>
     <source_key>0</source_key>
     <sink_key>1</sink_key>

@@ -6,10 +6,10 @@
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
   clenabled.clFilter($openCLPlatform,1,0,0,$decimation,firdes.high_pass(
-	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug)
+	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug,$use_time)
 	#else
   clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,firdes.high_pass(
-	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug)
+	$gain, $samp_rate, $cutoff_freq, $width, $win, $beta),1,$setDebug,$use_time)
 	#end if
 	</make>
 	
@@ -95,16 +95,16 @@
 		</option>
 	</param>
 	<param>
-		<name>Debug</name>
-		<key>setDebug</key>
+		<name>Filter Type</name>
+		<key>use_time</key>
 		<type>enum</type>
 		<option>
-			<name>Off</name>
-			<key>0</key>
+			<name>Time Domain (FIR)</name>
+			<key>True</key>
 		</option>
 		<option>
-			<name>On</name>
-			<key>1</key>
+			<name>Frequency Domain (FFT)</name>
+			<key>False</key>
 		</option>
 	</param>
   <param>
@@ -166,6 +166,19 @@
 		<key>beta</key>
 		<value>6.76</value>
 		<type>real</type>
+	</param>
+	<param>
+		<name>Debug</name>
+		<key>setDebug</key>
+		<type>enum</type>
+		<option>
+			<name>Off</name>
+			<key>0</key>
+		</option>
+		<option>
+			<name>On</name>
+			<key>1</key>
+		</option>
 	</param>
   <sink>
     <name>in</name>

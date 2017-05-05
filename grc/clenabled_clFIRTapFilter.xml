@@ -98,16 +98,16 @@
 		<type>real_vector</type>
 	</param>
 	<param>
-		<name>Filter Method</name>
+		<name>Filter Type</name>
 		<key>use_time</key>
 		<type>enum</type>
 		<option>
-			<name>Frequency Domain (FFT)</name>
-			<key>False</key>
-		</option>
-		<option>
 			<name>Time Domain (FIR)</name>
 			<key>True</key>
+		</option>
+		<option>
+			<name>Frequency Domain (FFT)</name>
+			<key>False</key>
 		</option>
 	</param>
   <param>

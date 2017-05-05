@@ -317,6 +317,16 @@ void printHelp() {
 	std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
 	std::cout << "The optional --device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
 	std::cout << std::endl;
+	std::cout << std::endl;
+	std::cout << "You can create a filter by hand and see how many taps it would create from an interactive python command-line like this:" << std::endl;
+	std::cout << std::endl;
+	std::cout << "python" << std::endl;
+	std::cout << "from gnuradio.filter import firdes" << std::endl;
+	std::cout << "# parameters are gain, sample rate, cutoff freq, transition width for this low_pass filter." << std::endl;
+	std::cout << "taps=firdes.low_pass(1, 10e6, 500e3, 0.2*500e3)" << std::endl;
+	std::cout << "len(taps)" << std::endl;
+	std::cout << std::endl << "For this example 241 taps were created." << std::endl;
+	std::cout << std::endl;
 }
 
 int

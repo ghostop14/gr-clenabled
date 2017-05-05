@@ -54,7 +54,7 @@ namespace gr {
     {
     	d_decimation = decimation;
 
-        d_fft_filter = new fft_filter_ccf(decimation,taps,nthreads);
+        d_fft_filter = new fft_filter_ccf(decimation,taps,1);
         d_fir_filter = new gr::filter::kernel::fir_filter_ccf(decimation,taps);
 
     	// -------------------------------------------------------------
@@ -73,7 +73,7 @@ namespace gr {
         	// So the amount of items we have for the constant space is:
         	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
         	// Since we can't control the n_taps, we can control the noutput_items.
-        	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
+        	maxConstItems = (int)((float)(maxConstMemSize - taps.size()*sizeof(float))/(float)dataSize) - taps.size();
 
         	setTimeDomainFilterVariables(imaxItems);
     	}
@@ -142,15 +142,15 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	// remember sethistory(N) saves N-1.  sethistory(1) disables history.
 	// Therefore sethistory(d_fft_filter->ntaps()) saves paddingLength samples since paddingLenght = ntaps - 1
 
-	paddingLength = d_fft_filter->ntaps() - 1;
+	paddingLength = d_fir_filter->ntaps() - 1;
 	paddingBytes = dataSize*paddingLength;
 
-	resultLengthPoints = ninput_items + d_fft_filter->ntaps() - 1;
+	resultLengthPoints = ninput_items + d_fir_filter->ntaps() - 1;
 
 	inputLengthBytes = ninput_items*dataSize;
 	paddedBufferLengthBytes=resultLengthPoints*dataSize;
 
-	filterLengthBytes=d_fft_filter->ntaps() * sizeof(float);
+	filterLengthBytes=d_fir_filter->ntaps() * sizeof(float);
 
 	kernelCode = "";
 	kernelCodeWithConst = "";

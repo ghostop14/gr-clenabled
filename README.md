@@ -21,7 +21,7 @@ The following blocks are implemented in this project:
 	
 	f.	Add Constant
 	
-	g.	Filters
+	g.	Filters (FIR and FFT versions)
 	
 		i.	Low Pass
 		
@@ -32,6 +32,8 @@ The following blocks are implemented in this project:
 		iv.	Band Reject
 		
 		v.	Root-Raised Cosine
+		
+		vi. General Tap-based
 		
 2.	Common Math or Complex Data Functions
 
@@ -61,6 +63,21 @@ The following blocks are implemented in this project:
 	
 	c.  Costas Loop (2nd order and 4th Order) - Although performance is horrible on a GPU core: ~ 0.7 MSPS.
 	
+
+## Important Usage Notes
+
+### Multiple Blocks
+
+Like running an application on your computer that would take 100% CPU utilization, running blocks on a GPU is expecting full hardware utilization for best performance.  If you try to run 2 applications on your CPU that both require 100% utilization, performance of both will suffer.  The same applies to attempting to run multiple OpenCL blocks on the same hardware at the same time.  With that said, these blocks do support using multiple cards simultaneously.  You can assign specific blocks to run on specific cards to spread out the load and this will perform quite well.  The best recommendation is to take the heaviest processing blocks in your flowgraph that have OpenCL equivalents and start with those.
+
+### Hardware Single and Double Precision
+
+Originally some of the blocks like the signal source, quad demod, and the Costas Loop were written with floating point trig functions for hardware compatibility.  However it turns out that trig function accuracy is defined as "Implementation Specific" in the OpenCL spec and the precision of the floating point versions were causing discrepancies.  As a result the blocks now detect if double precision support is available on the hardware and adjust the code accordingly.  The result is actually that the "signal" produced in the signal source with double precision does not have some secondary nodes seen in the native version (see the example flowgraph in the examples directory for the signal source and run it to see the difference).  This shouldn't be a problem on newer hardware.  You can run the included clview command-line tool which will immediately tell you if your hardware supports double-precision (and most newer cards will).  However it is important to check.  Single precision trig was poor enough to cause a real-world signal to not decode with the Costas Loop.  If you're using custom kernels that include trig functions, keep this in mind.  You will want to typecast your sin/cos parameters to (double) or you could get unusable results.
+
+### Filters
+
+A lot of work went into the filters.  Both FFT and FIR versions are implemented.  The test-clfilter command-line tool can help you pick between the 4 filter options:  OpenCL FIR, GNURadio's FIR, OpenCL FFT, GNURadio's FFT.  Given the number of taps in any one filter and the filter parameters, one of these will be better than the other.  In general the order of processing (best to worst) for practical filters will be: GNURadio FFT (by an order of magnitude), OpenCL FIR, GNURadio FIR, OpenCL FFT.
+
 
 ## Building gr-clenabled
 

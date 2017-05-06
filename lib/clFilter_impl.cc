@@ -25,6 +25,7 @@
 #include <gnuradio/io_signature.h>
 #include "clFilter_impl.h"
 #include <volk/volk.h>
+#include <boost/algorithm/string/replace.hpp>
 
 namespace gr {
   namespace clenabled {
@@ -50,31 +51,21 @@ namespace gr {
       : gr::sync_decimator("clFilter",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
-			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug)
+			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),
+			  USE_TIME_DOMAIN(bUseTimeDomain),d_decimation(decimation)
     {
-    	d_decimation = decimation;
-
         d_fft_filter = new fft_filter_ccf(decimation,taps,1);
         d_fir_filter = new gr::filter::kernel::fir_filter_ccf(decimation,taps);
 
-    	// -------------------------------------------------------------
-    	// Set up depending on freq or time-domain filter
-    	USE_TIME_DOMAIN = bUseTimeDomain;
+        d_active_taps = taps;
 
-    	int imaxItems=gr::block::max_noutput_items();
+    	imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
     		imaxItems=8192;
 
+    	imaxItems = imaxItems * decimation;  // we have to account for this in our buffer size.
+
     	if (USE_TIME_DOMAIN) {
-        	// Buffer sizes need to match up with blocks based on the number of taps...
-        	// This matches up with FFT Size
-        	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(taps.size())) / log(2.0))));;
-
-        	// So the amount of items we have for the constant space is:
-        	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
-        	// Since we can't control the n_taps, we can control the noutput_items.
-        	maxConstItems = (int)((float)(maxConstMemSize - taps.size()*sizeof(float))/(float)dataSize) - taps.size();
-
         	setTimeDomainFilterVariables(imaxItems);
     	}
     	else {
@@ -82,9 +73,9 @@ namespace gr {
     	}
 
     	// -------------------------------------------------------------
-    	// straight from fir_filter_XXX_impl.cc.t
+    	// straight from fir_filter_XXX_impl.cc.t, just changed the taps from d_fft_filter->ntaps() to taps.size()
         d_updated = false;
-        set_history(d_fft_filter->ntaps());
+        set_history(taps.size());
 
         const int alignment_multiple = volk_get_alignment() / sizeof(float);
         set_alignment(std::max(1, alignment_multiple));
@@ -142,7 +133,7 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	// remember sethistory(N) saves N-1.  sethistory(1) disables history.
 	// Therefore sethistory(d_fft_filter->ntaps()) saves paddingLength samples since paddingLenght = ntaps - 1
 
-	paddingLength = d_fir_filter->ntaps() - 1;
+	paddingLength = d_active_taps.size() - 1;
 	paddingBytes = dataSize*paddingLength;
 
 	resultLengthPoints = ninput_items + d_fir_filter->ntaps() - 1;
@@ -153,7 +144,6 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 	filterLengthBytes=d_fir_filter->ntaps() * sizeof(float);
 
 	kernelCode = "";
-	kernelCodeWithConst = "";
     std::string fnName = "";
 
     hasDoublePrecisionSupport = false;
@@ -180,6 +170,14 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	SComplex result;\n";
 		kernelCode +="	result.real=0.0f;\n";
 		kernelCode +="	result.imag=0.0f;\n";
+
+		/*
+		 * Test code
+		kernelCode += "  OutputArray[gid].real = InputArray[gid].real;\n";
+		kernelCode += "  OutputArray[gid].imag = InputArray[gid].imag;\n";
+		kernelCode += "  return;\n";
+		*/
+
 		kernelCode +="	for (int i=0; i<K; i++) {\n";
 		if (hasSingleFMASupport) {
 			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
@@ -194,39 +192,6 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	OutputArray[gid].real = result.real;\n";
 		kernelCode +="	OutputArray[gid].imag = result.imag;\n";
 		kernelCode +="}\n";
-
-		// If the filter array is < constant memory, this approach is faster:
-		kernelCodeWithConst +="struct ComplexStruct {\n";
-		kernelCodeWithConst +="	float real;\n";
-		kernelCodeWithConst +="	float imag;\n";
-		kernelCodeWithConst +="};\n";
-		kernelCodeWithConst +="typedef struct ComplexStruct SComplex;\n";
-
-		kernelCodeWithConst +="__kernel void td_FIR_complex\n";
-		kernelCodeWithConst +="( __global const SComplex * restrict InputArray, // Length N\n";
-		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
-		kernelCodeWithConst +="__global SComplex *restrict OutputArray // Length N+K-1\n";
-		kernelCodeWithConst +=")\n";
-		kernelCodeWithConst +="{\n";
-		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
-		kernelCodeWithConst +="	// Perform Compute\n";
-		kernelCodeWithConst +="	SComplex result;\n";
-		kernelCodeWithConst +="	result.real=0.0f;\n";
-		kernelCodeWithConst +="	result.imag=0.0f;\n";
-		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
-		if (hasSingleFMASupport) {
-			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
-			kernelCodeWithConst +="		result.real = fma(FilterArray[K-1-i],InputArray[gid+i].real,result.real);\n";
-			kernelCodeWithConst +="		result.imag = fma(FilterArray[K-1-i],InputArray[gid+i].imag,result.imag);\n";
-		}
-		else {
-			kernelCodeWithConst +="		result.real += FilterArray[K-1-i]*InputArray[gid+i].real;\n";
-			kernelCodeWithConst +="		result.imag += FilterArray[K-1-i]*InputArray[gid+i].imag;\n";
-		}
-		kernelCodeWithConst +="	}\n";
-		kernelCodeWithConst +="	OutputArray[gid].real = result.real;\n";
-		kernelCodeWithConst +="	OutputArray[gid].imag = result.imag;\n";
-		kernelCodeWithConst +="}\n";
 	}
 	else {
 		// This version of code is for data points that exceed the constant memory size.
@@ -253,56 +218,26 @@ void clFilter_impl::setTimeDomainFilterVariables(int ninput_items) {
 		kernelCode +="	OutputArray[gid] = result;\n";
 		kernelCode +="}\n";
 
-		kernelCodeWithConst +="__kernel void td_FIR_float\n";
-		kernelCodeWithConst +="( __global const float * restrict InputArray, // Length N\n";
-		kernelCodeWithConst +="__constant float * FilterArray, // Length K\n";
-		kernelCodeWithConst +="__global float *restrict OutputArray // Length N+K-1\n";
-		kernelCodeWithConst +=")\n";
-		kernelCodeWithConst +="{\n";
-		kernelCodeWithConst +="  size_t gid=get_global_id(0);\n";
-		kernelCodeWithConst +="	// Perform Compute\n";
-		kernelCodeWithConst +="	float result=0.0f;\n";
-		kernelCodeWithConst +="	for (int i=0; i<K; i++) {\n";
-		if (hasSingleFMASupport) {
-			// gid+i doesn't crash because we pass the larger buffer to the device and zero out the additional memory
-			kernelCodeWithConst +="		result = fma(FilterArray[K-1-i],InputArray[gid+i],result);\n";
-		}
-		else {
-			kernelCodeWithConst +="		result = FilterArray[K-1-i]*InputArray[gid+i] + result;\n";
-		}
-		kernelCodeWithConst +="	}\n";
-		kernelCodeWithConst +="	OutputArray[gid] = result;\n";
-		kernelCodeWithConst +="}\n";
 	}
 
-	std::string lbDefines;
-	lbDefines = "#define K "+ std::to_string(d_fft_filter->ntaps()) + "\n";
+	kernelCode = "#define K "+ std::to_string(d_fir_filter->ntaps()) + "\n" + kernelCode;
 
-	std::string tmpKernelCode;
-	float tapConstMemUsage = maxConstMemSize - d_fft_filter->d_ntaps*sizeof(float);
 	bool useConst;
 
-	if (tapConstMemUsage > 0)
-		useConst = true;
-	else
-		useConst = false;
-
-	if (useConst) {
-		tmpKernelCode = lbDefines + kernelCodeWithConst;
+	if (d_fir_filter->ntaps() <= maxConstItems) {
+		boost::replace_all(kernelCode,"__global const float * FilterArray","__constant float * FilterArray");
 		if (debugMode)
     		std::cout << "OpenCL INFO: Filter is using kernel code with faster constant memory." << std::endl;
 	}
 	else {
-		tmpKernelCode = lbDefines + kernelCode;
 		if (debugMode)
     		std::cout << "OpenCL INFO: The number of taps exceeds OpenCL constant memory space for your device.  Filter is using slower kernel code with filter copy to local memory." << std::endl;
 	}
 
-	GRCLBase::CompileKernel((const char *)tmpKernelCode.c_str(),(const char *)fnName.c_str());
 
-	if (debugMode) {
-		std::cout << "OpenCL filter: max input items to use constant memory with the specified " << d_fft_filter->d_ntaps << " taps: " << maxConstItems << std::endl;
-	}
+	// std::cout << kernelCode;
+
+	GRCLBase::CompileKernel((const char *)kernelCode.c_str(),(const char *)fnName.c_str());
 
 	setBufferLength(ninput_items);
 }
@@ -327,17 +262,17 @@ void clFilter_impl::setBufferLength(int numItems) {
 		aBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_WRITE,
-			(numItems+d_fft_filter->ntaps())*dataSize);
+			(numItems+d_fir_filter->ntaps())*dataSize);
 
-		zeroBuff=new char[paddedBufferLengthBytes];
-		memset(zeroBuff,0x00,paddedBufferLengthBytes);
+		zeroBuff=new char[paddingBytes]; // [paddedBufferLengthBytes];
+		memset(zeroBuff,0x00,paddingBytes); // paddedBufferLengthBytes);
 		// This is our tap buffer.
 		bBuffer = new cl::Buffer(
 			*context,
 			CL_MEM_READ_ONLY,
-			d_fft_filter->ntaps()*sizeof(float));
+			d_fir_filter->ntaps()*sizeof(float));
 
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_fft_filter->d_ntaps*sizeof(float),&(d_fft_filter->d_taps[0]));
+        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_active_taps.size()*sizeof(float),(void *)(&d_active_taps[0]));
 
 		cBuffer = new cl::Buffer(
 			*context,
@@ -467,16 +402,17 @@ void clFilter_impl::setBufferLength(int numItems) {
     }
 
     std::vector<float> clFilter_impl::taps() const {
-    	return d_fft_filter->taps();
+    	if (USE_TIME_DOMAIN) {
+        	return d_fir_filter->taps();
+    	}
+    	else {
+        	return d_fft_filter->taps();
+    	}
     }
 
     void clFilter_impl::set_nthreads(int n) {
     	d_fft_filter->set_nthreads(n);
     }
-    /*
-     * The private constructor
-     */
-
 
 int
 clFilter_impl::set_taps(const std::vector<float> &taps)
@@ -487,29 +423,19 @@ clFilter_impl::set_taps(const std::vector<float> &taps)
     d_fft_filter->set_taps(taps);
     d_fir_filter->set_taps(taps);
 
+    d_active_taps = taps;
+
     d_updated = true;
 
-	int imaxItems=gr::block::max_noutput_items();
-	if (imaxItems==0)
-		imaxItems=8192;
-
     if (USE_TIME_DOMAIN) {
-    	// Buffer sizes need to match up with blocks based on the number of taps...
-    	// This matches up with FFT Size
-    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fft_filter->ntaps())) / log(2.0))));;
-
-    	// So the amount of items we have for the constant space is:
-    	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
-    	// Since we can't control the n_taps, we can control the noutput_items.
-    	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
-
     	setTimeDomainFilterVariables(imaxItems);
+        return d_fir_filter->ntaps();
     }
     else {
     	setFreqDomainFilterVariables(imaxItems);
+        return d_fft_filter->ntaps();
     }
 
-    return d_fft_filter->ntaps();
 }
 
 void
@@ -519,10 +445,7 @@ clFilter_impl::set_taps2(const std::vector<float> &taps) {
     d_fft_filter->set_taps(taps);
     d_fir_filter->set_taps(taps);
 
-    // FFT and tap size may have changed.  Recalc
-	int imaxItems=gr::block::max_noutput_items();
-	if (imaxItems==0)
-		imaxItems=8192;
+    d_active_taps = taps;
 
     if (USE_TIME_DOMAIN) {
     	/* In fir_filter.cc set_taps reverses the taps.
@@ -548,15 +471,6 @@ clFilter_impl::set_taps2(const std::vector<float> &taps) {
 		}
 
     	 */
-    	// Buffer sizes need to match up with blocks based on the number of taps...
-    	// This matches up with FFT Size
-    	prevInputLength = (int) (2 * pow(2.0, ceil(log(double(d_fft_filter->ntaps())) / log(2.0))));;
-
-    	// So the amount of items we have for the constant space is:
-    	// maxConstMemSize >= (noutput_items+n_taps)*datasize + n_taps*sizeof(float)
-    	// Since we can't control the n_taps, we can control the noutput_items.
-    	maxConstItems = (int)((float)(maxConstMemSize - d_fft_filter->ntaps()*sizeof(float))/(float)dataSize) - d_fft_filter->ntaps();
-
     	setTimeDomainFilterVariables(imaxItems);
     }
     else {
@@ -573,7 +487,6 @@ clFilter_impl::TestNotifyNewFilter(int noutput_items) {
 
 		if (USE_TIME_DOMAIN) {
 			setTimeDomainFilterVariables(noutput_items);
-			prevInputLength = noutput_items;
 		}
     }
 }
@@ -592,15 +505,13 @@ clFilter_impl::filterGPU(int ninput_items,
 	clFilter_impl::filterGPUTimeDomain(int ninput_items,
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items) {
-
-    	// Protect context from switching
-        gr::thread::scoped_lock guard(d_mutex);
-
+        // curBufferSize is how much we've allocated based on max_output_items.
+        // This if should never get hit, just a safety check.
     	if (ninput_items > curBufferSize) {
     		// This could get expensive if we have to rebuild kernels
     		// in GNURadio min input items and max items should be
     		// set to the same value to ensure consistency.
-    		setTimeDomainFilterVariables(ninput_items);
+    		setTimeDomainFilterVariables(ninput_items);  // this could only happen if ninput_items exceeds max_output_items.
     		if (debugMode) {
     			std::cout << "ninput_items > curBufferSize.  Adjusting buffer to match..." << std::endl;
     		}
@@ -611,13 +522,16 @@ clFilter_impl::filterGPU(int ninput_items,
     	// for reference.  The source code has a PDF describing implementing FIR in FPGA.
 
     	// Zero out the excess buffer
-        int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
+        //int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
 
         queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
-        if (remaining > 0)
-        	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,remaining,(void *)zeroBuff);
+        // calculated in setTimeFilterVariables()
+        // 	paddingLength = d_active_taps.size() - 1;
+    	//  paddingBytes = dataSize*paddingLength;
+    	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,paddingBytes,(void *)zeroBuff);
 
 		kernel->setArg(0, *aBuffer);
+		// bBuffer is prepopulated with the taps so we only have to do the copy when the taps change
 		kernel->setArg(1, *bBuffer);
 		kernel->setArg(2, *cBuffer);
 
@@ -859,6 +773,7 @@ clFilter_impl::filterGPU(int ninput_items,
         gr::thread::scoped_lock guard(d_mutex);
 
     	int ninput_items = noutput_items * d_decimation;
+
         if (d_updated){
         	// GNURadio filter code
         	// set_taps sets d_fft_filter->d_nsamples so changed this line.
@@ -867,16 +782,19 @@ clFilter_impl::filterGPU(int ninput_items,
 			// Additions for our filter
 			if (USE_TIME_DOMAIN) {
 				setTimeDomainFilterVariables(ninput_items);
-				prevInputLength = ninput_items;
+				set_history(d_active_taps.size());
+			}
+			else {
+				set_history(d_fft_filter->ntaps());
 			}
 
-			set_history(d_fft_filter->ntaps());
 			return 0;
         }
 
     	if (debugMode && CLPRINT_NITEMS)
     		std::cout << "clFilter_impl ninput_items: " << ninput_items << std::endl;
 
+    	// FIlterGPU decides if we need time or freq
         filterGPU(ninput_items,input_items,output_items);
 
         // Tell runtime system how many output items we produced.

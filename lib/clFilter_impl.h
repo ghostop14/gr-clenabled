@@ -34,19 +34,19 @@ namespace gr {
     class clFilter_impl : public clFilter, public GRCLBase
     {
      private:
-        fft_filter_ccf *d_fft_filter;
+    	fft_filter_ccf *d_fft_filter;
         gr::filter::kernel::fir_filter_ccf *d_fir_filter;
 
         bool d_updated;
         bool USE_TIME_DOMAIN;
         std::vector<float> d_new_taps;
-
+        std::vector<float> d_active_taps; // used for time-domain filter
 
         float *transformedTaps_float=NULL;
         std::vector<float>  d_tail_float;	    // state carried between blocks for overlap-add
 
+        int imaxItems;
         std::string kernelCode;
-        std::string kernelCodeWithConst;  // only used if size of filter array is less than constant memory max space.
 
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *bBuffer=NULL;
@@ -59,8 +59,6 @@ namespace gr {
 
 		clfftPlanHandle planHandle;
 		clfftDim dim = CLFFT_1D;
-
-        int prevInputLength=0;  // numinputs
 
         // Precalculated values
         int inputLengthBytes;

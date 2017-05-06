@@ -245,11 +245,7 @@ bool testFilter() {
 	}
 
 	fdBlockSize = test->freqDomainSampleBlockSize();
-
-	optimalSize = (int)((float)largeBlockSize / (float)fdBlockSize) * fdBlockSize;
-	// So the number of samples used has to be a value that satisfies both of these
-
-	fdBlockSize = optimalSize;
+	test->TestNotifyNewFilter(fdBlockSize);
 
 	verifyBuffers(fdBlockSize,inputItems,outputItems,inputPointers,outputPointers);
 	noutputitems = test->testOpenCL(fdBlockSize,inputPointers,outputPointers);
@@ -267,8 +263,7 @@ bool testFilter() {
     << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << fdBlockSize << std::endl;
 
 	// ---------------------- CPU TESTS -----------------------------------------
-	test->TestNotifyNewFilter(largeBlockSize);
-
+	test->TestNotifyNewFilter(fdBlockSize);
 	verifyBuffers(fdBlockSize,inputItems,outputItems,inputPointers,outputPointers);
 //	test->setFilterVariables(tdBufferSize);
 	noutputitems = test->testCPUFFT(fdBlockSize,inputPointers,outputPointers);

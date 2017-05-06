@@ -82,6 +82,10 @@ A lot of work went into the filters.  Both FFT and FIR versions are implemented.
 
 A full study on each of the blocks is in the docs directory.  It goes through each of the blocks and their measured throughput for a variety of data buffer sizes and compares their performance to the native GNURadio blocks.  It was definitely interesting to see the timing on some of the native code as well.  The details of how the tests were conducted, the results, and observations are all detailed in the study.
 
+### Grouping of Blocks
+
+Once gr-clenabled is installed, there are two high-level groups the blocks are organized into.  The first is 'OpenCL-Accelerated'.  These blocks always perform better than the CPU equivalents.  The other group 'OpenCL-Enabled' has blocks that depending on block size or other parameters may be faster or slower, and some that are just always slower but included here for completeness (like basic multiply/add blocks).  For details on how they perform, again look at the performance metrics in the study before choosing.
+
 ## Building gr-clenabled
 
 In the setup_help directory there are some installation notes for various configurations with details to get set up and any prerequisites.

@@ -33,7 +33,7 @@ The following blocks are implemented in this project:
 		
 		v.	Root-Raised Cosine
 		
-		vi. General Tap-based
+		vi.	General Tap-based
 		
 2.	Common Math or Complex Data Functions
 

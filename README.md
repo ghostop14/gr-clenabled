@@ -1,7 +1,7 @@
-# gr-clenabled - OpenCL-enabled common blocks for GNURadio
+# gr-clenabled - OpenCL-enabled Common Blocks for GNURadio
 
 
-Gr-clenabled had a number of lofty goals at the project’s onset.  the goal was to go through as many GNURadio blocks as possible that are used in common digital communications processing (ASK, FSK, and PSK), convert them to OpenCL, and provide scalability by allowing each OpenCL-enabled block to be assigned to a user-selectable OpenCL device.  This latter scalability feature would allow a system that has 3 graphics cards, or even a combination of GPU’s and FPGA’s, to have different blocks assigned to run on different cards all within the same flowgraph.  This flexibility would also allow lower-end cards to drive less computational blocks and allow FPGA’s to handle the more intensive blocks.  
+Gr-clenabled had a number of lofty goals at the project’s onset.  The goal was to go through as many GNURadio blocks as possible that are used in common digital communications processing (ASK, FSK, and PSK), convert them to OpenCL, and provide scalability by allowing each OpenCL-enabled block to be assigned to a user-selectable OpenCL device.  This latter scalability feature would allow a system that has 3 graphics cards, or even a combination of GPU’s and FPGA’s, to have different blocks assigned to run on different cards all within the same flowgraph.  This flexibility would also allow lower-end cards to drive less computational blocks and allow FPGA’s to handle the more intensive blocks.  
 
 
 The following blocks are implemented in this project:
@@ -78,6 +78,9 @@ Originally some of the blocks like the signal source, quad demod, and the Costas
 
 A lot of work went into the filters.  Both FFT and FIR versions are implemented.  The test-clfilter command-line tool can help you pick between the 4 filter options:  OpenCL FIR, GNURadio's FIR, OpenCL FFT, GNURadio's FFT.  Given the number of taps in any one filter and the filter parameters, one of these will be better than the other.  In general the order of processing (best to worst) for practical filters will be: GNURadio FFT (by an order of magnitude), OpenCL FIR, GNURadio FIR, OpenCL FFT.
 
+### Performance Metrics
+
+A full study on each of the blocks is in the docs directory.  It goes through each of the blocks and their measured throughput for a variety of data buffer sizes and compares their performance to the native GNURadio blocks.  It was definitely interesting to see the timing on some of the native code as well.  The details of how the tests were conducted, the results, and observations are all detailed in the study.
 
 ## Building gr-clenabled
 

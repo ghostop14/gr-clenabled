@@ -1,7 +1,7 @@
 <block>
   <name>OpenCL Tap-based Filter</name>
   <key>clenabled_cltapfirfilter</key>
-  <category>[OpenCL-Enabled]</category>
+  <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
@@ -144,10 +144,12 @@
     <type>complex</type>
   </source>
 	<doc>
-This filter is an OpenCL enabled version of the built-in low pass filter.
+This filter is an OpenCL enabled version of a generic Tap-base FIR or FFT filter.
 
-Sample rate, cutoff frequency, and transition width are in Hertz.
+Filter performance based on the number of taps can be tested with the test-clfilter command-line tool.  In gerneral what you will find in terms of filter performance is that filters will perform in this order (highest to lowest throughput):
 
-The beta paramater only applies to the Kaiser window.
-	</doc>
+1. GNURadio FFT Filter, 2. OpenCL FIR Filter
+
+Then depending on the number of taps, either the GNURadio FIR or OpenCL FFT filter.	Again use the included test-clfilter command-line tool to select the best performing filter.
+</doc>
 </block>

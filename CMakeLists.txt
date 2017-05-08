@@ -113,6 +113,14 @@ if(APPLE)
 endif(APPLE)
 
 ########################################################################
+# Find OpenCL build dependencies
+########################################################################
+find_package(OpenCL)
+if(NOT OpenCL_FOUND)
+	message(FATAL_ERROR "OpenCL is required to compile gr-clenabled")
+endif()
+
+########################################################################
 # Find gnuradio build dependencies
 ########################################################################
 find_package(CppUnit)

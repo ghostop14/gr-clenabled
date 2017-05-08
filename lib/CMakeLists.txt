@@ -33,7 +33,7 @@ ENDIF(CMAKE_BUILD_TYPE MATCHES DEBUG)
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR} ${OpenCL_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 link_directories(${FFTW3F_LIBRARY_DIRS})
 
@@ -68,7 +68,7 @@ if(NOT clenabled_sources)
 endif(NOT clenabled_sources)
 
 add_library(gnuradio-clenabled SHARED ${clenabled_sources})
-target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} OpenCL gnuradio-blocks gnuradio-filter ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
+target_link_libraries(gnuradio-clenabled ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} ${OpenCL_LIBRARY} gnuradio-blocks gnuradio-filter ${VOLK_LIBRARIES} ${Boost_LIBRARIES} ${FFTW3F_LIBRARIES} clFFT )
 set_target_properties(gnuradio-clenabled PROPERTIES DEFINE_SYMBOL "gnuradio_clenabled_EXPORTS")
 
 if(APPLE)
@@ -135,7 +135,7 @@ target_link_libraries(
   ${CPPUNIT_LIBRARIES}
   ${VOLK_LIBRARIES}
   ${FFTW3F_LIBRARIES}
-  OpenCL
+  ${OpenCL_LIBRARY}
   gnuradio-clenabled
   clFFT
   gnuradio-blocks
@@ -173,7 +173,7 @@ add_executable(test-clkernel ${test_clkernel_sources})
 
 target_link_libraries(
   test-clkernel
-  OpenCL
+  ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
   gnuradio-clenabled
@@ -195,7 +195,7 @@ add_executable(test-clfilter ${test_clfilter_sources})
 
 target_link_libraries(
   test-clfilter
-  OpenCL
+  ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   gnuradio-filter
   ${Boost_LIBRARIES}
@@ -219,7 +219,7 @@ add_executable(test-clenabled-fft ${test_clsingle_sources})
 
 target_link_libraries(
   test-clenabled-fft
-  OpenCL
+  ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
   gnuradio-clenabled

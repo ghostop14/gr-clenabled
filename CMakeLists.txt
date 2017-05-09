@@ -121,6 +121,14 @@ if(NOT OpenCL_FOUND)
 endif()
 
 ########################################################################
+# Find clFFT build dependencies
+########################################################################
+find_package(clFFT)
+if(NOT CLFFT_FOUND)
+	message(FATAL_ERROR "clFFT is required to compile gr-clenabled")
+endif()
+
+########################################################################
 # Find gnuradio build dependencies
 ########################################################################
 find_package(CppUnit)

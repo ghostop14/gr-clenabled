@@ -17,9 +17,9 @@ Finding the latest driver
 
 apt search nvidia-*
 
-You should find a number of them coming back as nvidia-<###>.  When I put these instructions together, 381 looked like the latest, so I installed that like this:
+You should find a number of them coming back as nvidia-<###>.  When I put these instructions together, 384 looked like the latest, so I installed that like this:
 
-sudo apt install nvidia-381
+sudo apt install nvidia-384
 
 Once this is done, reboot and make sure your system/display work.  If all is well then continue on.
 
@@ -36,10 +36,10 @@ https://developer.nvidia.com/cuda-downloads
 
 For me I selected Linux - x86_64 - Ubuntu - 16.04 - runfile (local).
 
-Once that downloads, install it.  If you take the defaults, it'll put the headers in /usr/local/cuda-8.0/include/CL/
+Once that downloads, install it.  You don't need to install the driver since we've already installed it, and you don't need the samples unless you want them, so just install the toolkit.  If you take the defaults, it'll put the headers in /usr/local/cuda-9.0/include/CL/
 
 If they're there, run this:
-ln -s /usr/local/cuda-8.0/include/CL/cl.hpp /usr/include/CL/cl.hpp
+ln -s /usr/local/cuda-9.0/include/CL/cl.hpp /usr/include/CL/cl.hpp
 
 -------------------------
 Installing gr-clenabled

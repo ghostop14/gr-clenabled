@@ -42,5 +42,6 @@ install(FILES
     clenabled_clKernel1To1.xml
     clenabled_clKernel2To1.xml
     clenabled_clSignalSource.xml
-    clenabled_clCostasLoop.xml DESTINATION share/gnuradio/grc/blocks
+    clenabled_clCostasLoop.xml
+    clenabled_clComplexFilter.xml DESTINATION share/gnuradio/grc/blocks
 )

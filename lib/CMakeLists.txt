@@ -59,6 +59,7 @@ list(APPEND clenabled_sources
     clKernel2To1_impl.cc
     clSignalSource_impl.cc
     clCostasLoop_impl.cc
+    clComplexFilter_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -187,6 +188,7 @@ install(TARGETS test-clkernel DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 list(APPEND test_clfilter_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test-clfilter.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clFilter_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clComplexFilter_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/window.cc
 )

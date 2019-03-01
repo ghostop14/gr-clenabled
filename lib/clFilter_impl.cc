@@ -734,7 +734,7 @@ clFilter_impl::filterGPU(int ninput_items,
         	retVal = noutput_items;
         }
         catch (...) {
-        	std::cout << "Exception in fft_filter_ccf::filter()" << std::endl;
+        	std::cout << "Exception in fir_filter_ccf::filter()" << std::endl;
         }
 		return retVal;
     }

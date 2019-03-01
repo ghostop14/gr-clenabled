@@ -42,6 +42,7 @@
 #include "clMathOpTypes.h"
 
 #include "clFilter_impl.h"
+#include "clComplexFilter_impl.h"
 
 bool verbose=false;
 int largeBlockSize=8192;
@@ -239,6 +240,7 @@ bool testFilter() {
 
 		if (test != NULL) {
 			delete test;
+			test = NULL;
 		}
 
 		return false;
@@ -282,6 +284,83 @@ bool testFilter() {
 
 	if (test != NULL) {
 		delete test;
+		test = NULL;
+	}
+
+	// -----------------------  Time Domain FIR with complex taps ------------------------------------
+	gr::clenabled::clComplexFilter_impl *testComplex=NULL;
+
+	std::vector<gr_complex> complexfiltertaps;
+
+	for (i=0;i<ntaps;i++) {
+		gr_complex newComplex(1.0,0.5);
+		complexfiltertaps.push_back(newComplex);
+	}
+
+	try {
+		testComplex = new gr::clenabled::clComplexFilter_impl(opencltype,selectorType,platformId,devId,1,
+				complexfiltertaps,1,false);
+	}
+	catch(const std::runtime_error& re)
+	{
+	    // specific handling for runtime_error
+	    std::cerr << "Runtime error: " << re.what() << std::endl;
+	}
+	catch(const std::exception& ex)
+	{
+	    // specific handling for all exceptions extending std::exception, except
+	    // std::runtime_error which is handled explicitly
+	    std::cerr << "Error occurred: " << ex.what() << std::endl;
+	}
+	catch (...) {
+		std::cout << "ERROR: error setting up complex filter OpenCL environment." << std::endl;
+
+		if (testComplex != NULL) {
+			delete testComplex;
+		}
+
+		return false;
+	}
+
+	verifyBuffers(largeBlockSize,inputItems,outputItems,inputPointers,outputPointers);
+
+	tdBufferSize = testComplex->getCurrentBufferSize();
+
+	// OpenCL FIR Filter
+	verifyBuffers(largeBlockSize,inputItems,outputItems,inputPointers,outputPointers);
+	testComplex->setTimeDomainFilterVariables(largeBlockSize);
+
+	noutputitems = testComplex->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testComplex->testOpenCL(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+	throughput = largeBlockSize / (elapsed_seconds.count()/(float)iterations);
+	std::cout << "OpenCL Complex FIR Filter	" << std::fixed << std::setw(11)
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << largeBlockSize << std::endl;
+
+	// CPU FIR Filter
+	noutputitems = testComplex->testCPUFIR(largeBlockSize,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = testComplex->testCPUFIR(largeBlockSize,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+	throughput = largeBlockSize / (elapsed_seconds.count()/(float)iterations);
+	std::cout << "GNURadio Complex FIR Filter	" << std::fixed << std::setw(11)
+    << std::setprecision(2) << throughput << "      	" << std::setprecision(0) << largeBlockSize << std::endl;
+
+	if (testComplex != NULL) {
+		delete testComplex;
 	}
 
 	return true;

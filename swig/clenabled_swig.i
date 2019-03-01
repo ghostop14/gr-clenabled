@@ -23,6 +23,7 @@
 #include "clenabled/clKernel2To1.h"
 #include "clenabled/clSignalSource.h"
 #include "clenabled/clCostasLoop.h"
+#include "clenabled/clComplexFilter.h"
 %}
 
 
@@ -56,3 +57,5 @@ GR_SWIG_BLOCK_MAGIC2(clenabled, clKernel2To1);
 GR_SWIG_BLOCK_MAGIC2(clenabled, clSignalSource);
 %include "clenabled/clCostasLoop.h"
 GR_SWIG_BLOCK_MAGIC2(clenabled, clCostasLoop);
+%include "clenabled/clComplexFilter.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexFilter);

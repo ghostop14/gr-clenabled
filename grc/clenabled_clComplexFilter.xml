@@ -1,13 +1,14 @@
+<?xml version="1.0"?>
 <block>
-  <name>OpenCL Tap-based Filter</name>
-  <key>clenabled_cltapfirfilter</key>
+  <name>OpenCL Complex FIR Filter</name>
+  <key>clenabled_clcomplexfilter</key>
   <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <import>from gnuradio.filter import firdes</import>
   <make>#if $devices == 1
-  clenabled.clFilter($openCLPlatform,1,0,0,$decimation,$taps,1,$setDebug,$use_time)
+  clenabled.clComplexFilter($openCLPlatform,1,0,0,$decimation,$taps,1,$setDebug)
 	#else
-  clenabled.clFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,$taps,1,$setDebug,$use_time)
+  clenabled.clComplexFilter($openCLPlatform,$devices,$platformId,$deviceId,$decimation,$taps,1,$setDebug)
 	#end if
 	</make>
 	
@@ -95,20 +96,7 @@
 	<param>
 		<name>Taps</name>
 		<key>taps</key>
-		<type>real_vector</type>
-	</param>
-	<param>
-		<name>Filter Type</name>
-		<key>use_time</key>
-		<type>enum</type>
-		<option>
-			<name>Time Domain (FIR)</name>
-			<key>True</key>
-		</option>
-		<option>
-			<name>Frequency Domain (FFT)</name>
-			<key>False</key>
-		</option>
+		<type>complex_vector</type>
 	</param>
   <param>
     <name>Decimation</name>
@@ -144,7 +132,7 @@
     <type>complex</type>
   </source>
 	<doc>
-This filter is an OpenCL enabled version of a generic Tap-base FIR or FFT filter with float-based taps.
+This filter is an OpenCL enabled version of a generic Tap-based FIR filter with complex taps.
 
 Filter performance based on the number of taps can be tested with the test-clfilter command-line tool.  In general what you will find in terms of filter performance is that filters will perform in this order (highest to lowest throughput):
 

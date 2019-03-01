@@ -36,6 +36,6 @@ install(FILES
     clKernel1To1.h
     clKernel2To1.h
     clSignalSource.h
-    clCostasLoop.h 
-    DESTINATION include/clenabled
+    clCostasLoop.h
+    clComplexFilter.h DESTINATION include/clenabled
 )

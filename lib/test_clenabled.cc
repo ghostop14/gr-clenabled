@@ -32,6 +32,7 @@
 #include "qa_clenabled.h"
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <boost/algorithm/string/replace.hpp>
 #include <math.h>  // fabsf
 
@@ -65,6 +66,21 @@ int platformId=0;
 int devId=0;
 int d_vlen = 1;
 int iterations = 100;
+
+class comma_numpunct : public std::numpunct<char>
+{
+  protected:
+    virtual char do_thousands_sep() const
+    {
+        return ',';
+    }
+
+    virtual std::string do_grouping() const
+    {
+        return "\03";
+    }
+};
+
 
 int ComplexToMagCPU(int noutput_items,
         gr_vector_int &ninput_items,
@@ -2334,6 +2350,12 @@ bool testLowPassFilter() {
 int
 main (int argc, char **argv)
 {
+	// Add comma's to numbers
+	std::locale comma_locale(std::locale(), new comma_numpunct());
+
+	// tell cout to use our new locale.
+	std::cout.imbue(comma_locale);
+
 	if (argc > 1) {
 		// 1 is the file name
 		if (strcmp(argv[1],"--help")==0) {
@@ -2405,8 +2427,13 @@ main (int argc, char **argv)
 	was_successful = testMultiplyConst();
 	std::cout << std::endl;
 
+	try {
 	was_successful = testCostasLoop();
 	std::cout << std::endl;
+	}
+	catch(...) {
+
+	}
 
 	was_successful = testSigSource();
 	std::cout << std::endl;

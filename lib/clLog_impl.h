@@ -36,6 +36,7 @@ namespace gr {
 
         float n_val;
         float k_val;
+        float log2To10Factor;
 
 		cl::Buffer *aBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;

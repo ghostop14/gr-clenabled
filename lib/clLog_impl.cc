@@ -54,6 +54,7 @@ namespace gr {
     {
     	n_val = nValue;
     	k_val = kValue;
+    	log2To10Factor = n_val / log2(10.0);
 
     	int imaxItems=gr::block::max_noutput_items();
     	if (imaxItems==0)
@@ -106,6 +107,7 @@ namespace gr {
     	if (k_val != 0.0) {
     		srcStdStr += "#define k_val " + std::to_string(k_val) + "\n";
     	}
+    	srcStdStr += "#define log2To10Factor " + std::to_string((double)log2To10Factor) + "\n";
 
     	if (useConst)
     		srcStdStr += "__kernel void op_log10(__constant float * a, __global float * restrict c) {\n";
@@ -113,7 +115,7 @@ namespace gr {
     		srcStdStr += "__kernel void op_log10(__global float * restrict a, __global float * restrict c) {\n";
 
     	srcStdStr += "    size_t index =  get_global_id(0);\n";
-
+/*
     	if (k_val != 0.0) {
     		if (n_val != 1.0) {
             	srcStdStr += "    c[index] = n_val * log10(a[index]) + k_val;\n";
@@ -131,7 +133,18 @@ namespace gr {
             	srcStdStr += "    c[index] = log10(a[index]);\n";
     		}
     	}
+*/
 
+    	// New log2 math:
+    	// Calc n*log10(x) as n*log2(x)/log2(10) = (n/log2(10)) * log2(x)
+    	// n*log10(x) = log2To10Factor*log2(x)
+    	if (k_val != 0.0) {
+        	srcStdStr += "    c[index] = log2To10Factor * log2(a[index]) + k_val;\n";
+    	}
+    	else {
+    		// Don't even bother with the k math op.
+        	srcStdStr += "    c[index] = log2To10Factor * log2(a[index]);\n";
+    	}
     	srcStdStr += "}\n";
 
         GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());

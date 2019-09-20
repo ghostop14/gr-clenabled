@@ -18,30 +18,30 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    clenabled_clAdd.xml 
-    clenabled_clAddConst.xml
-    clenabled_clMultConst.xml
-    clenabled_clBandPassFilter.xml
-    clenabled_clBandRejectFilter.xml
-    clenabled_clComplexConjugate.xml
-    clenabled_clComplexToArg.xml
-    clenabled_clComplexToMag.xml 
-    clenabled_clComplexToMagPhase.xml
-    clenabled_clFFT.xml
-	clenabled_clFIRTapFilter.xml
-    clenabled_clHighPassFilter.xml
-    clenabled_clLog10.xml
-    clenabled_clLowPassFilter.xml
-    clenabled_clMagPhaseToComplex.xml
-    clenabled_clMultiply.xml
-    clenabled_clMultiplyConjugate.xml
-    clenabled_clQuadratureDemod.xml
-    clenabled_clRootRaisedCosine.xml
-    clenabled_clSNR.xml
-    clenabled_clSubtract.xml
-    clenabled_clKernel1To1.xml
-    clenabled_clKernel2To1.xml
-    clenabled_clSignalSource.xml
-    clenabled_clCostasLoop.xml
-    clenabled_clComplexFilter.xml DESTINATION share/gnuradio/grc/blocks
+    clenabled_clAdd.block.yml 
+    clenabled_clAddConst.block.yml
+    clenabled_clMultConst.block.yml
+    clenabled_clBandPassFilter.block.yml
+    clenabled_clBandRejectFilter.block.yml
+    clenabled_clComplexConjugate.block.yml
+    clenabled_clComplexToArg.block.yml
+    clenabled_clComplexToMag.block.yml 
+    clenabled_clComplexToMagPhase.block.yml
+    clenabled_clFFT.block.yml
+	clenabled_clFIRTapFilter.block.yml
+    clenabled_clHighPassFilter.block.yml
+    clenabled_clLog10.block.yml
+    clenabled_clLowPassFilter.block.yml
+    clenabled_clMagPhaseToComplex.block.yml
+    clenabled_clMultiply.block.yml
+    clenabled_clMultiplyConjugate.block.yml
+    clenabled_clQuadratureDemod.block.yml
+    clenabled_clRootRaisedCosine.block.yml
+    clenabled_clSNR.block.yml
+    clenabled_clSubtract.block.yml
+    clenabled_clKernel1To1.block.yml
+    clenabled_clKernel2To1.block.yml
+    clenabled_clSignalSource.block.yml
+    clenabled_clCostasLoop.block.yml
+    clenabled_clComplexFilter.block.yml DESTINATION share/gnuradio/grc/blocks
 )

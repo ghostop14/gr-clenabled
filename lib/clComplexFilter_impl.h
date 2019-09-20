@@ -680,7 +680,7 @@
 
 #include <clenabled/clComplexFilter.h>
 #include "fir_filter.h"
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {
@@ -688,7 +688,7 @@ namespace gr {
     class clComplexFilter_impl : public clComplexFilter, public GRCLBase
     {
      private:
-        gr::filter::kernel::fir_filter_ccc *d_fir_filter;
+        fir_filter_ccc *d_fir_filter;
 
         bool d_updated;
         bool USE_TIME_DOMAIN;

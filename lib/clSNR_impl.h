@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLSNR_IMPL_H
 
 #include <clenabled/clSNR.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

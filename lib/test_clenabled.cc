@@ -24,25 +24,20 @@
 #include "config.h"
 #endif
 
-#include <cppunit/TextTestRunner.h>
-#include <cppunit/XmlOutputter.h>
-
-#include <gnuradio/unittests.h>
 #include <gnuradio/block.h>
-#include "qa_clenabled.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <boost/algorithm/string/replace.hpp>
 #include <math.h>  // fabsf
 
-#include "clSComplex.h"
+#include <clenabled/clSComplex.h>
 #include "clMathConst_impl.h"
 #include "clMathOp_impl.h"
 #include "clFilter_impl.h"
 #include "clQuadratureDemod_impl.h"
 #include "clFFT.h"
-#include "clMathOpTypes.h"
+#include <clenabled/clMathOpTypes.h>
 #include "firdes.h"
 #include "clFFT_impl.h"
 #include "clLog_impl.h"

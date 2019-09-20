@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
 namespace clenabled {

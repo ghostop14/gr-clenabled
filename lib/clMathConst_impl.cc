@@ -119,7 +119,6 @@ namespace gr {
 
 		switch(dataType) {
 		case DTYPE_FLOAT:
-			switch (mathOperatorType) {
 			fnName = "opconst_float";
 			if (useConst)
 				srcStdStr = "__kernel void opconst_float(__constant float * a, const float multiplier, __global float * restrict c) {\n";
@@ -128,6 +127,8 @@ namespace gr {
 
 	    	if (mathOperatorType != MATHOP_EMPTY)
 	    		srcStdStr += "    size_t index =  get_global_id(0);\n";
+
+			switch (mathOperatorType) {
 			case MATHOP_MULTIPLY:
 			srcStdStr += "    c[index] = a[index] * multiplier;\n";
 			break;

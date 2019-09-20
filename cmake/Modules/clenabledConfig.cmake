@@ -22,9 +22,10 @@ FIND_LIBRARY(
           /usr/local/lib64
           /usr/lib
           /usr/lib64
-)
+          )
+
+include("${CMAKE_CURRENT_LIST_DIR}/clenabledTarget.cmake")
 
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(CLENABLED DEFAULT_MSG CLENABLED_LIBRARIES CLENABLED_INCLUDE_DIRS)
 MARK_AS_ADVANCED(CLENABLED_LIBRARIES CLENABLED_INCLUDE_DIRS)
-

@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLCOMPLEXTOARG_IMPL_H
 
 #include <clenabled/clComplexToArg.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

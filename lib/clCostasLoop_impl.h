@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLCOSTASLOOP_IMPL_H
 
 #include <clenabled/clCostasLoop.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

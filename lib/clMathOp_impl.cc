@@ -24,7 +24,7 @@
 
 #include <gnuradio/io_signature.h>
 #include "clMathOp_impl.h"
-#include "clMathOpTypes.h"
+// #include "clMathOpTypes.h"
 
 namespace gr {
   namespace clenabled {

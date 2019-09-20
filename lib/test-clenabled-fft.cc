@@ -29,7 +29,6 @@
 
 #include <gnuradio/unittests.h>
 #include <gnuradio/block.h>
-#include "qa_clenabled.h"
 #include <iostream>
 #include <fstream>
 #include <boost/algorithm/string/replace.hpp>
@@ -37,8 +36,8 @@
 #include <chrono>
 #include <ctime>
 
-#include "clSComplex.h"
-#include "clMathOpTypes.h"
+#include <clenabled/clSComplex.h>
+#include <clenabled/clMathOpTypes.h>
 
 #include "clFFT_impl.h"
 #include "window.h"

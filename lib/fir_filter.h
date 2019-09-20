@@ -23,15 +23,13 @@
 #ifndef INCLUDED_FILTER_FIR_FILTER_H
 #define INCLUDED_FILTER_FIR_FILTER_H
 
-#include <gnuradio/filter/api.h>
+// #include <gnuradio/filter/api.h>
 #include <vector>
 #include <gnuradio/gr_complex.h>
 
 namespace gr {
-  namespace filter {
-    namespace kernel {
-
-      class FILTER_API fir_filter_fff
+  namespace clenabled {
+      class fir_filter_fff
       {
       public:
 	fir_filter_fff(int decimation,
@@ -63,7 +61,7 @@ namespace gr {
 
       /**************************************************************/
 
-      class FILTER_API fir_filter_ccf
+      class fir_filter_ccf
       {
       public:
 	fir_filter_ccf(int decimation,
@@ -95,7 +93,7 @@ namespace gr {
 
       /**************************************************************/
 
-      class FILTER_API fir_filter_fcc
+      class fir_filter_fcc
       {
       public:
 	fir_filter_fcc(int decimation,
@@ -127,7 +125,7 @@ namespace gr {
 
       /**************************************************************/
 
-      class FILTER_API fir_filter_ccc
+      class fir_filter_ccc
       {
       public:
 	fir_filter_ccc(int decimation,
@@ -159,7 +157,7 @@ namespace gr {
 
       /**************************************************************/
 
-      class FILTER_API fir_filter_scc
+      class fir_filter_scc
       {
       public:
 	fir_filter_scc(int decimation,
@@ -191,7 +189,7 @@ namespace gr {
 
       /**************************************************************/
 
-      class FILTER_API fir_filter_fsf
+      class fir_filter_fsf
       {
       public:
 	fir_filter_fsf(int decimation,
@@ -221,8 +219,7 @@ namespace gr {
 	int          d_naligned;
       };
 
-    } /* namespace kernel */
-  } /* namespace filter */
+  } /* namespace clenabled */
 } /* namespace gr */
 
 #endif /* INCLUDED_FILTER_FIR_FILTER_H */

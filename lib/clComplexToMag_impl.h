@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLCOMPLEXTOMAG_IMPL_H
 
 #include <clenabled/clComplexToMag.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

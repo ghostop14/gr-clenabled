@@ -24,7 +24,7 @@
 #include <clenabled/clFilter.h>
 #include "fft_filter.h"
 #include "fir_filter.h"
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 #include <clFFT.h>
 #include "fft.h"
 
@@ -35,7 +35,7 @@ namespace gr {
     {
      private:
     	fft_filter_ccf *d_fft_filter;
-        gr::filter::kernel::fir_filter_ccf *d_fir_filter;
+        fir_filter_ccf *d_fir_filter;
 
         bool d_updated;
         bool USE_TIME_DOMAIN;

@@ -22,6 +22,9 @@
 ########################################################################
 install(FILES
     api.h
+    GRCLBase.h
+    clSComplex.h
+    clMathOpTypes.h
     clMathConst.h
     clMathOp.h
     clFilter.h

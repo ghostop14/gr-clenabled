@@ -24,7 +24,7 @@
 
 #include <clenabled/api.h>
 #include <gnuradio/sync_block.h>
-#include "clMathOpTypes.h"
+#include <clenabled/clMathOpTypes.h>
 
 namespace gr {
   namespace clenabled {

@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLMATHCONST_IMPL_H
 
 #include <clenabled/clMathConst.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

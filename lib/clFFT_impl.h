@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLFFT_IMPL_H
 
 #include <clenabled/clFFT.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 #include <clFFT.h>
 #include "fft.h"
 

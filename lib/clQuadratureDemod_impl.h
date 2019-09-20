@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLQUADRATUREDEMOD_IMPL_H
 
 #include <clenabled/clQuadratureDemod.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 #include <volk/volk.h>
 
 namespace gr {

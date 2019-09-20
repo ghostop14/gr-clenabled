@@ -55,7 +55,7 @@ namespace gr {
 			  USE_TIME_DOMAIN(bUseTimeDomain),d_decimation(decimation)
     {
         d_fft_filter = new fft_filter_ccf(decimation,taps,1);
-        d_fir_filter = new gr::filter::kernel::fir_filter_ccf(decimation,taps);
+        d_fir_filter = new fir_filter_ccf(decimation,taps);
 
         d_active_taps = taps;
 

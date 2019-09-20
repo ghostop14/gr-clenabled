@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLKERNEL2TO1_IMPL_H
 
 #include <clenabled/clKernel2To1.h>
-#include "GRCLBase.h"
+#include <clenabled/GRCLBase.h>
 
 namespace gr {
   namespace clenabled {

@@ -709,7 +709,7 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex)),decimation),
 			  GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openclPlatform,devSelector,platformId,devId, setDebug),d_decimation(decimation)
     {
-        d_fir_filter = new gr::filter::kernel::fir_filter_ccc(decimation,taps);
+        d_fir_filter = new fir_filter_ccc(decimation,taps);
 
         d_active_taps = taps;
 

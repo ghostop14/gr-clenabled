@@ -21,7 +21,7 @@ namespace gr {
        * This block performs fast convolution using the
        * overlap-and-save algorithm. The filtering is performand in
        * the frequency domain instead of the time domain (see
-       * gr::filter::kernel::fir_filter_ccf). For an input signal x
+       * fir_filter_ccf). For an input signal x
        * and filter coefficients (taps) t, we compute y as:
        *
        * \code

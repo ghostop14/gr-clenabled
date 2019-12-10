@@ -33,7 +33,8 @@ namespace gr {
   namespace clenabled {
 
     clSignalSource::sptr
-    clSignalSource::make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,int setDebug)
+    clSignalSource::make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId, double samp_rate,int waveform, double freq,
+    				float amplitude,int setDebug)
     {
         int dsize=sizeof(float);
 
@@ -61,7 +62,8 @@ namespace gr {
     /*
      * The private constructor
      */
-    clSignalSource_impl::clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,bool setDebug)
+    clSignalSource_impl::clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, double samp_rate,
+    										int waveform, double freq, float amplitude, bool setDebug)
       : gr::sync_block("clSignalSource",
               gr::io_signature::make(0, 0, 0),
               gr::io_signature::make(1, 1, iDataSize)),

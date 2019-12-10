@@ -62,7 +62,7 @@ namespace gr {
 	    void set_frequency(double frequency);
 
      public:
-      clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, float samp_rate,int waveform, float freq, float amplitude,bool setDebug);
+      clSignalSource_impl(int idataType, int iDataSize, int openCLPlatformType, int devSelector,int platformId, int devId, double samp_rate,int waveform, double freq, float amplitude,bool setDebug);
       ~clSignalSource_impl();
 
       virtual bool stop();

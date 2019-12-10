@@ -47,7 +47,7 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId,
-    		  float samp_rate,int waveform, float freq, float amplitude,int setDebug=0);
+    		  double samp_rate,int waveform, double freq, float amplitude,int setDebug=0);
     };
 
   } // namespace clenabled

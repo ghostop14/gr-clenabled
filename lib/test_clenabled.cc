@@ -54,6 +54,7 @@
 #include "window.h"
 
 bool verbose=false;
+bool testCostas=false;
 int largeBlockSize=8192;
 int opencltype=OCLTYPE_ANY;
 int selectorType=OCLDEVICESELECTOR_FIRST;
@@ -173,7 +174,7 @@ bool testSigSource() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -191,7 +192,7 @@ bool testSigSource() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl;
 
 	std::cout << std::endl;
 
@@ -329,7 +330,7 @@ bool testMagPhaseToComplex() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -347,7 +348,7 @@ bool testMagPhaseToComplex() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -453,7 +454,7 @@ bool testComplexToMagPhase() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -471,7 +472,7 @@ bool testComplexToMagPhase() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -575,7 +576,7 @@ bool testComplexToArg() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -593,7 +594,7 @@ bool testComplexToArg() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -694,7 +695,7 @@ bool testComplexToMag() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -712,7 +713,7 @@ bool testComplexToMag() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -882,7 +883,7 @@ bool testFFT(bool runReverse) {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -900,7 +901,7 @@ bool testFFT(bool runReverse) {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -969,7 +970,7 @@ bool testFFT(bool runReverse) {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	noutputitems = test->testCPU(fftDataSize,inputPointers,outputPointers);
 
@@ -985,7 +986,7 @@ bool testFFT(bool runReverse) {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 	// ----------------------------------------------------------------------
@@ -1087,7 +1088,7 @@ bool testQuadDemod() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -1105,7 +1106,7 @@ bool testQuadDemod() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1225,7 +1226,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	// switch to empty with copy
 	std::cout << "----------------------------------------------------------" << std::endl;
@@ -1267,7 +1268,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1332,7 +1333,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -1350,7 +1351,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-Only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1394,7 +1395,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 
 	noutputitems = testLog->testCPU(numItems,ninitems,inputFloatPointers,outputFloatPointers);
@@ -1412,7 +1413,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	delete testLog;
 
@@ -1465,7 +1466,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 
 	// Call CPU to initialize buffer
@@ -1484,7 +1485,7 @@ bool testMultiplyConst() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	delete testSNR;
 
@@ -1598,7 +1599,7 @@ bool testMultiply() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -1616,7 +1617,7 @@ bool testMultiply() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -1711,7 +1712,7 @@ bool testCostasLoop() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	int j;
 
@@ -1729,7 +1730,7 @@ bool testCostasLoop() {
 	throughput = largeBlockSize / elapsed_time;
 
 	std::cout << "CPU-only Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " s  (" << std::setprecision(2) << throughput << " sps)" << std::endl << std::endl;
 
 	std::cout << std::endl;
 
@@ -2356,9 +2357,10 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [number of samples (default is 8192)]" << std::endl;
-			std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
-			std::cout << "The optional --device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--testcostas] [number of samples (default is 8192)]" << std::endl;
+			std::cout << "where: --gpu, --cpu, --accel[erator], or --any defines the type of OpenCL device opened." << std::endl;
+			std::cout << "--device argument allows for a specific OpenCL platform and device to be chosen.  Use the included clview utility to get the numbers." << std::endl;
+			std::cout << "--testcostas will test a single-threaded 2nd order Costas loop.  Not recommended unless you have an FPGA that supports OpenCL." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -2387,6 +2389,9 @@ main (int argc, char **argv)
 				platformId=atoi(param.substr(0,1).c_str());
 				devId=atoi(param.substr(posColon+1,1).c_str());
 
+			}
+			else if (strcmp(argv[i],"--testcostas")==0) {
+				testCostas = true;
 			}
 			else if (strcmp(argv[i],"--any")==0) {
 				opencltype=OCLTYPE_ANY;
@@ -2422,12 +2427,13 @@ main (int argc, char **argv)
 	was_successful = testMultiplyConst();
 	std::cout << std::endl;
 
-	try {
-	was_successful = testCostasLoop();
-	std::cout << std::endl;
-	}
-	catch(...) {
-
+	if (testCostas) {
+		try {
+		was_successful = testCostasLoop();
+		std::cout << std::endl;
+		}
+		catch(...) {
+		}
 	}
 
 	was_successful = testSigSource();

@@ -306,8 +306,9 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 		err = clGetDeviceInfo(devices[devIndex](),CL_DEVICE_EXTENSIONS, retSize, extensions, &retSize);
 
 		std::string dev_extensions(extensions);
+		std::string search_string = "cl_khr_fp64";
 
-		if (dev_extensions.find("cl_khr_fp64")) {
+		if (dev_extensions.find(search_string) != std::string::npos) {
 			hasDoublePrecisionSupport = true;
 
 			// Query if we support FMA in double

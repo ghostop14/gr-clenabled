@@ -31,13 +31,13 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <math.h>  // fabsf
 
-#include <clenabled/clSComplex.h>
+#include "clSComplex.h"
 #include "clMathConst_impl.h"
 #include "clMathOp_impl.h"
 #include "clFilter_impl.h"
 #include "clQuadratureDemod_impl.h"
 #include "clFFT.h"
-#include <clenabled/clMathOpTypes.h>
+#include "clMathOpTypes.h"
 #include "firdes.h"
 #include "clFFT_impl.h"
 #include "clLog_impl.h"

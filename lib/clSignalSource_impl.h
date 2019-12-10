@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLSIGNALSOURCE_IMPL_H
 
 #include <clenabled/clSignalSource.h>
-#include <clenabled/GRCLBase.h>
+#include "GRCLBase.h"
 
 #define SIGSOURCE_COS 1
 #define SIGSOURCE_SIN 2

@@ -440,7 +440,7 @@ clFilter_impl::set_taps(const std::vector<float> &taps)
 
 void
 clFilter_impl::set_taps2(const std::vector<float> &taps) {
-    gr::thread::scoped_lock l(d_setlock);
+    gr::thread::scoped_lock l(d_mutex);
     d_updated = true;
     d_fft_filter->set_taps(taps);
     d_fir_filter->set_taps(taps);

@@ -46,7 +46,7 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int openCLPlatformType, int devSelector, int platformId, int devId,
-                       const std::vector<float> &taps, int buf_items, int num_channels, int input_rate, const std::vector<int> &ch_map, int setDebug=0);
+                       const std::vector<float> &taps, int buf_items, int num_channels, int ninputs_per_iter, const std::vector<int> &ch_map, int setDebug=0);
     };
 
   } // namespace clenabled

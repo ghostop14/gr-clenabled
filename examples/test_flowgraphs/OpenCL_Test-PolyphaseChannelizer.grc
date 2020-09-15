@@ -570,7 +570,7 @@
       <value>clenabled_clPolyphaseChannelizer_0</value>
     </param>
     <param>
-      <key>input_rate</key>
+      <key>ninputs_per_iter</key>
       <value>2</value>
     </param>
     <param>

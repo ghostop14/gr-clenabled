@@ -33,7 +33,7 @@ namespace gr {
      private:
         int d_buf_items;
         int d_num_channels;
-        int d_input_rate; // number of input samples to produce one output on each channel
+        int d_ninputs_per_iter; // number of input samples to produce one output on each channel
 
         std::vector<float> d_taps;
         std::vector<int> d_ch_map;
@@ -58,7 +58,7 @@ namespace gr {
 
      public:
       clPolyphaseChannelizer_impl(int openCLPlatformType, int devSelector, int platformId, int devId,
-                                  const std::vector<float> &taps, int buf_items, int num_channels, int input_rate, const std::vector<int> &ch_map, bool setDebug=false);
+                                  const std::vector<float> &taps, int buf_items, int num_channels, int ninputs_per_iter, const std::vector<int> &ch_map, bool setDebug=false);
       ~clPolyphaseChannelizer_impl();
 
       virtual bool stop();

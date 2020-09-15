@@ -29,30 +29,30 @@ namespace gr {
   namespace clenabled {
 
     clPolyphaseChannelizer::sptr
-    clPolyphaseChannelizer::make(int openCLPlatformType, int devSelector, int platformId, int devId, const std::vector<float> &taps, int buf_items, int num_channels, int input_rate, const std::vector<int> &ch_map, int setDebug)
+    clPolyphaseChannelizer::make(int openCLPlatformType, int devSelector, int platformId, int devId, const std::vector<float> &taps, int buf_items, int num_channels, int ninputs_per_iter, const std::vector<int> &ch_map, int setDebug)
     {
         if (setDebug == 1)
             return gnuradio::get_initial_sptr
                 (new clPolyphaseChannelizer_impl(openCLPlatformType, devSelector, platformId, devId,
-                                                 taps, buf_items, num_channels, input_rate, ch_map, true));
+                                                 taps, buf_items, num_channels, ninputs_per_iter, ch_map, true));
         else
             return gnuradio::get_initial_sptr
                 (new clPolyphaseChannelizer_impl(openCLPlatformType, devSelector, platformId, devId,
-                                                 taps, buf_items, num_channels, input_rate, ch_map, false));
+                                                 taps, buf_items, num_channels, ninputs_per_iter, ch_map, false));
     }
 
     /*
      * The private constructor
      */
     clPolyphaseChannelizer_impl::clPolyphaseChannelizer_impl(int openCLPlatformType, int devSelector, int platformId, int devId,
-                                                             const std::vector<float> &taps, int buf_items, int num_channels, int input_rate, const std::vector<int> &ch_map, bool setDebug)
+                                                             const std::vector<float> &taps, int buf_items, int num_channels, int ninputs_per_iter, const std::vector<int> &ch_map, bool setDebug)
       : gr::block("clPolyphaseChannelizer",
               gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
         d_taps(taps),
         d_buf_items(buf_items),
         d_num_channels(num_channels),
-        d_input_rate(input_rate),
+        d_ninputs_per_iter(ninputs_per_iter),
         d_ch_map(ch_map),
         GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex), openCLPlatformType, devSelector, platformId, devId, setDebug)
     {
@@ -61,7 +61,7 @@ namespace gr {
             throw std::invalid_argument("buf_items must be a multiple of num_channels");
         }
         set_history(taps.size());
-        set_output_multiple(d_ch_map.size()*d_buf_items/d_input_rate);
+        set_output_multiple(d_ch_map.size()*d_buf_items/d_ninputs_per_iter);
         init_opencl();
         init_clfft();
     }
@@ -77,7 +77,7 @@ namespace gr {
     clPolyphaseChannelizer_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     {
       /* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
-        ninput_items_required[0] = d_input_rate*noutput_items/d_ch_map.size() + history() - d_num_channels;
+        ninput_items_required[0] = d_ninputs_per_iter*noutput_items/d_ch_map.size() + history() - d_num_channels;
     }
 
     int
@@ -95,17 +95,17 @@ namespace gr {
 
 
         queue->enqueueWriteBuffer(*d_in_clmem, CL_FALSE, 0, (d_buf_items+history()-d_num_channels)*sizeof(gr_complex), in);
-        cl::NDRange global_work_size = cl::NDRange((size_t)d_buf_items/d_input_rate, (size_t)d_num_channels);
+        cl::NDRange global_work_size = cl::NDRange((size_t)d_buf_items/d_ninputs_per_iter, (size_t)d_num_channels);
         queue->enqueueNDRangeKernel(*d_kernel, cl::NullRange, global_work_size);
         clfftEnqueueTransform(d_plan_handle, CLFFT_BACKWARD, 1, &((*queue)()), 0, NULL, NULL, &((*d_filt_clmem)()), &((*d_fft_clmem)()), NULL);
-        cl::NDRange global_work_size_chmap = cl::NDRange((size_t)d_buf_items/d_input_rate, (size_t)d_ch_map.size());
+        cl::NDRange global_work_size_chmap = cl::NDRange((size_t)d_buf_items/d_ninputs_per_iter, (size_t)d_ch_map.size());
         queue->enqueueNDRangeKernel(*d_kernel_chmap, cl::NullRange, global_work_size_chmap);
-        queue->enqueueReadBuffer(*d_mapout_clmem, CL_TRUE, 0, d_ch_map.size()*d_buf_items/d_input_rate*sizeof(gr_complex), out);
+        queue->enqueueReadBuffer(*d_mapout_clmem, CL_TRUE, 0, d_ch_map.size()*d_buf_items/d_ninputs_per_iter*sizeof(gr_complex), out);
 
         consume_each (d_buf_items);
 
       // Tell runtime system how many output items we produced.
-        return d_ch_map.size()*d_buf_items/d_input_rate;
+        return d_ch_map.size()*d_buf_items/d_ninputs_per_iter;
     }
 
     void
@@ -119,17 +119,17 @@ namespace gr {
         d_filt_clmem = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-            d_num_channels*d_buf_items/d_input_rate * sizeof(gr_complex));
+            d_num_channels*d_buf_items/d_ninputs_per_iter * sizeof(gr_complex));
 
         d_fft_clmem = new cl::Buffer(
             *context,
             CL_MEM_READ_WRITE,
-            d_num_channels*d_buf_items/d_input_rate * sizeof(gr_complex));
+            d_num_channels*d_buf_items/d_ninputs_per_iter * sizeof(gr_complex));
 
         d_mapout_clmem = new cl::Buffer(
             *context,
             CL_MEM_WRITE_ONLY,
-            d_ch_map.size()*d_buf_items/d_input_rate * sizeof(gr_complex));
+            d_ch_map.size()*d_buf_items/d_ninputs_per_iter * sizeof(gr_complex));
 
         d_taps_clmem = new cl::Buffer(
             *context,
@@ -188,7 +188,7 @@ namespace gr {
             d_kernel->setArg(2, num_taps);
             d_kernel->setArg(3, *d_taps_clmem);
             d_kernel->setArg(4, d_num_channels);
-            d_kernel->setArg(5, d_input_rate);
+            d_kernel->setArg(5, d_ninputs_per_iter);
 
             d_kernel_chmap = new cl::Kernel(*d_program, "channel_map");
             d_kernel_chmap->setArg(0, *d_fft_clmem);
@@ -215,7 +215,7 @@ namespace gr {
         err = clfftInitSetupData(&fft_setup);
         err = clfftSetup(&fft_setup);
         err = clfftCreateDefaultPlan(&d_plan_handle, (*context)(), dim, cl_lengths);
-        err = clfftSetPlanBatchSize(d_plan_handle, d_buf_items/d_input_rate);
+        err = clfftSetPlanBatchSize(d_plan_handle, d_buf_items/d_ninputs_per_iter);
         err = clfftSetPlanPrecision(d_plan_handle, CLFFT_SINGLE);
         err = clfftSetPlanScale(d_plan_handle, CLFFT_BACKWARD, 1.0f);
         err = clfftSetResultLocation(d_plan_handle, CLFFT_OUTOFPLACE);

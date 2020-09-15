@@ -5,7 +5,7 @@
   <category>[OpenCL-Accelerated]</category>
   <import>import clenabled</import>
   <make>#if $devices == 1
-clenabled.clPolyphaseChannelizer($openCLPlatform, 1, 0, 0, $taps, $buf_items, $num_channels, $input_rate, $chmap)
+clenabled.clPolyphaseChannelizer($openCLPlatform, 1, 0, 0, $taps, $buf_items, $num_channels, $ninputs_per_iter, $chmap)
 #else
 clenabled.clPolyphaseChannelizer($openCLPlatform, $devices, $platformId, $deviceId, $taps, $buf_items, $num_channels, $ninputs_per_iter, $chmap)
 #end if</make>

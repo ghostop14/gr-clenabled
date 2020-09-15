@@ -43,5 +43,6 @@ install(FILES
     clenabled_clKernel2To1.block.yml
     clenabled_clSignalSource.block.yml
     clenabled_clCostasLoop.block.yml
-    clenabled_clComplexFilter.block.yml DESTINATION share/gnuradio/grc/blocks
+    clenabled_clComplexFilter.block.yml
+    clenabled_clPolyphaseChannelizer.block.yml DESTINATION share/gnuradio/grc/blocks
 )

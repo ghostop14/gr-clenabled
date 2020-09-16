@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<block>
+  <name>OpenCL Polyphase Channelizer</name>
+  <key>clenabled_clPolyphaseChannelizer</key>
+  <category>[OpenCL-Accelerated]</category>
+  <import>import clenabled</import>
+  <make>#if $devices == 1
+clenabled.clPolyphaseChannelizer($openCLPlatform, 1, 0, 0, $taps, $buf_items, $num_channels, $ninputs_per_iter, $chmap)
+#else
+clenabled.clPolyphaseChannelizer($openCLPlatform, $devices, $platformId, $deviceId, $taps, $buf_items, $num_channels, $ninputs_per_iter, $chmap)
+#end if</make>
+  <param>
+    <name>OpenCL Platform Type</name>
+    <key>openCLPlatform</key>
+    <type>enum</type>
+    <option>
+      <name>GPU</name>
+      <key>1</key>
+    </option>
+    <option>
+      <name>Accelerator</name>
+      <key>2</key>
+    </option>
+    <option>
+      <name>CPU</name>
+      <key>3</key>
+    </option>
+    <option>
+      <name>Any</name>
+      <key>4</key>
+    </option>
+  </param>
+  <param>
+    <name>OpenCL Device</name>
+    <key>devices</key>
+    <type>enum</type>
+    <option>
+      <name>Any</name>
+      <key>1</key>
+      <opt>hide_specific:all</opt>
+    </option>
+    <option>
+      <name>Specific</name>
+      <key>2</key>
+      <opt>hide_specific:</opt>
+    </option>
+  </param>
+  <param>
+    <name>Platform Id</name>
+    <key>platformId</key>
+    <type>enum</type>
+    <hide>$devices.hide_specific</hide>
+    <option>
+      <name>0</name>
+      <key>0</key>
+    </option>
+    <option>
+      <name>1</name>
+      <key>1</key>
+    </option>
+    <option>
+      <name>2</name>
+      <key>2</key>
+    </option>
+    <option>
+      <name>3</name>
+      <key>3</key>
+    </option>
+  </param>
+  <param>
+    <name>Device Id</name>
+    <key>deviceId</key>
+    <type>enum</type>
+    <hide>$devices.hide_specific</hide>
+    <option>
+      <name>0</name>
+      <key>0</key>
+    </option>
+    <option>
+      <name>1</name>
+      <key>1</key>
+    </option>
+    <option>
+      <name>2</name>
+      <key>2</key>
+    </option>
+    <option>
+      <name>3</name>
+      <key>3</key>
+    </option>
+  </param>  
+  <param>
+    <name>Taps</name>
+    <key>taps</key>
+    <type>real_vector</type>
+  </param>
+  <param>
+    <name>Buffer Items</name>
+    <key>buf_items</key>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Number of Channels</name>
+    <key>num_channels</key>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Num Inputs per Iteration</name>
+    <key>ninputs_per_iter</key>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Channel Map</name>
+    <key>chmap</key>
+    <type>int_vector</type>
+  </param>
+  <param>
+    <name>Debug</name>
+    <key>setDebug</key>
+    <type>enum</type>
+    <option>
+      <name>Off</name>
+      <key>0</key>
+    </option>
+    <option>
+      <name>On</name>
+      <key>1</key>
+    </option>
+  </param>
+  <sink>
+    <name>in</name>
+    <type>complex</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>complex</type>
+  </source>
+  <doc>This block implements a polyphase channelizer using OpenCL.  It is similar to the core Polyphase Channelizer block, but outputs to a single multiplexed stream instead of individual streams.  Following this block with a Stream to Streams block provides multiple outputs similarly to the core block.
+
+The Number of Channels parameter is the number of channels that the input signal will be divided into.  This value does not include the effect of the channel map, which can change the number of output channels multiplexed into the output stream.  The Number of Channels is restricted to the transform sizes supported by clFFT (powers of 2, 3, 5, 7, 11 and 13).
+
+The Taps decribe the characteristics of the filter applied to each channel.  The filter taps should be calculated for the input sample rate.
+
+The Buffer Items parameter controls the number of items worked on by the block at one time, and must be a multiple of the Number of Channels parameter.  Increasing Buffer Items allows for greater throughput at the cost of higher latency.  A reasonable starting value for this parameter is approximately the input sample rate / 50.  For larger sample rates, the Min Output Buffer of the preceding block may need to be specified to be at least as large as the number of Buffer Items for the channelizer.
+
+The Num Inputs per Iteration is how many input samples are consumed when producing one sample for each of the (Number of Channels).  The sample rate of each output channel is (input sample rate) / (Num Inputs per Iteration).  When Num Inputs per Iteration = Number of Channels, no oversampling occurs and the output channels are non-overlapping.  When Num Inputs per Iteration &lt; Number of Channels, the output channels increase in sample rate and overlap each other.  In other words, the oversampling ratio is Number of Channels / Num Inputs per Iteration.
+
+The Channel Map selects the computed channels and the describes the sequence in which they are multiplexed in the output stream.  Channel 0 represents the center of the input signal, with increasing numbers increasing in frequency and wrapping around.  Only the selected channels are transferred from the GPU memory back to the host.
+  </doc>
+</block>

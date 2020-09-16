@@ -60,6 +60,7 @@ list(APPEND clenabled_sources
     clSignalSource_impl.cc
     clCostasLoop_impl.cc
     clComplexFilter_impl.cc
+    clPolyphaseChannelizer_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)

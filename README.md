@@ -61,7 +61,9 @@ The following blocks are implemented in this project:
 	
 	b.	Quadrature Demod (used for FSK)
 	
-	c.  Costas Loop (2nd order and 4th Order) - Although performance is horrible on a GPU core: ~ 0.7 MSPS.
+	c.	Costas Loop (2nd order and 4th Order) - Although performance is horrible on a GPU core: ~ 0.7 MSPS.
+
+	d.	**[New]** Polyphase Channelizer (thanks to Dan Banks and Aaron Giles)
 	
 
 ## Important Usage Notes

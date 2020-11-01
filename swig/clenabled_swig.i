@@ -25,6 +25,7 @@
 #include "clenabled/clCostasLoop.h"
 #include "clenabled/clComplexFilter.h"
 #include "clenabled/clPolyphaseChannelizer.h"
+#include "clenabled/clXCorrelate.h"
 %}
 
 
@@ -62,3 +63,5 @@ GR_SWIG_BLOCK_MAGIC2(clenabled, clCostasLoop);
 GR_SWIG_BLOCK_MAGIC2(clenabled, clComplexFilter);
 %include "clenabled/clPolyphaseChannelizer.h"
 GR_SWIG_BLOCK_MAGIC2(clenabled, clPolyphaseChannelizer);
+%include "clenabled/clXCorrelate.h"
+GR_SWIG_BLOCK_MAGIC2(clenabled, clXCorrelate);

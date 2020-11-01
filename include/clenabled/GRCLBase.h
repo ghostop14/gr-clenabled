@@ -74,6 +74,7 @@ protected:
     cl::Program *program=NULL;
     cl::Context *context=NULL;
     std::vector<cl::Device> devices;
+    int devIndex=0;
     cl::Program::Sources *sources=NULL;
     cl::CommandQueue *queue=NULL;
     cl::Kernel *kernel=NULL;

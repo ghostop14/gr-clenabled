@@ -52,6 +52,7 @@ list(APPEND clenabled_sources
     clCostasLoop_impl.cc
     clComplexFilter_impl.cc
     clPolyphaseChannelizer_impl.cc
+    clXCorrelate_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -204,6 +205,27 @@ target_link_libraries(
 )
 
 install(TARGETS test-clfilter DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
+
+########################################################################
+# Build and register test-xcorrelate
+########################################################################
+list(APPEND test_clxcorrelate_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-clxcorrelate.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clXCorrelate_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
+)
+
+add_executable(test-clxcorrelate ${test_clxcorrelate_sources})
+
+target_link_libraries(
+  test-clxcorrelate
+  ${OpenCL_LIBRARY}
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  gnuradio-clenabled
+)
+
+install(TARGETS test-clxcorrelate DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 
 ########################################################################
 # Build and register test-clenabled-fft

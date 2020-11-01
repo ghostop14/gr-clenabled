@@ -41,5 +41,6 @@ install(FILES
     clSignalSource.h
     clCostasLoop.h
     clComplexFilter.h
-    clPolyphaseChannelizer.h DESTINATION include/clenabled
+    clPolyphaseChannelizer.h
+    clXCorrelate.h DESTINATION include/clenabled
 )

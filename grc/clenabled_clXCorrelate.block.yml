@@ -1,0 +1,119 @@
+id: clenabled_XCorrelate
+label: OpenCL XCorrelate
+category: '[OpenCL-Accelerated]'
+
+parameters:
+-   id: type
+    label: Input Type
+    dtype: enum
+    options: [float, complex]
+    option_attributes:
+        data_type: [2, 1]
+        size: [gr.sizeof_float, gr.sizeof_gr_complex]
+    hide: part
+- id: signal_length
+  label: Analysis Window
+  dtype: int
+  default: '8192'
+- id: max_search_offset
+  label: Max Index Search Range
+  dtype: int
+  default: '512'
+  hide: part
+- id: async
+  label: Processing
+  dtype: enum
+  options: ['True', 'False']
+  option_labels: ['Async', 'Sequential']
+  hide: part
+- id: decim_frames
+  label: 1 in N Frames
+  dtype: int
+  default: '4'
+  hide: part
+- id: num_inputs
+  label: Number of Signals
+  dtype: int
+  default: '2'
+- id: openCLPlatform
+  label: OpenCL Platform Type
+  dtype: enum
+  options: ['1', '2', '3', '4']
+  option_labels: [GPU, Accelerator, CPU, Any]
+- id: devices
+  label: OpenCL Device
+  dtype: enum
+  options: ['1', '2']
+  option_labels: [Any, Specific]
+  option_attributes:
+      hide_specific: [all, '']
+- id: platformId
+  label: Platform Id
+  dtype: enum
+  options: ['0', '1', '2', '3']
+  hide: ${ devices.hide_specific }
+- id: deviceId
+  label: Device Id
+  dtype: enum
+  options: ['0', '1', '2', '3']
+  hide: ${ devices.hide_specific }
+- id: setDebug
+  label: Debug
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: ['Off', 'On']
+  hide: part
+
+asserts:
+- ${ signal_length > 1023 }
+- ${ max_search_offset < signal_length }
+- ${ num_inputs > 1 }
+- ${ decim_frames > 0 }
+
+inputs:
+-   domain: stream
+    dtype: ${ type }
+    multiplicity: ${ num_inputs }
+
+outputs:
+-   domain: message
+    id: corr
+    optional: true
+
+templates:
+  imports: import clenabled
+  
+  make: |-
+     % if devices == 1:
+     clenabled.clXCorrelate(${openCLPlatform},1,0,0,${setDebug},${num_inputs},${signal_length},${type.data_type},${type.size},${max_search_offset},${decim_frames},${async})
+     % else:
+     clenabled.clXCorrelate(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug},${num_inputs},${signal_length},${type.data_type},${type.size},${max_search_offset},${decim_frames},${async})
+     % endif
+  
+documentation: "For signal inputs 0..N, this block will cross-correlate each signal\
+    \ in the range 1..n against signal 0 (reference signal).\
+    \ The block will output a message with two vectors of length N-1 representing the\
+    \ correlation results.  The first vector (corrvect) contains the best normalized\
+    \ correlation found.  The second vector (corrective_lags) represents how much the\
+    \ signal would need to be delayed (in samples) to align the inputs.  For instance,\
+    \ corrvect[0] = 1.0 and corrective_lags[0]=10 indicates that signal[1] is best aligned\
+    \ with signal[0] when signal[1] is delayed by 10 samples.  Note that in cases where\
+    \ the best correlation occurs when signal[0] is delayed, the corrective_lag wil be negative,
+    \ indicating that that signal would need to be moved forward in time.\
+    \ \n\nNote that for improved performance you can specify a maximum index search value\
+    \ that will restrict how far the block adjust offsets to find the best correlation.\
+    \ If this value is 0, a value of 70% of the analysis window length will be used.\
+    \ A value of 200 has been successfully run realtime on an i7 6th gen CPU.  Higher\
+    \ values could introduce delays/choppiness in real-time processing that can be heard\
+    \ with audio, but may be okay for digital processing.  One method of tuning would be\
+    \ to run a CPU performance monitor such as htop and watch the load on the core processing\
+    \ the correlation block.  Adjust down the max search offset till usage comes down off 100%\
+    \ for that core.\n\n\
+    \ Some setting combinations successfully tested with audio-out decoding:\n\
+    \ - RTL-SDR: Sample rate: 2.4e6, frame size: 8192, max_search: 1000, 1-in-N frames: 4 to 6\n\
+    \ - UHD with UI controls: sample rate: 25e6, frame size: 8192, max_search 500, 1-in-N frames: 100\n\
+    \ - UHD without UI controls: sample rate: 40e6, frame size: 8192, max_search 400, 1-in-N frames: 200 "
+    
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1

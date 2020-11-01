@@ -21,7 +21,7 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 	dataType=idataType;
 	platformMode=openCLPlatformType;
 
-    int devIndex = 0;
+    devIndex = 0;
 
     std::vector<cl::Platform> platformList;
 
@@ -386,12 +386,6 @@ bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 		program->build(devices);
 
 		kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
-/*
-		if (debugMode) {
-			std::cout << "Using kernel function " << kernelFunctionName << ":" << std::endl;
-			std::cout << kernelCode << std::endl;
-		}
-*/
 	}
 	catch(cl::Error& e) {
 		std::cout << "OpenCL Error compiling kernel for " << kernelFunctionName << std::endl;
@@ -415,7 +409,7 @@ bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 		maxWorkGroupSize = kernel->getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(devices[0]);
 	}
 	catch(cl::Error& e) {
-		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
+		std::cout << "Error getting kernel max work group size" << std::endl;
 		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
 	}
 

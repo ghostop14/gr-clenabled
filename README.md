@@ -65,6 +65,7 @@ The following blocks are implemented in this project:
 
 	d.	**[New]** Polyphase Channelizer (thanks to Dan Banks and Aaron Giles)
 	
+	e.	**[New]** Cross-Correlator (time domain, multiple signals) - For the examples included, you'll want gr-xcorrelate (CPU-based cross-correlation with some helper blocks) and gr-lfast for some filter convenience wrappers.
 
 ## Important Usage Notes
 

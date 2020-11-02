@@ -1,7 +1,7 @@
 # gr-clenabled - OpenCL-enabled Common Blocks for GNURadio
 
 
-Gr-clenabled had a number of lofty goals at the project’s onset.  The goal was to go through as many GNURadio blocks as possible that are used in common digital communications processing (ASK, FSK, and PSK), convert them to OpenCL, and provide scalability by allowing each OpenCL-enabled block to be assigned to a user-selectable OpenCL device.  This latter scalability feature would allow a system that has 3 graphics cards, or even a combination of GPU’s and FPGA’s, to have different blocks assigned to run on different cards all within the same flowgraph.  This flexibility would also allow lower-end cards to drive less computational blocks and allow FPGA’s to handle the more intensive blocks.  
+Gr-clenabled had a number of lofty goals at the project onset.  The goal was to go through as many GNURadio blocks as possible that are used in common digital communications processing (ASK, FSK, and PSK), convert them to OpenCL, and provide scalability by allowing each OpenCL-enabled block to be assigned to a user-selectable OpenCL device.  This latter scalability feature would allow a system that has 3 graphics cards, or even a combination of GPUs and FPGAs, to have different blocks assigned to run on different cards all within the same flowgraph.  This flexibility would also allow lower-end cards to drive less computational blocks and allow FPGAs to handle the more intensive blocks.
 
 
 The following blocks are implemented in this project:
@@ -68,6 +68,28 @@ The following blocks are implemented in this project:
 	e.	**[New]** Cross-Correlator (time domain, multiple signals) - For the examples included, you'll want gr-xcorrelate (CPU-based cross-correlation with some helper blocks) and gr-lfast for some filter convenience wrappers.
 
 ## Important Usage Notes
+
+### [New] Cross-Correlator
+
+A time-domain cross-correlator has been added to support combining inputs from multiple antennas.  Parallel queues and other techniques were added to this block to try to get as many parallel operations as possible.  However, with the smaller GNURadio block sizes, some other design elements were added to maintain good runtime performance.  The block currently takes complex or float inputs (I'm planning on working in IChar shortly too), and acts as a sink block.  It will produce output PDUs containing the best correlation score and correlation correction lag.  A new CPU-based gr-xcorrelate has a helper block (Extract Delay) that works in tandem with these PDUs that can set variables and control standard delay blocks to align the signals.  This helper block also has a "lock" feature that can allow you to dynamically block/allow the delay changes at runtime with a checkbox or other control.
+
+One design element that was incorporated to keep flowgraph performance optimal is two runtime modes: asynchronous or sequential.  Since we're acting as a sink block and don't need to output realtime streams of data, async mode can take a block of samples for processing, and pass them to another thread for processing in parallel.  The work function can then just return that it processed the samples until the other thread's processing is complete.  At which point the worker thread will signal the work function that it should produce the appropriate PDUs on the main thread and pick up the next block.  This allows the block to correlate as quickly as possible without holding up processing, and should allow for correlation at any flowgraph sample rate.  This also prevents the delay blocks from receiving buffer changes every frame.  In sequential mode, the work function will block until processing is completed, which in some scenarios may be the more appropriate approach.  Async is the default mode for the block.
+
+Another design element that was included is some user-level tuning using 3 configurable parameters:
+
+1. Analysis Window - This defines how many samples should be considered for a single correlation calculation.  The default is 8192.
+
+2. Max Index Search Range - This defines how many samples in either shift direction (forward/backward) should be analyzed.  For OpenCL, this value should be a power of 2 to allow the max() reduction kernel at the end of the processing chain to function optimally.  The default is 512, but this can be adjusted as needed to 256, 1024, 2048, etc.  More searches does require extra processing time, so this parameter also serves as one mechanism to regulate processing time.  Also, if correlation gets too small at the end of the analysis window, it is expected that incorrect offsets could be returned.  So setting this value to say 10-30% of the analysis window minimizes potentially incorrect results.
+
+3. Keep 1 in N Frames - This mechanism can be used to minimize how frequently new delay updates are generated.  For stationary signals, the delays may not change that frequently, so no need to burden down the system and keep producing new varying delay values.  By default this value is 4 and applies to both asynchronous and sequential modes (in async mode, the 1-in-N is calculated from when processing completes and is less deterministic.  In sequential mode, it is truly a deterministic calcualtion).
+
+Examples: There are a number of examples in the examples directory.  Note that you will want to install gr-xcorrelate (up in the ghostop14 github repo) for the extract delay helper function, and gr-lfast for the convenience FFT low pass filter block (this latter block could be dropped from the flowgraph if you do not want to install gr-lfast, just replace it with another filter noting that the FIR filters may lower performance over the FFT version at higher sample rates).
+
+1. "xcorr test opencl" uses a single data source with a controlled delay to demonstrate correct offset calculations.
+
+2. "xcorr test opencl 4 signals" uses 4 RTL-SDR inputs (tested with a kerberossdr input) as an FM receiver and correlates all 4 signals for a single output at 2.4 MSPS without any audio jitter.
+
+3. "xcorr test max rate no ui" drops all of the performance-consuming UI controls, and correlates as an FM receiver at 46 MSPS for audio output without any jitter.  This flowgraph does call out some other limitations in that on the test system above 46 MSPS, the FFT low pass filter block starts to become the bottleneck.  There is no reason why the cross correlator cannot be run at any sample rate in excess of 60 MSPS in async mode, provided the other blocks in your flowgraph can handle the higher rates as well.  Those other blocks will vary in performance based on the CPU of the system they are running on.  The FM audio in this example simply served as a good audio feedback mechanism to indicate when the flowgraph was starting to hit performance issues when audio jitter and delay began to be noticable.
 
 ### Multiple Blocks
 

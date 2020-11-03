@@ -63,7 +63,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '6'
+    value: '100'
   states:
     bus_sink: false
     bus_source: false
@@ -161,7 +161,7 @@ blocks:
     gui_hint: 3,2,1,1
     label: Correcting Delay [0,3]
     type: int
-    value: delay_1
+    value: delay_2
   states:
     bus_sink: false
     bus_source: false
@@ -259,12 +259,24 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '512'
+    value: '4096'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [704, 20.0]
+    rotation: 0
+    state: enabled
+- name: min_corr_score
+  id: variable
+  parameters:
+    comment: ''
+    value: '0.9'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [888, 148.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -2653,7 +2665,7 @@ blocks:
     index_to_extract: '0'
     lock: lock_output
     maxoutbuf: '0'
-    minCorrScore: '0.8'
+    minCorrScore: min_corr_score
     minoutbuf: '0'
     target: delay_0
   states:
@@ -2669,10 +2681,10 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    index_to_extract: '0'
+    index_to_extract: '1'
     lock: lock_output
     maxoutbuf: '0'
-    minCorrScore: '0.8'
+    minCorrScore: min_corr_score
     minoutbuf: '0'
     target: delay_1
   states:
@@ -2688,10 +2700,10 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    index_to_extract: '0'
+    index_to_extract: '2'
     lock: lock_output
     maxoutbuf: '0'
-    minCorrScore: '0.8'
+    minCorrScore: min_corr_score
     minoutbuf: '0'
     target: delay_2
   states:

@@ -173,12 +173,24 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 100e3
+    value: 90e3
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [664, 140.0]
+    rotation: 0
+    state: enabled
+- name: filter_rolloff
+  id: variable
+  parameters:
+    comment: ''
+    value: 10e3
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 148.0]
     rotation: 0
     state: enabled
 - name: fm_sample
@@ -247,7 +259,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1024'
+    value: '512'
   states:
     bus_sink: false
     bus_source: false
@@ -602,17 +614,17 @@ blocks:
     alias: ''
     async: 'True'
     comment: ''
-    decim_frames: '4'
+    decim_frames: corr_frame_decim
     deviceId: '0'
     devices: '1'
-    max_search_offset: '600'
+    max_search_offset: max_search
     maxoutbuf: '0'
     minoutbuf: '0'
     num_inputs: '4'
     openCLPlatform: '1'
     platformId: '0'
     setDebug: 'False'
-    signal_length: '8192'
+    signal_length: corr_frame_size
     type: float
   states:
     bus_sink: false
@@ -712,7 +724,7 @@ blocks:
     nthreads: '1'
     samp_rate: samp_rate
     type: ccc
-    width: filter_cutoff*.1
+    width: filter_rolloff
     win: firdes.WIN_HAMMING
   states:
     bus_sink: false
@@ -736,7 +748,7 @@ blocks:
     nthreads: '1'
     samp_rate: samp_rate
     type: ccc
-    width: filter_cutoff*.1
+    width: filter_rolloff
     win: firdes.WIN_HAMMING
   states:
     bus_sink: false
@@ -760,7 +772,7 @@ blocks:
     nthreads: '1'
     samp_rate: samp_rate
     type: ccc
-    width: filter_cutoff*.1
+    width: filter_rolloff
     win: firdes.WIN_HAMMING
   states:
     bus_sink: false
@@ -784,7 +796,7 @@ blocks:
     nthreads: '1'
     samp_rate: samp_rate
     type: ccc
-    width: filter_cutoff*.1
+    width: filter_rolloff
     win: firdes.WIN_HAMMING
   states:
     bus_sink: false
@@ -2641,6 +2653,7 @@ blocks:
     index_to_extract: '0'
     lock: lock_output
     maxoutbuf: '0'
+    minCorrScore: '0.8'
     minoutbuf: '0'
     target: delay_0
   states:
@@ -2659,6 +2672,7 @@ blocks:
     index_to_extract: '0'
     lock: lock_output
     maxoutbuf: '0'
+    minCorrScore: '0.8'
     minoutbuf: '0'
     target: delay_1
   states:
@@ -2677,6 +2691,7 @@ blocks:
     index_to_extract: '0'
     lock: lock_output
     maxoutbuf: '0'
+    minCorrScore: '0.8'
     minoutbuf: '0'
     target: delay_2
   states:

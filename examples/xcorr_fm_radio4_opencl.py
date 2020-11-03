@@ -87,12 +87,13 @@ class xcorr_fm_radio4_opencl(gr.top_block, Qt.QWidget):
         self.delay_0 = delay_0 = 0
         self.working_samp_rate = working_samp_rate = 500e3
         self.vol = vol = 1.0
-        self.max_search = max_search = 1024
+        self.max_search = max_search = 512
         self.lock_output = lock_output = False
         self.gain = gain = 32
         self.fm_width = fm_width = 64000
         self.fm_sample = fm_sample = int(samp_rate/stage1_decimation)
-        self.filter_cutoff = filter_cutoff = 100e3
+        self.filter_rolloff = filter_rolloff = 10e3
+        self.filter_cutoff = filter_cutoff = 90e3
         self.delay_label2 = delay_label2 = delay_1
         self.delay_label1 = delay_label1 = delay_1
         self.delay_label = delay_label = delay_0
@@ -420,10 +421,10 @@ class xcorr_fm_radio4_opencl(gr.top_block, Qt.QWidget):
             frame_rate=30,
             avg_alpha=1.0,
             average=False)
-        self.lfast_low_pass_filter_0_0_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_cutoff*.1, firdes.WIN_HAMMING, 6.76), 1)
-        self.lfast_low_pass_filter_0_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_cutoff*.1, firdes.WIN_HAMMING, 6.76), 1)
-        self.lfast_low_pass_filter_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_cutoff*.1, firdes.WIN_HAMMING, 6.76), 1)
-        self.lfast_low_pass_filter_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_cutoff*.1, firdes.WIN_HAMMING, 6.76), 1)
+        self.lfast_low_pass_filter_0_0_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_rolloff, firdes.WIN_HAMMING, 6.76), 1)
+        self.lfast_low_pass_filter_0_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_rolloff, firdes.WIN_HAMMING, 6.76), 1)
+        self.lfast_low_pass_filter_0_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_rolloff, firdes.WIN_HAMMING, 6.76), 1)
+        self.lfast_low_pass_filter_0_0 = filter.fft_filter_ccc(1, firdes.low_pass(1, samp_rate, filter_cutoff, filter_rolloff, firdes.WIN_HAMMING, 6.76), 1)
         self._delay_label2_tool_bar = Qt.QToolBar(self)
 
         if None:
@@ -473,7 +474,7 @@ class xcorr_fm_radio4_opencl(gr.top_block, Qt.QWidget):
         self.correctiq_correctiq_auto_0_0_0 = correctiq.correctiq_auto(samp_rate, center_freq, gain, 2)
         self.correctiq_correctiq_auto_0_0 = correctiq.correctiq_auto(samp_rate, center_freq, gain, 2)
         self.correctiq_correctiq_auto_0 = correctiq.correctiq_auto(samp_rate, center_freq, gain, 2)
-        self.clenabled_XCorrelate_0 = clenabled.clXCorrelate(1,1,0,0,False,4,8192,2,gr.sizeof_float,600,4,True)
+        self.clenabled_XCorrelate_0 = clenabled.clXCorrelate(1,1,0,0,False,4,corr_frame_size,2,gr.sizeof_float,max_search,corr_frame_decim,True)
         self.blocks_sub_xx_0 = blocks.sub_ff(1)
         self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_ff(-1)
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(vol)
@@ -561,10 +562,10 @@ class xcorr_fm_radio4_opencl(gr.top_block, Qt.QWidget):
         self.samp_rate = samp_rate
         self.set_fm_sample(int(self.samp_rate/self.stage1_decimation))
         self.set_stage1_decimation(int(self.samp_rate/600e3))
-        self.lfast_low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
         self.logpwrfft_x_0.set_sample_rate(self.samp_rate)
         self.logpwrfft_x_0_0.set_sample_rate(self.samp_rate)
         self.qtgui_freq_sink_x_0.set_frequency_range(self.center_freq, self.samp_rate)
@@ -663,15 +664,25 @@ class xcorr_fm_radio4_opencl(gr.top_block, Qt.QWidget):
     def set_fm_sample(self, fm_sample):
         self.fm_sample = fm_sample
 
+    def get_filter_rolloff(self):
+        return self.filter_rolloff
+
+    def set_filter_rolloff(self, filter_rolloff):
+        self.filter_rolloff = filter_rolloff
+        self.lfast_low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+
     def get_filter_cutoff(self):
         return self.filter_cutoff
 
     def set_filter_cutoff(self, filter_cutoff):
         self.filter_cutoff = filter_cutoff
-        self.lfast_low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
-        self.lfast_low_pass_filter_0_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_cutoff*.1, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
+        self.lfast_low_pass_filter_0_0_0_0_0.set_taps(firdes.low_pass(1, self.samp_rate, self.filter_cutoff, self.filter_rolloff, firdes.WIN_HAMMING, 6.76))
 
     def get_delay_label2(self):
         return self.delay_label2

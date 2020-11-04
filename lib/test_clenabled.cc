@@ -61,7 +61,7 @@ int selectorType=OCLDEVICESELECTOR_FIRST;
 int platformId=0;
 int devId=0;
 int d_vlen = 1;
-int iterations = 100;
+int iterations = 200;
 
 class comma_numpunct : public std::numpunct<char>
 {

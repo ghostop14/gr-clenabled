@@ -544,24 +544,24 @@ namespace gr {
         // gr::thread::scoped_lock guard(d_mutex);
 
         // Set kernel args
-        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
+        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputSize,input_items[0]);
         kernel->setArg(0, *aBuffer);
         kernel->setArg(1, noutput_items);
         kernel->setArg(2, *cBuffer);
 
     	if (hasDoublePrecisionSupport) {
-            queue->enqueueWriteBuffer(*buff_phase,CL_TRUE,0,sizeDouble,(void *)&d_double_phase);
-            queue->enqueueWriteBuffer(*buff_error,CL_TRUE,0,sizeDouble,(void *)&d_double_error);
-            queue->enqueueWriteBuffer(*buff_freq,CL_TRUE,0,sizeDouble,(void *)&d_double_freq);
+            queue->enqueueWriteBuffer(*buff_phase,CL_FALSE,0,sizeDouble,(void *)&d_double_phase);
+            queue->enqueueWriteBuffer(*buff_error,CL_FALSE,0,sizeDouble,(void *)&d_double_error);
+            queue->enqueueWriteBuffer(*buff_freq,CL_FALSE,0,sizeDouble,(void *)&d_double_freq);
 
             kernel->setArg(3, *buff_phase);
             kernel->setArg(4, *buff_error);
             kernel->setArg(5, *buff_freq);
     	}
     	else {
-            queue->enqueueWriteBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
-            queue->enqueueWriteBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)&d_float_error);
-            queue->enqueueWriteBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)&d_freq);
+            queue->enqueueWriteBuffer(*buff_phase,CL_FALSE,0,sizeFloat,(void *)&d_phase);
+            queue->enqueueWriteBuffer(*buff_error,CL_FALSE,0,sizeFloat,(void *)&d_float_error);
+            queue->enqueueWriteBuffer(*buff_freq,CL_FALSE,0,sizeFloat,(void *)&d_freq);
 
             kernel->setArg(3, *buff_phase);
             kernel->setArg(4, *buff_error);
@@ -578,17 +578,19 @@ namespace gr {
 			cl::NDRange(1),
 			localWGSize);
 
-    	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
+    	queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputSize,(void *)output_items[0]);
     	if (hasDoublePrecisionSupport) {
-        	queue->enqueueReadBuffer(*buff_phase,CL_TRUE,0,sizeDouble,(void *)&d_double_phase);
-        	queue->enqueueReadBuffer(*buff_error,CL_TRUE,0,sizeDouble,(void *)(void *)&d_double_error);
-        	queue->enqueueReadBuffer(*buff_freq,CL_TRUE,0,sizeDouble,(void *)(void *)&d_double_freq);
+        	queue->enqueueReadBuffer(*buff_phase,CL_FALSE,0,sizeDouble,(void *)&d_double_phase);
+        	queue->enqueueReadBuffer(*buff_error,CL_FALSE,0,sizeDouble,(void *)(void *)&d_double_error);
+        	queue->enqueueReadBuffer(*buff_freq,CL_FALSE,0,sizeDouble,(void *)(void *)&d_double_freq);
     	}
     	else {
-        	queue->enqueueReadBuffer(*buff_phase,CL_TRUE,0,sizeFloat,(void *)&d_phase);
-        	queue->enqueueReadBuffer(*buff_error,CL_TRUE,0,sizeFloat,(void *)(void *)&d_float_error);
-        	queue->enqueueReadBuffer(*buff_freq,CL_TRUE,0,sizeFloat,(void *)(void *)&d_freq);
+        	queue->enqueueReadBuffer(*buff_phase,CL_FALSE,0,sizeFloat,(void *)&d_phase);
+        	queue->enqueueReadBuffer(*buff_error,CL_FALSE,0,sizeFloat,(void *)(void *)&d_float_error);
+        	queue->enqueueReadBuffer(*buff_freq,CL_FALSE,0,sizeFloat,(void *)(void *)&d_freq);
     	}
+
+    	queue->finish();
 
       return noutput_items;
     }

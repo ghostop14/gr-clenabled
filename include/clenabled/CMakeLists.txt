@@ -42,5 +42,6 @@ install(FILES
     clCostasLoop.h
     clComplexFilter.h
     clPolyphaseChannelizer.h
-    clXCorrelate.h DESTINATION include/clenabled
+    clXCorrelate.h
+    clxcorrelate_fft_vcf.h DESTINATION include/clenabled
 )

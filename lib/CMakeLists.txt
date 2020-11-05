@@ -53,6 +53,7 @@ list(APPEND clenabled_sources
     clComplexFilter_impl.cc
     clPolyphaseChannelizer_impl.cc
     clXCorrelate_impl.cc
+    clxcorrelate_fft_vcf_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -212,6 +213,7 @@ install(TARGETS test-clfilter DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
 list(APPEND test_clxcorrelate_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test-clxcorrelate.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/clXCorrelate_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clxcorrelate_fft_vcf_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GRCLBase.cpp
 )
 

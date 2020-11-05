@@ -1,0 +1,61 @@
+id: clenabled_clxcorrelate_fft_vcf
+label: OpenCL XCorrelate FFT
+category: '[OpenCL-Accelerated]'
+
+parameters:
+-   id: vec_len
+    label: Vector Size
+    dtype: int
+    default: '1024'
+    hide: none
+- id: num_inputs
+  label: Number of Signals
+  dtype: int
+  default: '2'
+- id: openCLPlatform
+  label: OpenCL Platform Type
+  dtype: enum
+  options: ['1', '2', '3', '4']
+  option_labels: [GPU, Accelerator, CPU, Any]
+- id: devices
+  label: OpenCL Device
+  dtype: enum
+  options: ['1', '2']
+  option_labels: [Any, Specific]
+  option_attributes:
+      hide_specific: [all, '']
+- id: platformId
+  label: Platform Id
+  dtype: enum
+  options: ['0', '1', '2', '3']
+  hide: ${ devices.hide_specific }
+- id: deviceId
+  label: Device Id
+  dtype: enum
+  options: ['0', '1', '2', '3']
+  hide: ${ devices.hide_specific }
+
+inputs:
+-   domain: stream
+    dtype: complex
+    vlen: ${vec_len}
+    multiplicity: ${ num_inputs }
+outputs:
+-   domain: stream
+    dtype: float
+    vlen: ${vec_len}
+    multiplicity: ${ num_inputs - 1 }
+
+templates:
+    imports: import clenabled
+    make: |-
+       % if devices == 1:
+       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},1,0,0)
+       % else:
+       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},${devices},${platformId},${deviceId})
+       % endif
+    
+documentation: |-
+    This block takes two incoming FFT vectors and produces their cross-correlation in the frequency domain.  Note that this correlation is not normalized.
+
+file_format: 1

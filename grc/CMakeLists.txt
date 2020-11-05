@@ -45,5 +45,6 @@ install(FILES
     clenabled_clCostasLoop.block.yml
     clenabled_clComplexFilter.block.yml
     clenabled_clPolyphaseChannelizer.block.yml
-    clenabled_clXCorrelate.block.yml DESTINATION share/gnuradio/grc/blocks
+    clenabled_clXCorrelate.block.yml
+    clenabled_clxcorrelate_fft_vcf.block.yml DESTINATION share/gnuradio/grc/blocks
 )

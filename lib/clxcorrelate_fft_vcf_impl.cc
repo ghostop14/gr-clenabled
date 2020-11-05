@@ -680,239 +680,221 @@
 #endif
 
 #include <gnuradio/io_signature.h>
-#include "clXCorrelate_impl.h"
+#include "clxcorrelate_fft_vcf_impl.h"
 
 namespace gr {
 namespace clenabled {
 
-clXCorrelate::sptr
-clXCorrelate::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug,
-		int num_inputs, int signal_length, int data_type, int data_size, int max_search_index, int decim_frames, bool async)
+clxcorrelate_fft_vcf::sptr
+clxcorrelate_fft_vcf::make(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId)
 {
 	return gnuradio::get_initial_sptr
-			(new clXCorrelate_impl(openCLPlatformType,devSelector,platformId, devId, setDebug,
-					num_inputs, signal_length, data_type, data_size, max_search_index, decim_frames, async));
+			(new clxcorrelate_fft_vcf_impl(fftSize, num_inputs, openCLPlatformType, devSelector, platformId, devId));
 }
 
 
 /*
  * The private constructor
  */
-clXCorrelate_impl::clXCorrelate_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug,
-		int num_inputs, int signal_length, int data_type, int data_size, int max_search_index, int decim_frames, bool async)
-: gr::sync_block("clXCorrelate",
-		gr::io_signature::make(2, num_inputs, data_size),
-		gr::io_signature::make(0, 0, 0)),
-		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
-		d_num_inputs(num_inputs), d_signal_length(signal_length), d_data_type(data_type),
-		d_data_size(data_size), d_decim_frames(decim_frames), max_shift(max_search_index), d_async(async), cur_frame_counter(1)
+clxcorrelate_fft_vcf_impl::clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId)
+: gr::sync_block("clxcorrelate_fft_vcf",
+		gr::io_signature::make(2, num_inputs, sizeof(gr_complex)*fftSize),
+		gr::io_signature::make(1, num_inputs-1, sizeof(float)*fftSize)),
+		GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,0),
+		d_fft_size(fftSize),d_num_inputs(num_inputs)
 {
-	if (data_size == 0) {
-		// Had to wait to get insider here for access to d_logger
-		GR_LOG_ERROR(d_logger, "Unknown data type.");
-		exit(1);
-	}
+	/* Create a default plan for a complex FFT. */
+	size_t clLengths[1];
+	clLengths[0]=(size_t)fftSize;
 
-	if ((d_signal_length % 2) > 0) {
-		GR_LOG_ERROR(d_logger, "Signal length must be a multiple of 2.");
-		exit(1);
-	}
+	int err;
 
-	if ((max_shift % 2) > 0) {
-		GR_LOG_ERROR(d_logger, "max shift must be a multiple of 2.");
-		exit(1);
-	}
+	/* Setup clFFT. */
+	clfftSetupData fftSetup;
+	err = clfftInitSetupData(&fftSetup);
+	err = clfftSetup(&fftSetup);
 
-	signal_byte_size = d_signal_length * data_size;
+	err = clfftCreateDefaultPlan(&planHandle, (*context)(), dim, clLengths);
 
-	if (max_search_index > 0) {
-		max_shift = max_search_index;
-	}
-	else {
-		max_shift = (int)(0.7 * (float)d_signal_length);
-		if ((max_shift % 2) > 0) {
-			max_shift += 1;
-		}
-	}
+	/* Set plan parameters. */
+	// THere's no trig in the transforms and there are precomputed "twiddles" but they're done with
+	// double precision.  SINGLE/DOUBLE here really just refers to the data type for the math.
+	err = clfftSetPlanPrecision(planHandle, CLFFT_SINGLE);
 
-	// For the max kernel to work correctly, max_shift needs to be a power of 2 boundary.
-	float p2 = log2(max_shift);
+	err = clfftSetLayout(planHandle, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED);
 
-	int new_max_shift = (int)pow(2,ceil(p2));
-	if (new_max_shift != max_shift) {
-		std::cout << "Adjusting max shift to " << new_max_shift << " for power-of-2 boundary" << std::endl;
-		max_shift = new_max_shift;
-	}
+	clfftSetPlanScale(planHandle, CLFFT_BACKWARD, 1.0f); // By default the backward scale is set to 1/N so you have to set it here.
 
-	max_shift_2 = 2 * max_shift;
+	//err = clfftSetResultLocation(planHandle, CLFFT_INPLACE);  // In-place puts data back in source.  Not what we want.
+	err = clfftSetResultLocation(planHandle, CLFFT_OUTOFPLACE);
 
-	// BuildKernel needs to be called early or the max workgroup stuff isn't available yet.
-	buildKernel();
-	buildCCMagKernel();
-	buildF32SquaredKernel();
-	buildFindMaxKernel();
+	/* Bake the plan. */
+	err = clfftBakePlan(planHandle, 1, &(*queue)(), NULL, NULL);
 
-	// We have 4 different kernels, for the calcs we need for the max kernel, we specifically
-	// want the max sizes for that kernel.
-	maxWorkGroupSize = find_max_kernel->getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(devices[0]);
-	preferredWorkGroupSizeMultiple = find_max_kernel->getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(devices[0]);
 
-	localWGSize = cl::NullRange;
-	/*
-	if (contextType!=CL_DEVICE_TYPE_CPU) {
-		if (d_signal_length % preferredWorkGroupSizeMultiple == 0) {
-			// for some reason problems start to happen when we're no longer using constant memory
-			localWGSize=cl::NDRange(preferredWorkGroupSizeMultiple);
-		}
-	}
-	*/
-	// We do need to watch workgroup sizes for the final max() function.
-	// We're going to have max_shift * 2 entries to process.
-	// We'll need to optimize based on maxWorkGroupSize and preferredWorkGroupSizeMultiple to process
-	// as much of the max calculations on the GPU as possible, so we're going to want workgroups to be
-	// as big as possible to have as few workgroups as possible.
-	max_calc_workgroup_size = maxWorkGroupSize;
+	tmp_buffer = new float[fftSize];
+	curBufferSize = fftSize;
 
-	if (max_shift_2 > maxWorkGroupSize) {
-		bool found_match = false;
-		int cur_size = maxWorkGroupSize;
-
-		// Let's start with a workgroup size of max size and bump it down from there at optimal increments
-		// till we find an even match.
-		while (!found_match and cur_size > 0) {
-			if ((max_shift_2 % cur_size) == 0) {
-				found_match = true;
-			}
-			else {
-				cur_size -= preferredWorkGroupSizeMultiple;
-			}
-		}
-
-		if (found_match) {
-			num_max_calc_workgroups = max_shift_2 / cur_size;
-			max_calc_workgroup_size = cur_size;
-		}
-		else {
-			// We'll have to go sub-optimal.  Just find an evenly
-			// divisible power of 2 that's less than max workgroup size.
-			cur_size = max_shift_2;
-			found_match = false;
-
-			while (!found_match and cur_size > 0) {
-				if (cur_size < maxWorkGroupSize) {
-					found_match = true;
-				}
-				else {
-					cur_size /= 2;
-				}
-			}
-
-			// max_shift_2 will always be a power of 2 so we'll eventually find one.
-			num_max_calc_workgroups = max_shift_2 / cur_size;
-			max_calc_workgroup_size = cur_size;
-		}
-	}
-	else {
-		num_max_calc_workgroups = 1;
-		max_calc_workgroup_size = max_shift_2;
-	}
-
-	maxCalcWGSize = cl::NDRange(max_calc_workgroup_size);
+	vlen_2 = d_fft_size/2;
+	data_size_2 = vlen_2 * sizeof(float);
 
 	setBufferLength();
 
-	// 2nd queue for parallel GPU tasks.
-	queue2 = new cl::CommandQueue(*context, devices[devIndex], 0);
+	buildKernel(); // This will build the multiply conjugate kernel
+	buildCCMagAndScaleKernel();
+}
 
-	if (d_async) {
-		if (d_data_type == DTYPE_COMPLEX) {
-			d_input_buffer_complex = new gr_complex[d_signal_length * d_num_inputs];
-		}
-		else {
-			d_input_buffer_real = new float[d_signal_length * d_num_inputs];
-		}
+void clxcorrelate_fft_vcf_impl::setBufferLength() {
+	if (refBuffer)
+		delete refBuffer;
 
-		proc_thread = new boost::thread(boost::bind(&clXCorrelate_impl::runThread, this));
+	if (sigBuffer)
+		delete sigBuffer;
+
+	if (revFFTBuffer)
+		delete revFFTBuffer;
+
+	if (floatBuffer)
+		delete floatBuffer;
+
+	fft_times_data_size = d_fft_size * sizeof(gr_complex); // curBufferSize will be fftSize
+
+	// Ref signal buffer
+	refBuffer = new cl::Buffer(
+			*context,
+			CL_MEM_READ_ONLY,
+			fft_times_data_size);
+
+	// signal n buffer
+	sigBuffer = new cl::Buffer(
+			*context,
+			CL_MEM_READ_WRITE, // We'll store the multiply conjugate here
+			fft_times_data_size);
+
+	// Conjugate buffer
+	revFFTBuffer = new cl::Buffer(
+			*context,
+			CL_MEM_READ_WRITE,
+			fft_times_data_size);
+
+	// Complex to mag buffer
+	floatBuffer = new cl::Buffer(
+			*context,
+			CL_MEM_READ_WRITE,
+			d_fft_size * sizeof(float));
+}
+
+bool clxcorrelate_fft_vcf_impl::stop() {
+	curBufferSize = 0;
+
+	if (tmp_buffer) {
+		delete[] tmp_buffer;
+		tmp_buffer = NULL;
 	}
-	// signal_length represents how long a signal in terms of chunk of samples
-	// that we want to analyze for correlation.
-	gr::block::set_output_multiple(d_signal_length);
-	message_port_register_out(pmt::mp("corr"));
+
+	/* Release the plan. */
+	int err;
+
+	err = clfftDestroyPlan( &planHandle );
+	/* Release clFFT library. */
+	clfftTeardown( );
+
+	if (refBuffer) {
+		delete refBuffer;
+		refBuffer = NULL;
+	}
+
+	if (sigBuffer) {
+		delete sigBuffer;
+		sigBuffer = NULL;
+	}
+
+	if (revFFTBuffer) {
+		delete revFFTBuffer;
+		revFFTBuffer = NULL;
+	}
+
+	if (floatBuffer) {
+		delete floatBuffer;
+		floatBuffer = NULL;
+	}
+
+	// Additional Kernels
+	// Complex to mag
+	try {
+		if (ccmag_kernel != NULL) {
+			delete ccmag_kernel;
+			ccmag_kernel=NULL;
+		}
+	}
+	catch (...) {
+		ccmag_kernel=NULL;
+		std::cout<<"ccmag kernel delete error." << std::endl;
+	}
+
+	try {
+		if (ccmag_program != NULL) {
+			delete ccmag_program;
+			ccmag_program = NULL;
+		}
+	}
+	catch(...) {
+		ccmag_program = NULL;
+		std::cout<<"ccmag program delete error." << std::endl;
+	}
+
+	return GRCLBase::stop();
 }
 
-void clXCorrelate_impl::buildKernel() {
-	std::string srcStdStr="";
-	std::string fnName = "XCorrelate";
-
-	// Use #defines to not have to pass them in as params since they won't change
-	srcStdStr += "#define max_shift " + std::to_string(max_shift) + "\n";
-	srcStdStr += "#define d_signal_length " + std::to_string(d_signal_length) + "\n\n";
-
-	srcStdStr += "__kernel void XCorrelate(__global float * restrict ref_mag_buffer, __global float * restrict mag_buffer, \n";
-	srcStdStr += "							__global float * restrict xx_buffer, __global float * restrict yy_buffer,\n";
-	srcStdStr += "							__global float * restrict correlation_factors) {\n";
-	// To get the kernel to handle both fwd and backward shifts, our NDRange will be 2 * max_shift.
-	// So we need to pull it back in here.
-	srcStdStr += "	int g_id =  get_global_id(0);\n";
-	srcStdStr += "	int current_shift =  g_id - max_shift;\n";
-	srcStdStr += "	int ref_start =  (current_shift>=0)?current_shift:-current_shift;\n";
-	srcStdStr += "	float sum_xy = 0;\n";
-	srcStdStr += "	float sum_x2 = 0;\n";
-	srcStdStr += "	float sum_y2 = 0;\n";
-	srcStdStr += "	float cur_corr;\n";
-	srcStdStr += "	int calc_len = d_signal_length - ref_start;;\n";
-	srcStdStr += "	float denom;\n";
-
-	// Calculate sum(x*y) / sqrt(sum(x^2) * sum(y^2))
-
-	// Visualization for this shift with y forward
-	// x:     0   1   2   3   4   5
-	// y:         0   1   2   3   4
-	// Visualization for this shift with x signal forward
-	// x:             0   1   2   3
-	// y:     0   1   2   3   4   5
-
-	srcStdStr += "if (current_shift > 0) {\n";
-	srcStdStr += "	for (int i=0;i<calc_len;i++) {\n";
-	srcStdStr += "		sum_xy += ref_mag_buffer[ref_start+i] * mag_buffer[i];\n";
-	srcStdStr += "		sum_x2 += xx_buffer[ref_start+i];\n";
-	srcStdStr += "		sum_y2 += yy_buffer[i];\n";
-	srcStdStr += "	}\n";
-	srcStdStr += "}\n";
-	srcStdStr += "else {\n";
-	srcStdStr += "	for (int i=0;i<calc_len;i++) {\n";
-	srcStdStr += "		sum_xy += ref_mag_buffer[i] * mag_buffer[ref_start+i];\n";
-	srcStdStr += "		sum_x2 += xx_buffer[i];\n";
-	srcStdStr += "		sum_y2 += yy_buffer[ref_start+i];\n";
-	srcStdStr += "	}\n";
-	srcStdStr += "}\n";
-
-	srcStdStr += "	denom = sum_x2 * sum_y2;\n";
-
-	srcStdStr += "	if (denom != 0.0) {\n";
-	srcStdStr += "		cur_corr = sum_xy / sqrt(sum_x2 * sum_y2);\n";
-	srcStdStr += "	}\n";
-	srcStdStr += "	else {\n";
-	srcStdStr += "		cur_corr = -2.0;\n";
-	srcStdStr += "	}\n";
-
-	srcStdStr += "	correlation_factors[g_id] = cur_corr;\n";
-	srcStdStr += "}\n";
-
-	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+/*
+ * Our virtual destructor.
+ */
+clxcorrelate_fft_vcf_impl::~clxcorrelate_fft_vcf_impl()
+{
+	bool retval = stop();
 }
 
-void clXCorrelate_impl::buildCCMagKernel() {
+void clxcorrelate_fft_vcf_impl::buildKernel() {
 	// Now we set up our OpenCL kernel
 	std::string srcStdStr="";
-	std::string fnName = "ComplexToMag";
+	std::string fnName = "MultConj";
 
 	srcStdStr += "struct ComplexStruct {\n";
 	srcStdStr += "float real;\n";
 	srcStdStr += "float imag; };\n";
 	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
-	srcStdStr += "__kernel void ComplexToMag(__global SComplex * restrict a, __global float * restrict c) {\n";
+	srcStdStr += "__kernel void MultConj(__global SComplex * restrict a, __global SComplex * restrict b) {\n";
+
+	srcStdStr += "    size_t index =  get_global_id(0);\n";
+	srcStdStr += "    float a_r=a[index].real;\n";
+	srcStdStr += "    float a_i=a[index].imag;\n";
+	srcStdStr += "    float b_r=b[index].real;\n";
+	// Flip conjugate for b_i
+	srcStdStr += "    float b_i=-b[index].imag;\n";
+
+	// Multilpy and store it back in b
+	srcStdStr += "    b[index].real = (a_r * b_r) - (a_i*b_i);\n";
+	srcStdStr += "    b[index].imag = (a_r * b_i) + (a_i * b_r);\n";
+	srcStdStr += "}\n";
+
+	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+}
+
+void clxcorrelate_fft_vcf_impl::buildCCMagAndScaleKernel() {
+	// Now we set up our OpenCL kernel
+	std::string srcStdStr="";
+	std::string fnName = "ComplexToMagAndScale";
+
+	// This scale factor comes about from the way clfft does the reverse FFT
+	srcStdStr += "#define d_fft_scale 4.0f / (float)" + std::to_string(d_fft_size) + "\n";
+
+	srcStdStr += "struct ComplexStruct {\n";
+	srcStdStr += "float real;\n";
+	srcStdStr += "float imag; };\n";
+	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
+
+	srcStdStr += "__kernel void ComplexToMagAndScale(__global SComplex * restrict a, __global float * restrict c) {\n";
 
 	srcStdStr += "    size_t index =  get_global_id(0);\n";
 
@@ -924,7 +906,7 @@ void clXCorrelate_impl::buildCCMagKernel() {
 		srcStdStr += "	  float tgt_val = (a[index].real*a[index].real)  + (a[index].imag*a[index].imag);\n";
 	}
 
-	srcStdStr += "	  c[index] = tgt_val;\n";
+	srcStdStr += "	  c[index] = tgt_val * d_fft_scale;\n";
 
 	srcStdStr += "}\n";
 
@@ -970,739 +952,157 @@ void clXCorrelate_impl::buildCCMagKernel() {
 	}
 }
 
-void clXCorrelate_impl::buildF32SquaredKernel() {
-	// Now we set up our OpenCL kernel
-	std::string srcStdStr="";
-	std::string fnName = "F32Squared";
-
-	srcStdStr += "__kernel void F32Squared(__global float * restrict a, __global float * restrict c) {\n";
-
-	srcStdStr += "    size_t index =  get_global_id(0);\n";
-
-	srcStdStr += "    c[index] = a[index] * a[index];\n";
-	srcStdStr += "}\n";
-
-	try {
-		// Create and program from source
-		if (f32_squared_program) {
-			delete f32_squared_program;
-			f32_squared_program = NULL;
-		}
-		if (f32_squared_sources) {
-			delete f32_squared_sources;
-			f32_squared_sources = NULL;
-		}
-		f32_squared_sources=new cl::Program::Sources(1, std::make_pair(srcStdStr.c_str(), 0));
-		f32_squared_program = new cl::Program(*context, *f32_squared_sources);
-
-		// Build program
-		f32_squared_program->build(devices);
-
-		f32_squared_kernel=new cl::Kernel(*f32_squared_program, (const char *)fnName.c_str());
-	}
-	catch(cl::Error& e) {
-		std::cout << "OpenCL Error compiling kernel for " << fnName << std::endl;
-		std::cout << "OpenCL Error " << e.err() << ": " << e.what() << std::endl;
-		std::cout << srcStdStr << std::endl;
-		exit(0);
-	}
-}
-
-void clXCorrelate_impl::buildFindMaxKernel() {
-	// Now we set up our OpenCL kernel
-	std::string srcStdStr="";
-	std::string fnName = "find_max";
-
-	srcStdStr += "__kernel void find_max( __global float * restrict input, __global float * restrict partial_max, \n";
-	srcStdStr += "                         __global int * restrict partial_lag_index, __local float *local_max, __local int *local_lag) {\n";
-	srcStdStr += "	int g_id = get_global_id(0);\n";
-	srcStdStr += "	uint local_id = get_local_id(0);\n";
-	srcStdStr += "  uint group_id = get_group_id(0);\n";
-	srcStdStr += "  uint group_size = get_local_size(0);\n";
-	// Copy from global to local memory
-	srcStdStr += "  local_max[local_id] = input[g_id];\n";
-	srcStdStr += "  local_lag[local_id] = g_id;\n";
-	srcStdStr += "	barrier(CLK_LOCAL_MEM_FENCE);\n";
-	// Loop for computing local max : divide WorkGroup into 2 parts
-	srcStdStr += "	for (int stride = group_size/2; stride>0; stride /=2) {\n";
-	// Waiting for each check within workgroup
-	// Compare elements 2 by 2 between local_id and local_id + stride.
-	// The first if ensures the compare only happens for the first half of the stride.
-	srcStdStr += "		if (local_id < stride) {\n";
-	srcStdStr += "		   if (local_max[local_id + stride]>local_max[local_id]) {\n";
-	srcStdStr += "				local_max[local_id] = local_max[local_id + stride];\n";
-	srcStdStr += "				local_lag[local_id] = local_lag[local_id + stride];\n";
-	srcStdStr += "		   }\n";
-	srcStdStr += "		}\n";
-	srcStdStr += "		barrier(CLK_LOCAL_MEM_FENCE);\n";
-	srcStdStr += "	}\n";
-	// Write result into partial_max[group_id]
-	srcStdStr += "	if (local_id == 0) {\n";
-	srcStdStr += "   	partial_max[group_id] = local_max[0];\n";
-	srcStdStr += "   	partial_lag_index[group_id] = local_lag[0];\n";
-	srcStdStr += "  }\n";
-	srcStdStr += "}\n";
-
-	try {
-		// Create and program from source
-		if (find_max_program) {
-			delete find_max_program;
-			find_max_program = NULL;
-		}
-		if (find_max_sources) {
-			delete find_max_sources;
-			find_max_sources = NULL;
-		}
-		find_max_sources=new cl::Program::Sources(1, std::make_pair(srcStdStr.c_str(), 0));
-		find_max_program = new cl::Program(*context, *find_max_sources);
-
-		// Build program
-		find_max_program->build(devices);
-
-		find_max_kernel=new cl::Kernel(*find_max_program, (const char *)fnName.c_str());
-	}
-	catch(cl::Error& e) {
-		std::cout << "OpenCL Error compiling kernel for " << fnName << std::endl;
-		std::cout << "OpenCL Error " << e.err() << ": " << e.what() << std::endl;
-		std::cout << srcStdStr << std::endl;
-		exit(0);
-	}
-}
-
-void clXCorrelate_impl::setBufferLength() {
-	if (complex_ref_buffer)
-		delete complex_ref_buffer;
-
-	if (complex_sig_buffer)
-		delete complex_sig_buffer;
-
-	if (ref_mag_buffer)
-		delete ref_mag_buffer;
-
-	if (mag_buffer)
-		delete mag_buffer;
-
-	if (xx_buffer)
-		delete xx_buffer;
-
-	if (yy_buffer)
-		delete yy_buffer;
-
-	if (max_result_buffer)
-		delete max_result_buffer;
-
-	if (max_lag_buffer)
-		delete max_result_buffer;
-
-	if (correlation_factors)
-		delete correlation_factors;
-
-	if (d_data_type == DTYPE_COMPLEX) {
-		complex_ref_buffer = new cl::Buffer(
-				*context,
-				CL_MEM_READ_ONLY,
-				d_signal_length * d_data_size);
-
-		complex_sig_buffer = new cl::Buffer(
-				*context,
-				CL_MEM_READ_ONLY,
-				d_signal_length * d_data_size);
-
-	}
-	else {
-		complex_ref_buffer = NULL;
-		complex_sig_buffer = NULL;
-	}
-
-	ref_mag_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			d_signal_length * sizeof(float));
-
-	mag_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			d_signal_length * sizeof(float));
-
-	xx_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			d_signal_length * sizeof(float));
-
-	yy_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			d_signal_length * sizeof(float));
-
-	correlation_factors = new cl::Buffer(
-			*context,
-			CL_MEM_READ_WRITE,
-			max_shift_2 * sizeof(float));
-
-	max_result_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_WRITE_ONLY,
-			num_max_calc_workgroups * sizeof(float));
-
-	max_lag_buffer = new cl::Buffer(
-			*context,
-			CL_MEM_WRITE_ONLY,
-			num_max_calc_workgroups * sizeof(int));
-
-	if (local_max_buffer)
-		delete[] local_max_buffer;
-
-	if (local_lag_buffer)
-		delete[] local_lag_buffer;
-
-	local_max_buffer_size = num_max_calc_workgroups * sizeof(float);
-	local_max_lag_size = num_max_calc_workgroups * sizeof(int);
-	workgroup_max_buffer_size = max_calc_workgroup_size*sizeof(float);
-	workgroup_max_lag_size = max_calc_workgroup_size*sizeof(int);
-
-	local_max_buffer = new float[num_max_calc_workgroups];
-	local_lag_buffer = new int[num_max_calc_workgroups];
-
-	returned_correlation_factors = new float[d_num_inputs-1];
-	returned_corrective_lag = new int[d_num_inputs-1];
-
-	curBufferSize=d_signal_length;
-}
-
-/*
- * Our virtual destructor.
- */
-clXCorrelate_impl::~clXCorrelate_impl()
-{
-	bool retval = stop();
-}
-
-bool clXCorrelate_impl::stop() {
-	curBufferSize = 0;
-
-	if (proc_thread) {
-		stop_thread = true;
-
-		while (threadRunning)
-			usleep(10);
-
-		delete proc_thread;
-		proc_thread = NULL;
-
-		if (d_input_buffer_complex) {
-			delete d_input_buffer_complex;
-			d_input_buffer_complex = NULL;
-		}
-
-		if (d_input_buffer_real) {
-			delete d_input_buffer_real;
-			d_input_buffer_real = NULL;
-		}
-	}
-
-	try {
-		if (queue2 != NULL) {
-			delete queue2;
-			queue2 = NULL;
-		}
-	}
-	catch(...) {
-		queue2=NULL;
-		std::cout<<"queue2 delete error." << std::endl;
-	}
-
-
-	// Additional Kernels
-	// Complex to mag
-	try {
-		if (ccmag_kernel != NULL) {
-			delete ccmag_kernel;
-			ccmag_kernel=NULL;
-		}
-	}
-	catch (...) {
-		ccmag_kernel=NULL;
-		std::cout<<"ccmag kernel delete error." << std::endl;
-	}
-
-	try {
-		if (ccmag_program != NULL) {
-			delete ccmag_program;
-			ccmag_program = NULL;
-		}
-	}
-	catch(...) {
-		ccmag_program = NULL;
-		std::cout<<"ccmag program delete error." << std::endl;
-	}
-
-	// F32 squared
-	try {
-		if (f32_squared_kernel != NULL) {
-			delete f32_squared_kernel;
-			f32_squared_kernel=NULL;
-		}
-	}
-	catch (...) {
-		f32_squared_kernel=NULL;
-		std::cout<<"f32 squared kernel delete error." << std::endl;
-	}
-
-	try {
-		if (f32_squared_program != NULL) {
-			delete f32_squared_program;
-			f32_squared_program = NULL;
-		}
-	}
-	catch(...) {
-		f32_squared_program = NULL;
-		std::cout<<"f32 squared program delete error." << std::endl;
-	}
-
-	// FindMax
-	try {
-		if (find_max_kernel != NULL) {
-			delete find_max_kernel;
-			find_max_kernel=NULL;
-		}
-	}
-	catch (...) {
-		find_max_kernel=NULL;
-		std::cout<<"find_max kernel delete error." << std::endl;
-	}
-
-	try {
-		if (find_max_program != NULL) {
-			delete find_max_program;
-			find_max_program = NULL;
-		}
-	}
-	catch(...) {
-		find_max_program = NULL;
-		std::cout<<"find_max program delete error." << std::endl;
-	}
-
-	// Buffers
-	if (complex_ref_buffer) {
-		delete complex_ref_buffer;
-		complex_ref_buffer = NULL;
-	}
-
-	if (complex_sig_buffer) {
-		delete complex_sig_buffer;
-		complex_sig_buffer = NULL;
-	}
-
-	if (ref_mag_buffer) {
-		delete ref_mag_buffer;
-		ref_mag_buffer = NULL;
-	}
-
-	if (mag_buffer) {
-		delete mag_buffer;
-		mag_buffer = NULL;
-	}
-
-	if (xx_buffer) {
-		delete xx_buffer;
-		xx_buffer = NULL;
-	}
-
-	if (yy_buffer) {
-		delete yy_buffer;
-		yy_buffer = NULL;
-	}
-
-	if (correlation_factors) {
-		delete correlation_factors;
-		correlation_factors = NULL;
-	}
-
-	if (local_max_buffer) {
-		delete[] local_max_buffer;
-		local_max_buffer = NULL;
-	}
-
-	if (local_lag_buffer) {
-		delete[] local_lag_buffer;
-		local_lag_buffer = NULL;
-	}
-
-	if (returned_correlation_factors) {
-		delete[] returned_correlation_factors;
-		returned_correlation_factors = NULL;
-	}
-
-	if (returned_corrective_lag) {
-		delete[] returned_corrective_lag;
-		returned_corrective_lag = NULL;
-	}
-
-	return GRCLBase::stop();
-}
-
-void clXCorrelate_impl::complex_to_mag(cl::CommandQueue *thisqueue, cl::Buffer *input_buffer, cl::Buffer *output_buffer, const void *input_items) {
-
-	queue->enqueueWriteBuffer(*input_buffer,CL_FALSE,0,signal_byte_size,input_items);
-
-	// Set kernel args
-	ccmag_kernel->setArg(0, *input_buffer);
-	ccmag_kernel->setArg(1, *output_buffer);
-
-	thisqueue->enqueueNDRangeKernel(
-			*ccmag_kernel,
-			cl::NullRange,
-			cl::NDRange(d_signal_length),
-			localWGSize);
-}
-
-void clXCorrelate_impl::f32_squared(cl::Buffer *input_buffer, cl::Buffer *output_buffer) {
-	// Set kernel args
-	f32_squared_kernel->setArg(0, *input_buffer);
-	f32_squared_kernel->setArg(1, *output_buffer);
-
-	queue->enqueueNDRangeKernel(
-			*f32_squared_kernel,
-			cl::NullRange,
-			cl::NDRange(d_signal_length),
-			localWGSize);
-}
-
-void clXCorrelate_impl::find_max(cl::Buffer *input_buffer, float& corr, int& lag) {
-
-#define USE_KERNEL
-
-#ifdef USE_KERNEL
-	// Set kernel args
-	find_max_kernel->setArg(0, *input_buffer);
-	find_max_kernel->setArg(1, *max_result_buffer);
-	find_max_kernel->setArg(2, *max_lag_buffer);
-	// Local workgroup memory blocks.  Should be workgroupsize*sizeof(type).
-	find_max_kernel->setArg(3, workgroup_max_buffer_size, NULL);
-	find_max_kernel->setArg(4, workgroup_max_lag_size, NULL);
-
-	queue->enqueueNDRangeKernel(
-			*find_max_kernel,
-			cl::NullRange,
-			cl::NDRange(max_shift_2),
-			maxCalcWGSize);
-
-	// Now we finally need to read the buffers.
-	// Using 2 queues to get some parallelism in the copies.
-	queue->enqueueReadBuffer(*max_result_buffer,CL_FALSE,0,local_max_buffer_size,(void *)local_max_buffer);
-	queue2->enqueueReadBuffer(*max_lag_buffer,CL_FALSE,0,local_max_lag_size,(void *)local_lag_buffer);
-	queue->finish(); // Queued the memory reads with the first one not waiting, so have to wait for them to finish.
-	queue2->finish();
-
-	if (num_max_calc_workgroups > 1) {
-		// we still have some more processing to do.
-		int cur_max_index = 0;
-		float cur_max = local_max_buffer[0];
-
-		for (int i=1;i<num_max_calc_workgroups;i++) {
-			if (local_max_buffer[i] > cur_max) {
-				cur_max_index = i;
-				cur_max = local_max_buffer[i];
-			}
-		}
-
-		corr = cur_max;
-		lag = local_lag_buffer[cur_max_index] - max_shift;
-	}
-	else {
-		corr = local_max_buffer[0];
-		lag = local_lag_buffer[0] - max_shift;
-	}
-#else
-	// This is just for testing purposes to validate the other kernels were calculating correctly.
-
-	// let's get the matrix back and go through it by hand.
-	float *tmp_buffer = new float[max_shift_2];
-
-	queue->enqueueReadBuffer(*input_buffer,CL_TRUE,0,max_shift_2*sizeof(float),(void *)tmp_buffer);
-
-	float cur_max = tmp_buffer[0];
-	int cur_index  = 0;
-
-	for (int i=1;i<max_shift_2;i++) {
-		if (tmp_buffer[i] > cur_max) {
-			cur_max = tmp_buffer[i];
-			cur_index = i;
-		}
-	}
-
-	corr = cur_max;
-	lag = cur_index - max_shift;
-
-	delete[] tmp_buffer;
-#endif
-}
-
-void clXCorrelate_impl::correlate() {
-	// Execute the correlation kernel
-	kernel->setArg(0, *ref_mag_buffer);
-	kernel->setArg(1, *mag_buffer);
-	kernel->setArg(2, *xx_buffer);
-	kernel->setArg(3, *yy_buffer);
-	kernel->setArg(4, *correlation_factors);
-
-	queue->enqueueNDRangeKernel(
-			*kernel,
-			cl::NullRange,
-			cl::NDRange(max_shift_2),
-			localWGSize);
-}
-
 int
-clXCorrelate_impl::work_test(int noutput_items,
+clxcorrelate_fft_vcf_impl::work_test(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
-	if (noutput_items < d_signal_length) {
-		return 0;
-	}
+	int err;
+	int required_buf = d_fft_size * noutput_items * (d_num_inputs-1);
 
+	const gr_complex *ref_sig = (const gr_complex *) input_items[0];
+	int stride = d_fft_size * noutput_items;
+
+	// Protect context from switching
 	gr::thread::scoped_lock guard(d_mutex);
 
-	if (d_decim_frames > 1) {
-		// Let's see if we should drop some frames.
-		if ((cur_frame_counter++ % d_decim_frames) == 0) {
-			cur_frame_counter = 1;
-		}
-		else {
-			return d_signal_length;
+	if (required_buf > curBufferSize) {
+		delete[] tmp_buffer;
+		tmp_buffer = new float[required_buf];
+		curBufferSize = required_buf;
+	}
+
+	for (int cur_signal=1;cur_signal<d_num_inputs;cur_signal++) {
+		// reset ref_sig pointer
+		ref_sig = (const gr_complex *) input_items[0];
+		// grab next signal
+		const gr_complex *cur_sig = (const gr_complex *) input_items[cur_signal];
+
+		for (int i=0;i<noutput_items;i++) {
+			queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+			queue->enqueueWriteBuffer(*sigBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
+
+			// Multiply conjugate
+			kernel->setArg(0, *refBuffer);
+			kernel->setArg(1, *sigBuffer);
+
+			queue->enqueueNDRangeKernel(
+					*kernel,
+					cl::NullRange,
+					cl::NDRange(d_fft_size),
+					cl::NullRange);
+
+			// Reverse FFT
+			err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &((*queue)()), 0, NULL, NULL, &((*sigBuffer)()), &((*revFFTBuffer)()), NULL);
+
+			// Complex to mag
+			ccmag_kernel->setArg(0, *revFFTBuffer);
+			ccmag_kernel->setArg(1, *floatBuffer);
+
+			queue->enqueueNDRangeKernel(
+					*ccmag_kernel,
+					cl::NullRange,
+					cl::NDRange(d_fft_size),
+					cl::NullRange);
+
+			queue->enqueueReadBuffer(*floatBuffer,CL_FALSE,0,d_fft_size*sizeof(float),(void *)&tmp_buffer[stride*(cur_signal-1)+i*d_fft_size]);
+
+			ref_sig += d_fft_size;
+			cur_sig += d_fft_size;
 		}
 	}
 
-	// Processing note:
-	// We set output multiple to d_signal_length in the constructor,
-	// so noutput_items will be a multiple of, and >= d_signal_length.
+	queue->finish();
 
-	// Calculate the reference signal mag just once
-	if (d_data_type == DTYPE_COMPLEX) {
-		complex_to_mag(queue2,complex_ref_buffer, ref_mag_buffer,input_items[0]);
-	}
-	else {
-		// already got complex->mag or float inputs, just need to move it
-		// to the mag buffer
-		queue2->enqueueWriteBuffer(*ref_mag_buffer,CL_FALSE,0,signal_byte_size,input_items[0]);
-	}
+	for (int cur_signal=0;cur_signal<d_num_inputs-1;cur_signal++) {
+		float *out = (float *) output_items[cur_signal];
 
-	// Calculate the reference signal squared just once.
-	f32_squared(ref_mag_buffer, xx_buffer);
-
-	// Cross correlation will shift signal noutput_items forward and backward
-	// and calculate a normalized correlation factor for each shift.
-
-	float corr;
-	int lag;
-
-	for (int signal_index=1;signal_index<d_num_inputs;signal_index++) {
-		if (d_data_type == DTYPE_COMPLEX) {
-			complex_to_mag(queue, complex_sig_buffer, mag_buffer,input_items[signal_index]);
+		for (int i=0;i<noutput_items;i++) {
+			// shift fft
+			memcpy(out, &tmp_buffer[stride*cur_signal + i*d_fft_size + vlen_2], data_size_2);
+			memcpy(&out[vlen_2], &tmp_buffer[stride*cur_signal + i*d_fft_size], data_size_2);
+			out += d_fft_size;
 		}
-		else {
-			queue->enqueueWriteBuffer(*mag_buffer,CL_FALSE,0,signal_byte_size,input_items[signal_index]);
-		}
-
-		// Calc mag squared just once per comparitive signal.
-		f32_squared(mag_buffer, yy_buffer);
-
-		if (signal_index == 1) {
-			queue2->finish();
-		}
-
-		// Perform the correlation
-		correlate();
-
-		// Perform the search for best correlation
-		find_max(correlation_factors, returned_correlation_factors[signal_index-1], returned_corrective_lag[signal_index-1]);
 	}
 
-	// Tell runtime system how many output items we produced.
-	return d_signal_length;
+	return noutput_items;
 }
 
 int
-clXCorrelate_impl::work(int noutput_items,
+clxcorrelate_fft_vcf_impl::work(int noutput_items,
 		gr_vector_const_void_star &input_items,
 		gr_vector_void_star &output_items)
 {
-	if (noutput_items < d_signal_length) {
-		return 0;
-	}
+	int err;
+	int required_buf = d_fft_size * noutput_items * (d_num_inputs-1);
 
+	const gr_complex *ref_sig = (const gr_complex *) input_items[0];
+	int stride = d_fft_size * noutput_items;
+
+	// Protect context from switching
 	gr::thread::scoped_lock guard(d_mutex);
 
-	if (!d_async) {
-		if (d_decim_frames > 1) {
-			// Let's see if we should drop some frames.
-			if ((cur_frame_counter++ % d_decim_frames) == 0) {
-				cur_frame_counter = 1;
-			}
-			else {
-				return d_signal_length;
-			}
-		}
-
-		// Processing note:
-		// We set output multiple to d_signal_length in the constructor,
-		// so noutput_items will be a multiple of, and >= d_signal_length.
-
-		// Calculate the reference signal mag just once
-		if (d_data_type == DTYPE_COMPLEX) {
-			complex_to_mag(queue2,complex_ref_buffer, ref_mag_buffer,input_items[0]);
-		}
-		else {
-			// already got complex->mag or float inputs, just need to move it
-			// to the mag buffer
-			queue2->enqueueWriteBuffer(*ref_mag_buffer,CL_FALSE,0,signal_byte_size,input_items[0]);
-		}
-
-		// Calculate the reference signal squared just once.
-		f32_squared(ref_mag_buffer, xx_buffer);
-
-		// Cross correlation will shift signal noutput_items forward and backward
-		// and calculate a normalized correlation factor for each shift.
-
-		float corr;
-		int lag;
-
-		for (int signal_index=1;signal_index<d_num_inputs;signal_index++) {
-			if (d_data_type == DTYPE_COMPLEX) {
-				complex_to_mag(queue, complex_sig_buffer, mag_buffer,input_items[signal_index]);
-			}
-			else {
-				queue->enqueueWriteBuffer(*mag_buffer,CL_FALSE,0,signal_byte_size,input_items[signal_index]);
-			}
-
-			// Calc mag squared just once per comparitive signal.
-			f32_squared(mag_buffer, yy_buffer);
-
-			if (signal_index == 1) {
-				queue2->finish();
-			}
-
-			// Perform the correlation
-			correlate();
-
-			// Perform the search for best correlation
-			find_max(correlation_factors, returned_correlation_factors[signal_index-1], returned_corrective_lag[signal_index-1]);
-		}
-
-		pmt::pmt_t meta = pmt::make_dict();
-		pmt::pmt_t corr_out(pmt::init_f32vector(d_num_inputs-1,returned_correlation_factors));
-		meta = pmt::dict_add(meta, pmt::mp("corrvect"), corr_out);
-		pmt::pmt_t lag_out(pmt::init_s32vector(d_num_inputs-1,returned_corrective_lag));
-		meta = pmt::dict_add(meta, pmt::mp("corrective_lags"), lag_out);
-
-		pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-		message_port_pub(pmt::mp("corr"), pdu);
-	}
-	else {
-		// Async mode.  See if the thread is currently processing any data or not.
-		if (!thread_process_data) {
-			if (d_decim_frames > 1) {
-				// For async mode, we'll need to do this here.
-				// Let's see if we should drop some frames.
-				if ((cur_frame_counter++ % d_decim_frames) == 0) {
-					cur_frame_counter = 1;
-				}
-				else {
-					return d_signal_length;
-				}
-			}
-
-			// Copy the input signals to our local buffer for processing and trigger.
-			for (int i=0;i<d_num_inputs;i++) {
-				if (d_data_type == DTYPE_COMPLEX) {
-					memcpy(&d_input_buffer_complex[d_signal_length*i],input_items[i],d_signal_length*d_data_size);
-				}
-				else {
-					memcpy(&d_input_buffer_real[d_signal_length*i],input_items[i],d_signal_length*d_data_size);
-				}
-			}
-
-			// thread_is_processing will only be FALSE if thread_process_data == false on the first pass,
-			// in which case we don't want to send any pmt's.  Otherwise, we're in async pickup mode.
-			if (thread_is_processing) {
-				pmt::pmt_t meta = pmt::make_dict();
-				pmt::pmt_t corr_out(pmt::init_f32vector(d_num_inputs-1,returned_correlation_factors));
-				meta = pmt::dict_add(meta, pmt::mp("corrvect"), corr_out);
-				pmt::pmt_t lag_out(pmt::init_s32vector(d_num_inputs-1,returned_corrective_lag));
-				meta = pmt::dict_add(meta, pmt::mp("corrective_lags"), lag_out);
-
-				pmt::pmt_t pdu = pmt::cons(meta, pmt::PMT_NIL);
-				message_port_pub(pmt::mp("corr"), pdu);
-			}
-
-			// clear the flag
-			thread_process_data = true;
-		}
-		// The else with this is that the thread is processing, and we're just going to pass through.
+	if (required_buf > curBufferSize) {
+		delete[] tmp_buffer;
+		tmp_buffer = new float[required_buf];
+		curBufferSize = required_buf;
 	}
 
-	// Tell runtime system how many output items we produced.
-	return d_signal_length;
-}
+	for (int cur_signal=1;cur_signal<d_num_inputs;cur_signal++) {
+		// reset ref_sig pointer
+		ref_sig = (const gr_complex *) input_items[0];
+		// grab next signal
+		const gr_complex *cur_sig = (const gr_complex *) input_items[cur_signal];
 
-void clXCorrelate_impl::runThread() {
-	threadRunning = true;
+		for (int i=0;i<noutput_items;i++) {
+			queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+			queue->enqueueWriteBuffer(*sigBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
 
-	while (!stop_thread) {
-		if (thread_process_data) {
-			// This is really a one-time variable set to true on the first pass.
-			thread_is_processing = true;
+			// Multiply conjugate
+			kernel->setArg(0, *refBuffer);
+			kernel->setArg(1, *sigBuffer);
 
-			// Trigger received to process data.
-			// Calculate the reference signal mag just once
-			if (d_data_type == DTYPE_COMPLEX) {
-				complex_to_mag(queue2,complex_ref_buffer, ref_mag_buffer,d_input_buffer_complex);
-			}
-			else {
-				// already got complex->mag or float inputs, just need to move it
-				// to the mag buffer
-				queue2->enqueueWriteBuffer(*ref_mag_buffer,CL_FALSE,0,signal_byte_size,d_input_buffer_real);
-			}
+			queue->enqueueNDRangeKernel(
+					*kernel,
+					cl::NullRange,
+					cl::NDRange(d_fft_size),
+					cl::NullRange);
 
-			// Calculate the reference signal squared just once.
-			f32_squared(ref_mag_buffer, xx_buffer);
+			// Reverse FFT
+			err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &((*queue)()), 0, NULL, NULL, &((*sigBuffer)()), &((*revFFTBuffer)()), NULL);
 
-			// Cross correlation will shift signal noutput_items forward and backward
-			// and calculate a normalized correlation factor for each shift.
+			// Complex to mag and scale rev FFT
+			ccmag_kernel->setArg(0, *revFFTBuffer);
+			ccmag_kernel->setArg(1, *floatBuffer);
 
-			float corr;
-			int lag;
+			queue->enqueueNDRangeKernel(
+					*ccmag_kernel,
+					cl::NullRange,
+					cl::NDRange(d_fft_size),
+					cl::NullRange);
 
-			for (int signal_index=1;signal_index<d_num_inputs;signal_index++) {
-				if (d_data_type == DTYPE_COMPLEX) {
-					complex_to_mag(queue, complex_sig_buffer, mag_buffer,&d_input_buffer_complex[d_signal_length * signal_index]);
-				}
-				else {
-					queue->enqueueWriteBuffer(*mag_buffer,CL_FALSE,0,signal_byte_size,&d_input_buffer_real[d_signal_length * signal_index]);
-				}
+			// Copy result into temp buffer
+			queue->enqueueReadBuffer(*floatBuffer,CL_FALSE,0,d_fft_size*sizeof(float),(void *)&tmp_buffer[stride*(cur_signal-1)+i*d_fft_size]);
 
-				// Calc mag squared just once per comparitive signal.
-				f32_squared(mag_buffer, yy_buffer);
-
-				if (signal_index == 1) {
-					queue2->finish();
-				}
-
-				// Perform the correlation
-				correlate();
-
-				// Perform the search for best correlation
-				find_max(correlation_factors, returned_correlation_factors[signal_index-1], returned_corrective_lag[signal_index-1]);
-			}
-
-			// clear the trigger.  This will inform that data is ready.
-			thread_process_data = false;
+			ref_sig += d_fft_size;
+			cur_sig += d_fft_size;
 		}
-		usleep(10);
 	}
 
-	threadRunning = false;
+	queue->finish();
+
+	for (int cur_signal=0;cur_signal<d_num_inputs-1;cur_signal++) {
+		float *out = (float *) output_items[cur_signal];
+
+		for (int i=0;i<noutput_items;i++) {
+			// shift fft
+			memcpy(out, &tmp_buffer[stride*cur_signal + i*d_fft_size + vlen_2], data_size_2);
+			memcpy(&out[vlen_2], &tmp_buffer[stride*cur_signal + i*d_fft_size], data_size_2);
+			out += d_fft_size;
+		}
+	}
+
+	return noutput_items;
 }
 
 } /* namespace clenabled */

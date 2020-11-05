@@ -65,13 +65,16 @@ The following blocks are implemented in this project:
 
 	d.	**[New]** Polyphase Channelizer (thanks to Dan Banks and Aaron Giles)
 	
-	e.	**[New]** Cross-Correlator (time domain, multiple signals) - For the examples included, you'll want gr-xcorrelate (CPU-based cross-correlation with some helper blocks) and gr-lfast for some filter convenience wrappers.
+	e.	**[New]** Cross-Correlator (time domain and frequency domain, multiple signals) - For the examples included, you'll want gr-xcorrelate (CPU-based cross-correlation with some helper blocks) and gr-lfast for some filter convenience wrappers.
 
 ## Important Usage Notes
 
-### [New] Cross-Correlator
+### [New] Cross-Correlators
 
-A time-domain cross-correlator has been added to support combining inputs from multiple antennas.  Parallel queues and other techniques were added to this block to try to get as many parallel operations as possible.  However, with the smaller GNURadio block sizes, some other design elements were added to maintain good runtime performance.  The block currently takes complex or float inputs (I'm planning on working in IChar shortly too), and acts as a sink block.  It will produce output PDUs containing the best correlation score and correlation correction lag.  A new CPU-based gr-xcorrelate has a helper block (Extract Delay) that works in tandem with these PDUs that can set variables and control standard delay blocks to align the signals.  This helper block also has a "lock" feature that can allow you to dynamically block/allow the delay changes at runtime with a checkbox or other control.
+Time-domain (OpenCL XCorrelate) and frequency-domain (OpenCL XCorrelate FFT) cross-correlator blocks have been added to support combining inputs from multiple antennas.  
+
+**Time Domain Notes**
+For the time-domain block, parallel queues and other techniques were added to this block to try to get as many parallel operations as possible.  However, with the smaller GNURadio block sizes, some other design elements were added to maintain good runtime performance.  The block currently takes complex or float inputs (I'm planning on working in IChar shortly too), and acts as a sink block.  It will produce output PDUs containing the best correlation score and correlation correction lag.  A new CPU-based gr-xcorrelate has a helper block (Extract Delay) that works in tandem with these PDUs that can set variables and control standard delay blocks to align the signals.  This helper block also has a "lock" feature that can allow you to dynamically block/allow the delay changes at runtime with a checkbox or other control.
 
 One design element that was incorporated to keep flowgraph performance optimal is two runtime modes: asynchronous or sequential.  Since we're acting as a sink block and don't need to output realtime streams of data, async mode can take a block of samples for processing, and pass them to another thread for processing in parallel.  The work function can then just return that it processed the samples until the other thread's processing is complete.  At which point the worker thread will signal the work function that it should produce the appropriate PDUs on the main thread and pick up the next block.  This allows the block to correlate as quickly as possible without holding up processing, and should allow for correlation at any flowgraph sample rate.  This also prevents the delay blocks from receiving buffer changes every frame.  In sequential mode, the work function will block until processing is completed, which in some scenarios may be the more appropriate approach.  Async is the default mode for the block.
 

@@ -714,7 +714,7 @@ namespace gr {
 	    cl::Kernel *ccmag_kernel=NULL;
 
 	    void buildKernel();
-		void buildCCMagAndScaleKernel();
+		void buildCCMagKernel();
 
 		void setBufferLength();
 

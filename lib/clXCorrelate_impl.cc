@@ -924,7 +924,7 @@ void clXCorrelate_impl::buildCCMagKernel() {
 		srcStdStr += "	  float tgt_val = (a[index].real*a[index].real)  + (a[index].imag*a[index].imag);\n";
 	}
 
-	srcStdStr += "	  c[index] = tgt_val;\n";
+	srcStdStr += "	  c[index] = sqrt(tgt_val);\n";
 
 	srcStdStr += "}\n";
 

@@ -741,7 +741,7 @@ clxcorrelate_fft_vcf_impl::clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs
 	setBufferLength();
 
 	buildKernel(); // This will build the multiply conjugate kernel
-	buildCCMagAndScaleKernel();
+	buildCCMagKernel();
 }
 
 void clxcorrelate_fft_vcf_impl::setBufferLength() {
@@ -881,20 +881,17 @@ void clxcorrelate_fft_vcf_impl::buildKernel() {
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
 }
 
-void clxcorrelate_fft_vcf_impl::buildCCMagAndScaleKernel() {
+void clxcorrelate_fft_vcf_impl::buildCCMagKernel() {
 	// Now we set up our OpenCL kernel
 	std::string srcStdStr="";
-	std::string fnName = "ComplexToMagAndScale";
-
-	// This scale factor comes about from the way clfft does the reverse FFT
-	srcStdStr += "#define d_fft_scale 4.0f / (float)" + std::to_string(d_fft_size) + "\n";
+	std::string fnName = "ComplexToMag";
 
 	srcStdStr += "struct ComplexStruct {\n";
 	srcStdStr += "float real;\n";
 	srcStdStr += "float imag; };\n";
 	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
-	srcStdStr += "__kernel void ComplexToMagAndScale(__global SComplex * restrict a, __global float * restrict c) {\n";
+	srcStdStr += "__kernel void ComplexToMag(__global SComplex * restrict a, __global float * restrict c) {\n";
 
 	srcStdStr += "    size_t index =  get_global_id(0);\n";
 
@@ -906,7 +903,7 @@ void clxcorrelate_fft_vcf_impl::buildCCMagAndScaleKernel() {
 		srcStdStr += "	  float tgt_val = (a[index].real*a[index].real)  + (a[index].imag*a[index].imag);\n";
 	}
 
-	srcStdStr += "	  c[index] = tgt_val * d_fft_scale;\n";
+	srcStdStr += "	  c[index] = sqrt(tgt_val);\n";
 
 	srcStdStr += "}\n";
 

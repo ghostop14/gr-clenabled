@@ -55,6 +55,7 @@ int maxsearch=512;
 int num_inputs = 2;
 int decimation = 1;
 int input_type=DTYPE_FLOAT;
+bool fftonly = false;
 
 class comma_numpunct : public std::numpunct<char>
 {
@@ -307,10 +308,10 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--input_complex] [--num_inputs=<num inputs>] [--maxsearch=<search_depth>] [number of samples (default is 8192)]" << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--fftonly] [--input_complex] [--num_inputs=<num inputs>] [--maxsearch=<search_depth>] [number of samples (default is 8192)]" << std::endl;
 			std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
-			std::cout << "If not specified, maxsearch will default to 512." << std::endl;
-			std::cout << "--input_complex will switch from float to complex inputs to the test routine." << std::endl;
+			std::cout << "If not specified, maxsearch for time-domain will default to 512." << std::endl;
+			std::cout << "--input_complex will switch the time-domain test from float to complex inputs to the test routine." << std::endl;
 			std::cout << std::endl;
 			exit(0);
 		}
@@ -351,6 +352,9 @@ main (int argc, char **argv)
 			else if (strcmp(argv[i],"--input_complex")==0) {
 				input_type = DTYPE_COMPLEX;
 			}
+			else if (strcmp(argv[i],"--fftonly")==0) {
+				fftonly=true;
+			}
 			else if (strcmp(argv[i],"--any")==0) {
 				opencltype=OCLTYPE_ANY;
 			}else if (atoi(argv[i]) > 0) {
@@ -368,7 +372,9 @@ main (int argc, char **argv)
 	}
 	bool was_successful;
 
-	was_successful = testXCorrelate();
+	if (!fftonly)
+		was_successful = testXCorrelate();
+
 	was_successful = testFFTXCorrelate();
 	std::cout << std::endl;
 

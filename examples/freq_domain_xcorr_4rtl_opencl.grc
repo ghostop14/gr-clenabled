@@ -180,7 +180,7 @@ blocks:
   id: variable_qtgui_range
   parameters:
     comment: ''
-    gui_hint: 0,1,1,1
+    gui_hint: 0,0,1,1
     label: Gain
     min_len: '200'
     orient: Qt.Horizontal
@@ -195,27 +195,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [408, 20.0]
-    rotation: 0
-    state: enabled
-- name: lag
-  id: variable_qtgui_range
-  parameters:
-    comment: ''
-    gui_hint: 0,2,1,1
-    label: Induced Lag
-    min_len: '200'
-    orient: Qt.Horizontal
-    rangeType: int
-    start: '-20'
-    step: '1'
-    stop: '20'
-    value: '10'
-    widget: counter_slider
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [536, 20.0]
     rotation: 0
     state: enabled
 - name: lock_output
@@ -263,7 +242,7 @@ blocks:
   id: variable_qtgui_range
   parameters:
     comment: ''
-    gui_hint: 0,3,1,1
+    gui_hint: 0,1,1,1
     label: Volume
     min_len: '200'
     orient: Qt.Horizontal

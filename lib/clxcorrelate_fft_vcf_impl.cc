@@ -1034,10 +1034,10 @@ clxcorrelate_fft_vcf_impl::work(int noutput_items,
 		gr_vector_void_star &output_items)
 {
 	int err;
+	int stride = d_fft_size * noutput_items;
 	int required_buf = d_fft_size * noutput_items * (d_num_inputs-1);
 
-	const gr_complex *ref_sig = (const gr_complex *) input_items[0];
-	int stride = d_fft_size * noutput_items;
+	const gr_complex *ref_input = (const gr_complex *) input_items[0];
 
 	// Protect context from switching
 	gr::thread::scoped_lock guard(d_mutex);
@@ -1048,14 +1048,17 @@ clxcorrelate_fft_vcf_impl::work(int noutput_items,
 		curBufferSize = required_buf;
 	}
 
-	for (int cur_signal=1;cur_signal<d_num_inputs;cur_signal++) {
-		// reset ref_sig pointer
-		ref_sig = (const gr_complex *) input_items[0];
-		// grab next signal
-		const gr_complex *cur_sig = (const gr_complex *) input_items[cur_signal];
+	for (int i=0;i<noutput_items;i++) {
+		const gr_complex *ref_sig = (const gr_complex *) &ref_input[i*d_fft_size];
+		// Queue this just once and work "down" the signals.
+		queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
 
-		for (int i=0;i<noutput_items;i++) {
-			queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+		for (int cur_signal=1;cur_signal<d_num_inputs;cur_signal++) {
+			// Get the current cur_sig output item block
+			const gr_complex *cur_sig = (const gr_complex *) input_items[cur_signal];
+			// Offset to the current output item block
+			cur_sig = &cur_sig[i*d_fft_size];
+
 			queue->enqueueWriteBuffer(*sigBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
 
 			// Multiply conjugate
@@ -1083,9 +1086,6 @@ clxcorrelate_fft_vcf_impl::work(int noutput_items,
 
 			// Copy result into temp buffer
 			queue->enqueueReadBuffer(*floatBuffer,CL_FALSE,0,d_fft_size*sizeof(float),(void *)&tmp_buffer[stride*(cur_signal-1)+i*d_fft_size]);
-
-			ref_sig += d_fft_size;
-			cur_sig += d_fft_size;
 		}
 	}
 

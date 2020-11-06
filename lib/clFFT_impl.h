@@ -36,24 +36,38 @@ namespace gr {
 
      private:
 
-        gr::clenabled::fft_complex          *d_fft;
+        gr::clenabled::fft_complex          *d_fft=NULL;
         unsigned int          d_fft_size;
         std::vector<float>    d_window;
         bool                  d_forward;
         bool                  d_shift;
+        int					  d_num_streams;
 
 		cl::Buffer *aBuffer=NULL;
+		cl::Buffer *ocl_windowBuffer=NULL;
 		cl::Buffer *cBuffer=NULL;
 		int curBufferSize=0;
 		int fft_times_data_size;
+		int fft_times_data_size_out; // This will always be complex
 		int fft_times_data_times_batch;
 		int maxBatchSize;
 		void *windowBuffer=NULL;
+
+		gr_complex *tmp_buffer = NULL;
+        int vlen_2;
+        int data_size_2;
 
 		// clFFT
 		clfftPlanHandle planHandle;
 		clfftDim dim = CLFFT_1D;
 		clfftDirection fftDir = CLFFT_FORWARD;  // options are CLFFT_FORWARD (-1) or CLFFT_BACKWARD (1)  [see clFFT.h]
+
+		// Additional multiply kernel for window
+	    cl::Program::Sources *multiply_sources=NULL;
+	    cl::Program *multiply_program=NULL;
+	    cl::Kernel *multiply_kernel=NULL;
+
+	    void buildMultiplyFloatKernel();
 
 		void setBufferLength(int numItems);
 
@@ -74,7 +88,8 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items);
 
-      clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &window,int idataType, int dSize, int openCLPlatformType,int devSelector,int platformId, int devId,bool setDebug=false);
+      clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &window,int idataType, int dSize, int openCLPlatformType,
+    		  int devSelector,int platformId, int devId,bool setDebug=false,int num_streams=1, bool shift=false);
       virtual ~clFFT_impl();
 
       virtual bool stop();

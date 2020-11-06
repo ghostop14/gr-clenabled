@@ -10,7 +10,7 @@ options:
     gen_linking: dynamic
     generate_options: qt_gui
     hier_block_src_path: '.:'
-    id: test_openclfft_rev
+    id: test_openclfft_multstreams
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -75,7 +75,47 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 480]
+    coordinate: [88, 452.0]
+    rotation: 0
+    state: enabled
+- name: analog_sig_source_x_0_0
+  id: analog_sig_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    amp: '1'
+    comment: ''
+    freq: 500e3
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    phase: '0'
+    samp_rate: samp_rate
+    type: complex
+    waveform: analog.GR_COS_WAVE
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [168, 592]
+    rotation: 0
+    state: enabled
+- name: blocks_add_xx_0
+  id: blocks_add_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [344, 552]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_vector_1
@@ -93,7 +133,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [320, 380]
+    coordinate: [384, 380]
     rotation: 0
     state: enabled
 - name: blocks_throttle_0
@@ -130,7 +170,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [840, 344.0]
+    coordinate: [1080, 352.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_stream_0_0
@@ -148,7 +188,25 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [792, 472.0]
+    coordinate: [1072, 480.0]
+    rotation: 0
+    state: true
+- name: blocks_vector_to_stream_0_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: fftsize
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1064, 624.0]
     rotation: 0
     state: true
 - name: clenabled_clFFT_0
@@ -159,45 +217,23 @@ blocks:
     comment: ''
     deviceId: '0'
     devices: '1'
-    fft_dir: '1'
+    fft_dir: '-1'
     fft_size: '1024'
     maxoutbuf: '0'
     minoutbuf: '0'
-    num_streams: '1'
+    num_streams: '2'
     openCLPlatform: '1'
     platformId: '0'
     setDebug: '0'
-    shift: 'False'
-    type: complex
-    window: '[]'
+    shift: 'True'
+    window: window.blackmanharris(1024)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [560, 456.0]
+    coordinate: [576, 468.0]
     rotation: 0
     state: true
-- name: fft_vxx_0
-  id: fft_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fft_size: fftsize
-    forward: 'True'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    nthreads: '1'
-    shift: 'True'
-    type: complex
-    window: '[]'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [360, 248]
-    rotation: 0
-    state: enabled
 - name: fft_vxx_1
   id: fft_vxx
   parameters:
@@ -216,7 +252,70 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 276.0]
+    coordinate: [840, 308.0]
+    rotation: 0
+    state: true
+- name: fft_vxx_1_0
+  id: fft_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    fft_size: '1024'
+    forward: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    shift: 'False'
+    type: complex
+    window: '[]'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [840, 460.0]
+    rotation: 0
+    state: true
+- name: fft_vxx_1_0_0
+  id: fft_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    fft_size: '1024'
+    forward: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    shift: 'False'
+    type: complex
+    window: '[]'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [840, 604.0]
+    rotation: 0
+    state: true
+- name: fft_vxx_3
+  id: fft_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    fft_size: '1024'
+    forward: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    shift: 'True'
+    type: complex
+    window: window.blackmanharris(1024)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [584, 308.0]
     rotation: 0
     state: true
 - name: note_0
@@ -274,7 +373,7 @@ blocks:
     label1: CPU
     label10: ''''''
     label2: '''OpenCL'''
-    label3: ''''''
+    label3: '''Stream 2'''
     label4: ''''''
     label5: ''''''
     label6: ''''''
@@ -285,7 +384,7 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     name: '""'
-    nconnections: '2'
+    nconnections: '3'
     showports: 'False'
     tr_chan: '0'
     tr_level: '0.0'
@@ -311,20 +410,27 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1144, 392.0]
+    coordinate: [1256, 400.0]
     rotation: 0
     state: true
 
 connections:
-- [analog_sig_source_x_0, '0', blocks_throttle_0, '0']
-- [blocks_stream_to_vector_1, '0', fft_vxx_0, '0']
+- [analog_sig_source_x_0, '0', blocks_add_xx_0, '0']
+- [analog_sig_source_x_0_0, '0', blocks_add_xx_0, '1']
+- [blocks_add_xx_0, '0', blocks_throttle_0, '0']
+- [blocks_stream_to_vector_1, '0', clenabled_clFFT_0, '0']
+- [blocks_stream_to_vector_1, '0', clenabled_clFFT_0, '1']
+- [blocks_stream_to_vector_1, '0', fft_vxx_3, '0']
 - [blocks_throttle_0, '0', blocks_stream_to_vector_1, '0']
 - [blocks_vector_to_stream_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_vector_to_stream_0_0, '0', qtgui_freq_sink_x_0, '1']
-- [clenabled_clFFT_0, '0', blocks_vector_to_stream_0_0, '0']
-- [fft_vxx_0, '0', clenabled_clFFT_0, '0']
-- [fft_vxx_0, '0', fft_vxx_1, '0']
+- [blocks_vector_to_stream_0_0_0, '0', qtgui_freq_sink_x_0, '2']
+- [clenabled_clFFT_0, '0', fft_vxx_1_0, '0']
+- [clenabled_clFFT_0, '1', fft_vxx_1_0_0, '0']
 - [fft_vxx_1, '0', blocks_vector_to_stream_0, '0']
+- [fft_vxx_1_0, '0', blocks_vector_to_stream_0_0, '0']
+- [fft_vxx_1_0_0, '0', blocks_vector_to_stream_0_0_0, '0']
+- [fft_vxx_3, '0', fft_vxx_1, '0']
 
 metadata:
   file_format: 1

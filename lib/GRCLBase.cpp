@@ -231,6 +231,9 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
         case DTYPE_COMPLEX:
         	dataSize=sizeof(SComplex);
         break;
+        default:
+        	dataSize=dsize;
+        break;
         }
     }
     catch(cl::Error& e) {

@@ -780,24 +780,24 @@ int testFn(int noutput_items,
 
 bool testFFT(bool runReverse) {
 	// Testing/profiling with CLFFT-client:
-	// clFFT-client -x 2048 -p 10 -c -o -b 4
+	// clFFT-client -x 2048 -p 10 -c -o -b 1
 
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	int fftSize=2048;
+	float p2 = log2(largeBlockSize);
 
-	int fftDataSize;
-
-	fftDataSize = (int)((float)largeBlockSize / (float)fftSize) * fftSize;
+	int fftDataSize = (int)pow(2,ceil(p2));
 
 	if (fftDataSize == 0)
-		fftDataSize = fftSize;
+		fftDataSize = 1024;
 
-	std::cout << "Testing Forward FFT size of " << fftSize << " and " << fftDataSize << " data points." << std::endl;
+	int fftSize = fftDataSize;
+
+	std::cout << "Testing Forward FFT size of " << fftDataSize << "." << std::endl;
 
 	gr::clenabled::clFFT_impl *test=NULL;
 	try {
-		test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_FORWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
+		test = new gr::clenabled::clFFT_impl(fftDataSize,CLFFT_FORWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up OpenCL environment." << std::endl;
@@ -913,7 +913,7 @@ bool testFFT(bool runReverse) {
 
 	std::cout << "Testing Reverse FFT" << std::endl;
 	delete test;
-	test = new gr::clenabled::clFFT_impl(fftSize,CLFFT_BACKWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
+	test = new gr::clenabled::clFFT_impl(fftDataSize,CLFFT_BACKWARD,gr::clenabled::window::blackman(fftSize),DTYPE_COMPLEX,sizeof(gr_complex),opencltype,selectorType,platformId,devId,true);
 
 	inputItems.clear();
 

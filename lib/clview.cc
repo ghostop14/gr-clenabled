@@ -100,6 +100,8 @@ main (int argc, char **argv)
         		cl_int localMemSize = devices[j].getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
         		cl_int memInK=(int)((float)maxConstMemSize / 1024.0);
         		cl_int localMemInK=(int)((float)localMemSize / 1024.0);
+        		cl_uint computeUnits = devices[j].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+        		size_t wgSize = devices[j].getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
 
             	std::string Ocl2Caps="[OpenCL 2.0 Capabilities]";
 
@@ -108,6 +110,16 @@ main (int argc, char **argv)
             	std::cout << "Platform Name: " << platformName << std::endl;
             	std::cout << "Device Name: " << deviceName << std::endl;
             	std::cout << "Device Type: " << deviceType << std::endl;
+            	try {
+            		// Only available from 2.0 on.
+            		cl_uint freq = devices[j].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+                	std::cout << "Clock Frequency: " << freq << " MHz" << std::endl;
+            	}
+            	catch(...) {
+
+            	}
+            	std::cout << "Compute Units: " << computeUnits << " (A workgroup executes on a compute unit.  This represents parallel workgroups.)" << std::endl;
+            	std::cout << "Max Workgroup Size: " << wgSize << std::endl;
             	std::cout << "Constant Memory: " << memInK << "K (" << (maxConstMemSize/4) << " floats)" << std::endl;
             	std::cout << "Local Memory: " << localMemInK << "K (" << (localMemSize/4) << " floats)" << std::endl;
 

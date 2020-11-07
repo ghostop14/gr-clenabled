@@ -10,7 +10,7 @@ options:
     gen_linking: dynamic
     generate_options: qt_gui
     hier_block_src_path: '.:'
-    id: freq_domain_xcorr_4rtl_opencl
+    id: freq_domain_xcorr_4rtl_opencl_td
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -645,7 +645,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [744, 512.0]
+    coordinate: [712, 448.0]
     rotation: 0
     state: true
 - name: blocks_stream_to_vector_0_0_0_0
@@ -663,7 +663,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [800, 720.0]
+    coordinate: [768, 584.0]
     rotation: 0
     state: true
 - name: blocks_sub_xx_0
@@ -780,90 +780,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [240, 1052.0]
-    rotation: 0
-    state: true
-- name: fft_vxx_0
-  id: fft_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fft_size: chans
-    forward: 'True'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    nthreads: '1'
-    shift: 'True'
-    type: complex
-    window: '[1.0,]*chans'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [688, 196.0]
-    rotation: 0
-    state: true
-- name: fft_vxx_0_0
-  id: fft_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fft_size: chans
-    forward: 'True'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    nthreads: '1'
-    shift: 'True'
-    type: complex
-    window: '[1.0,]*chans'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [696, 396.0]
-    rotation: 0
-    state: true
-- name: fft_vxx_0_0_0
-  id: fft_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fft_size: chans
-    forward: 'True'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    nthreads: '1'
-    shift: 'True'
-    type: complex
-    window: '[1.0,]*chans'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [736, 548.0]
-    rotation: 0
-    state: true
-- name: fft_vxx_0_0_0_0
-  id: fft_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fft_size: chans
-    forward: 'True'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    nthreads: '1'
-    shift: 'True'
-    type: complex
-    window: '[1.0,]*chans'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [848, 804.0]
     rotation: 0
     state: true
 - name: lfast_low_pass_filter_0_0
@@ -2825,10 +2741,10 @@ connections:
 - [blocks_max_xx_0_0, '0', qtgui_number_sink_0, '1']
 - [blocks_multiply_const_vxx_0, '0', audio_sink_0, '0']
 - [blocks_multiply_const_vxx_0_0, '0', qtgui_number_sink_0_0_0, '0']
-- [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
-- [blocks_stream_to_vector_0_0, '0', fft_vxx_0_0, '0']
-- [blocks_stream_to_vector_0_0_0, '0', fft_vxx_0_0_0, '0']
-- [blocks_stream_to_vector_0_0_0_0, '0', fft_vxx_0_0_0_0, '0']
+- [blocks_stream_to_vector_0, '0', clenabled_clxcorrelate_fft_vcf_0, '0']
+- [blocks_stream_to_vector_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '1']
+- [blocks_stream_to_vector_0_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '2']
+- [blocks_stream_to_vector_0_0_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '3']
 - [blocks_sub_xx_0, '0', blocks_multiply_const_vxx_0_0, '0']
 - [clenabled_clxcorrelate_fft_vcf_0, '0', blocks_keep_one_in_n_1, '0']
 - [clenabled_clxcorrelate_fft_vcf_0, '0', qtgui_vector_sink_f_0, '0']
@@ -2840,10 +2756,6 @@ connections:
 - [correctiq_correctiq_auto_0_0_0_0_0, '0', lfast_low_pass_filter_0_0_0, '0']
 - [correctiq_correctiq_auto_0_0_0_0_0_0, '0', lfast_low_pass_filter_0_0_0_0, '0']
 - [correctiq_correctiq_auto_0_0_0_0_0_0_0, '0', lfast_low_pass_filter_0_0_0_0_0, '0']
-- [fft_vxx_0, '0', clenabled_clxcorrelate_fft_vcf_0, '0']
-- [fft_vxx_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '1']
-- [fft_vxx_0_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '2']
-- [fft_vxx_0_0_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '3']
 - [lfast_low_pass_filter_0_0, '0', blocks_add_xx_0, '0']
 - [lfast_low_pass_filter_0_0, '0', blocks_complex_to_mag_0, '0']
 - [lfast_low_pass_filter_0_0, '0', blocks_stream_to_vector_0, '0']

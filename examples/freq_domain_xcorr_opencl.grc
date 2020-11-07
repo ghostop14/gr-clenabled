@@ -178,9 +178,9 @@ blocks:
     min_len: '200'
     orient: Qt.Horizontal
     rangeType: int
-    start: '-20'
+    start: '-200'
     step: '1'
-    stop: '20'
+    stop: '200'
     value: '10'
     widget: counter_slider
   states:
@@ -612,6 +612,7 @@ blocks:
     comment: ''
     deviceId: '0'
     devices: '1'
+    input_type: '1'
     maxoutbuf: '0'
     minoutbuf: '0'
     num_inputs: '2'
@@ -638,7 +639,7 @@ blocks:
     nthreads: '1'
     shift: 'True'
     type: complex
-    window: '[1.0,]*chans'
+    window: '[]'
   states:
     bus_sink: false
     bus_source: false
@@ -659,7 +660,7 @@ blocks:
     nthreads: '1'
     shift: 'True'
     type: complex
-    window: '[1.0,]*chans'
+    window: '[]'
   states:
     bus_sink: false
     bus_source: false

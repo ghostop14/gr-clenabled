@@ -686,23 +686,28 @@ namespace gr {
 namespace clenabled {
 
 clxcorrelate_fft_vcf::sptr
-clxcorrelate_fft_vcf::make(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId)
+clxcorrelate_fft_vcf::make(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId, int input_type)
 {
 	return gnuradio::get_initial_sptr
-			(new clxcorrelate_fft_vcf_impl(fftSize, num_inputs, openCLPlatformType, devSelector, platformId, devId));
+			(new clxcorrelate_fft_vcf_impl(fftSize, num_inputs, openCLPlatformType, devSelector, platformId, devId, input_type));
 }
 
 
 /*
  * The private constructor
  */
-clxcorrelate_fft_vcf_impl::clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId)
+clxcorrelate_fft_vcf_impl::clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId, int input_type)
 : gr::sync_block("clxcorrelate_fft_vcf",
 		gr::io_signature::make(2, num_inputs, sizeof(gr_complex)*fftSize),
 		gr::io_signature::make(1, num_inputs-1, sizeof(float)*fftSize)),
 		GRCLBase(DTYPE_COMPLEX, sizeof(gr_complex),openCLPlatformType,devSelector,platformId,devId,0),
 		d_fft_size(fftSize),d_num_inputs(num_inputs)
 {
+	if (input_type == 2) // time-series
+		d_perform_fft_first = true;
+	else
+		d_perform_fft_first = false;
+
 	/* Create a default plan for a complex FFT. */
 	size_t clLengths[1];
 	clLengths[0]=(size_t)fftSize;
@@ -757,13 +762,32 @@ void clxcorrelate_fft_vcf_impl::setBufferLength() {
 	if (floatBuffer)
 		delete floatBuffer;
 
+	if (timeSeriesBuffer)
+		delete timeSeriesBuffer;
+
 	fft_times_data_size = d_fft_size * sizeof(gr_complex); // curBufferSize will be fftSize
 
-	// Ref signal buffer
-	refBuffer = new cl::Buffer(
-			*context,
-			CL_MEM_READ_ONLY,
-			fft_times_data_size);
+	if (d_perform_fft_first) {
+		// Ref signal buffer
+		timeSeriesBuffer = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY,
+				fft_times_data_size);
+
+		// Ref signal buffer
+		// If we need to do the FFT's we'll need to write to this.
+		refBuffer = new cl::Buffer(
+				*context,
+				CL_MEM_READ_WRITE,
+				fft_times_data_size);
+	}
+	else {
+		// Ref signal buffer
+		refBuffer = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY,
+				fft_times_data_size);
+	}
 
 	// signal n buffer
 	sigBuffer = new cl::Buffer(
@@ -798,6 +822,11 @@ bool clxcorrelate_fft_vcf_impl::stop() {
 	err = clfftDestroyPlan( &planHandle );
 	/* Release clFFT library. */
 	clfftTeardown( );
+
+	if (timeSeriesBuffer) {
+		delete timeSeriesBuffer;
+		timeSeriesBuffer = NULL;
+	}
 
 	if (refBuffer) {
 		delete refBuffer;
@@ -1048,7 +1077,13 @@ clxcorrelate_fft_vcf_impl::work(int noutput_items,
 	for (int i=0;i<noutput_items;i++) {
 		const gr_complex *ref_sig = (const gr_complex *) &ref_input[i*d_fft_size];
 		// Queue this just once and work "down" the signals.
-		queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+		if (d_perform_fft_first) {
+			queue->enqueueWriteBuffer(*timeSeriesBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+			err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &((*queue)()), 0, NULL, NULL, &((*timeSeriesBuffer)()), &((*refBuffer)()), NULL);
+		}
+		else {
+			queue->enqueueWriteBuffer(*refBuffer,CL_FALSE,0,fft_times_data_size,(void *)ref_sig);
+		}
 
 		for (int cur_signal=1;cur_signal<d_num_inputs;cur_signal++) {
 			// Get the current cur_sig output item block
@@ -1056,7 +1091,13 @@ clxcorrelate_fft_vcf_impl::work(int noutput_items,
 			// Offset to the current output item block
 			cur_sig = &cur_sig[i*d_fft_size];
 
-			queue->enqueueWriteBuffer(*sigBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
+			if (d_perform_fft_first) {
+				queue->enqueueWriteBuffer(*timeSeriesBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
+				err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &((*queue)()), 0, NULL, NULL, &((*timeSeriesBuffer)()), &((*sigBuffer)()), NULL);
+			}
+			else {
+				queue->enqueueWriteBuffer(*sigBuffer,CL_FALSE,0,fft_times_data_size,(void *)cur_sig);
+			}
 
 			// Multiply conjugate
 			kernel->setArg(0, *refBuffer);

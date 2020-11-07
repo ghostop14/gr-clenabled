@@ -702,7 +702,8 @@ namespace gr {
        * class. clenabled::clxcorrelate_fft_vcf::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId);
+      // Default input type is FFT (1), time-series is (2).  Time-series will trigger an FFT first internally.
+      static sptr make(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId, int input_type=1);
     };
 
   } // namespace clenabled

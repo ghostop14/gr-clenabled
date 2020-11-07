@@ -3,11 +3,17 @@ label: OpenCL XCorrelate FFT
 category: '[OpenCL-Accelerated]'
 
 parameters:
--   id: vec_len
-    label: Vector Size
-    dtype: int
-    default: '1024'
-    hide: none
+- id: input_type
+  label: Input Type
+  dtype: enum
+  options: ['1', '2']
+  option_labels: [FFT, Time-Series Vector]
+  hide: part
+- id: vec_len
+  label: Vector Size
+  dtype: int
+  default: '1024'
+  hide: none
 - id: num_inputs
   label: Number of Signals
   dtype: int
@@ -50,12 +56,12 @@ templates:
     imports: import clenabled
     make: |-
        % if devices == 1:
-       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},1,0,0)
+       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},1,0,0,${input_type})
        % else:
-       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},${devices},${platformId},${deviceId})
+       clenabled.clxcorrelate_fft_vcf(${vec_len},${num_inputs},${openCLPlatform},${devices},${platformId},${deviceId},${input_type})
        % endif
     
 documentation: |-
-    This block takes two incoming FFT vectors and produces their cross-correlation in the frequency domain.  Note that this correlation is not normalized.
+    This block takes incoming vectors (either already FFT'd vectors or time-series converted to vector with stream-to-vector, and produces their cross-correlation with the calculations performed in the frequency domain.  Note that this correlation is not normalized.
 
 file_format: 1

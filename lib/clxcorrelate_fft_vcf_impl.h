@@ -693,11 +693,13 @@ namespace gr {
         int vlen_2;
         int data_size_2;
         int corrective_lag[1];
+        bool d_perform_fft_first=false;
 
         float *tmp_buffer;
 		int curBufferSize;
 		int fft_times_data_size;
 
+		cl::Buffer *timeSeriesBuffer=NULL;
 		cl::Buffer *refBuffer=NULL;
 		cl::Buffer *sigBuffer=NULL;
 		cl::Buffer *revFFTBuffer=NULL;
@@ -719,7 +721,8 @@ namespace gr {
 		void setBufferLength();
 
      public:
-      clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId);
+	  // Default input type is FFT (1), time-series is (2).  Time-series will trigger an FFT first internally.
+      clxcorrelate_fft_vcf_impl(int fftSize, int num_inputs, int openCLPlatformType,int devSelector,int platformId, int devId, int input_type=1);
       ~clxcorrelate_fft_vcf_impl();
 
       bool stop();

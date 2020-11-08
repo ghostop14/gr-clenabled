@@ -1,5 +1,5 @@
 id: clenabled_clxcorrelate_fft_vcf
-label: OpenCL XCorrelate FFT
+label: OpenCL Ref Correlate FD
 category: '[OpenCL-Accelerated]'
 
 parameters:

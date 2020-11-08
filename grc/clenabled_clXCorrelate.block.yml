@@ -1,5 +1,5 @@
 id: clenabled_XCorrelate
-label: OpenCL XCorrelate
+label: OpenCL Ref Correlate TD
 category: '[OpenCL-Accelerated]'
 
 parameters:

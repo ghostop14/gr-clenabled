@@ -444,24 +444,6 @@ blocks:
     coordinate: [1296, 352.0]
     rotation: 0
     state: true
-- name: blocks_keep_one_in_n_0
-  id: blocks_keep_one_in_n
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    n: stage1_decimation
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [760, 664.0]
-    rotation: 0
-    state: true
 - name: blocks_keep_one_in_n_1
   id: blocks_keep_one_in_n
   parameters:
@@ -689,7 +671,7 @@ blocks:
     coordinate: [1040, 204.0]
     rotation: 0
     state: enabled
-- name: lfast_low_pass_filter_0_0
+- name: lfast_low_pass_filter_0_0_0
   id: lfast_low_pass_filter
   parameters:
     affinity: ''
@@ -697,7 +679,7 @@ blocks:
     beta: '6.76'
     comment: ''
     cutoff_freq: filter_cutoff
-    decim: '1'
+    decim: stage1_decimation
     gain: '1'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -710,7 +692,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [264, 196.0]
+    coordinate: [528, 604.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0
@@ -1312,7 +1294,7 @@ blocks:
 connections:
 - [analog_wfm_rcv_0, '0', rational_resampler_xxx_0_0, '0']
 - [blocks_add_xx_0, '0', blocks_complex_to_mag_0_0_0, '0']
-- [blocks_add_xx_0, '0', blocks_keep_one_in_n_0, '0']
+- [blocks_add_xx_0, '0', lfast_low_pass_filter_0_0_0, '0']
 - [blocks_complex_to_mag_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_complex_to_mag_0_0, '0', qtgui_time_sink_x_0, '1']
 - [blocks_complex_to_mag_0_0_0, '0', qtgui_time_sink_x_0, '2']
@@ -1324,7 +1306,6 @@ connections:
 - [blocks_delay_0, '0', blocks_stream_to_vector_0_0, '0']
 - [blocks_delay_1, '0', blocks_add_xx_0, '1']
 - [blocks_interleave_0, '0', blocks_stream_to_vector_0_1, '0']
-- [blocks_keep_one_in_n_0, '0', analog_wfm_rcv_0, '0']
 - [blocks_keep_one_in_n_1, '0', xcorrelate_VectorMaxIndexToVar_0, '0']
 - [blocks_keep_one_in_n_1_0, '0', xcorrelate_VectorMaxIndexToVar_0_0, '0']
 - [blocks_multiply_conjugate_cc_0_0, '0', fft_vxx_0_1, '0']
@@ -1341,12 +1322,12 @@ connections:
 - [fft_vxx_0_0, '0', blocks_multiply_conjugate_cc_0_0, '1']
 - [fft_vxx_0_0, '0', clenabled_clxcorrelate_fft_vcf_0, '1']
 - [fft_vxx_0_1, '0', blocks_complex_to_mag_1, '0']
-- [lfast_low_pass_filter_0_0, '0', blocks_add_xx_0, '0']
-- [lfast_low_pass_filter_0_0, '0', blocks_complex_to_mag_0, '0']
-- [lfast_low_pass_filter_0_0, '0', blocks_delay_0, '0']
-- [lfast_low_pass_filter_0_0, '0', blocks_stream_to_vector_0, '0']
+- [lfast_low_pass_filter_0_0_0, '0', analog_wfm_rcv_0, '0']
 - [rational_resampler_xxx_0_0, '0', blocks_multiply_const_vxx_0, '0']
-- [uhd_usrp_source_0, '0', lfast_low_pass_filter_0_0, '0']
+- [uhd_usrp_source_0, '0', blocks_add_xx_0, '0']
+- [uhd_usrp_source_0, '0', blocks_complex_to_mag_0, '0']
+- [uhd_usrp_source_0, '0', blocks_delay_0, '0']
+- [uhd_usrp_source_0, '0', blocks_stream_to_vector_0, '0']
 
 metadata:
   file_format: 1

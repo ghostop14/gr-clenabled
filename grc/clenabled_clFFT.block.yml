@@ -3,6 +3,15 @@ label: OpenCL FFT
 category: '[OpenCL-Enabled]'
 
 parameters:
+-   id: type
+    label: Data Type
+    dtype: enum
+    options: [complex, float]
+    option_attributes:
+        datatype: ['1', '2']
+        input: [complex, float]
+        output: [complex, complex]
+    hide: part
 -   id: openCLPlatform
     label: OpenCL Platform Type
     dtype: enum
@@ -58,7 +67,7 @@ parameters:
 
 inputs:
 -   domain: stream
-    dtype: complex
+    dtype: ${ type.input }
     vlen: ${ fft_size }
     multiplicity: ${num_streams}
 
@@ -74,9 +83,9 @@ templates:
         import clenabled
     make: |-
        % if devices == 1:
-       clenabled.clFFT(${fft_size},${fft_dir},${window},1,${openCLPlatform},1,0,0,${setDebug},${num_streams}, ${shift})
+       clenabled.clFFT(${fft_size},${fft_dir},${window},${type.datatype},${openCLPlatform},1,0,0,${setDebug},${num_streams}, ${shift})
        % else:
-       clenabled.clFFT(${fft_size},${fft_dir},${window},1,${openCLPlatform},${devices},${platformId},${deviceId},${setDebug},${num_streams},${shift})
+       clenabled.clFFT(${fft_size},${fft_dir},${window},${type.datatype},${openCLPlatform},${devices},${platformId},${deviceId},${setDebug},${num_streams},${shift})
        % endif
 
 documentation: |-

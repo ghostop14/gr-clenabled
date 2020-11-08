@@ -111,10 +111,12 @@ clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &windo
 	}
 	else {
 		// This matches the GR FFT block.  Output is always complex.
-		err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_COMPLEX_INTERLEAVED);
+		err = clfftSetLayout(planHandle, CLFFT_REAL, CLFFT_HERMITIAN_INTERLEAVED);
 	}
 
-	std::cout << "setLayout return value: " << err << std::endl;
+	if (err != CL_SUCCESS) {
+		std::cout << "Error setting FFT in/out data types.  setLayout return value: " << err << std::endl;
+	}
 
 	clfftSetPlanScale(planHandle, CLFFT_FORWARD, 1.0f); // 1.0 is the default but don't assume.
 	clfftSetPlanScale(planHandle, CLFFT_BACKWARD, 1.0f); // By default the backward scale is set to 1/N so you have to set it here.
@@ -141,7 +143,7 @@ clFFT_impl::clFFT_impl(int fftSize, int clFFTDir,const std::vector<float> &windo
 	d_fft = new fft_complex(d_fft_size, d_forward, 1);
 
 	// We'll need this if we have to swap the FFT
-	if (d_shift && (dataType == DTYPE_COMPLEX)) {
+	if ((d_shift && (dataType == DTYPE_COMPLEX)) || (dataType == DTYPE_FLOAT) ) {
 		tmp_buffer = new gr_complex[d_fft_size];
 	}
 
@@ -598,6 +600,29 @@ int clFFT_impl::processOpenCL(int noutput_items,
 				memcpy(tmp_buffer, out, fft_times_data_size);
 				memcpy(out, &tmp_buffer[vlen_2], data_size_2);
 				memcpy(&out[vlen_2], &tmp_buffer[0], data_size_2);
+
+				out += d_fft_size;
+			}
+		}
+	}
+	else if ( (fftDir==CLFFT_FORWARD) && (dataType == DTYPE_FLOAT) ){
+		// The resulting transform will be hermitian.  So you have to copy it and take the conjugate
+		// to recover the second half
+		for (int cur_signal=0;cur_signal<d_num_streams;cur_signal++) {
+			gr_complex *out = (gr_complex *) output_items[cur_signal];
+
+			for (int i=0;i<noutput_items;i+=d_fft_size) {
+				// Hermitian only outputs half the output since the other half
+				// Is the complex conjugate.  It's up to the program to fill in the
+				// missing half.
+				memcpy(&out[vlen_2], &out[0], fft_times_data_size_out/2);
+				volk_32fc_conjugate_32fc(&out[vlen_2],&out[vlen_2],vlen_2);
+
+				// And it's reversed.
+				memcpy(tmp_buffer,&out[vlen_2],fft_times_data_size_out/2);
+				for (int j=0;j<vlen_2;j++) {
+					out[vlen_2+j] = tmp_buffer[vlen_2-j];
+				}
 
 				out += d_fft_size;
 			}

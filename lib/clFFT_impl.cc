@@ -615,11 +615,11 @@ int clFFT_impl::processOpenCL(int noutput_items,
 				// Hermitian only outputs half the output since the other half
 				// Is the complex conjugate.  It's up to the program to fill in the
 				// missing half.
-				memcpy(&out[vlen_2], &out[0], fft_times_data_size_out/2);
-				volk_32fc_conjugate_32fc(&out[vlen_2],&out[vlen_2],vlen_2);
-
 				// And it's reversed.
-				memcpy(tmp_buffer,&out[vlen_2],fft_times_data_size_out/2);
+				// So let's conjugate into the tmp buffer, then
+				// reverse it into the final output.
+				volk_32fc_conjugate_32fc(tmp_buffer,&out[0],vlen_2);
+
 				for (int j=0;j<vlen_2;j++) {
 					out[vlen_2+j] = tmp_buffer[vlen_2-j];
 				}

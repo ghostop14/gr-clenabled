@@ -74,7 +74,13 @@ class comma_numpunct : public std::numpunct<char>
 bool testXCorrelate() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	std::cout << "Testing float xcorrelate with " << largeBlockSize << " data points." << std::endl;
+	int block_as_bytes = largeBlockSize * sizeof(float) * num_inputs; // size in bytes
+	int block_as_bits = block_as_bytes * 8;
+
+	std::cout << "Testing time-domain float-input xcorrelate with: " << std::endl <<
+			"Float input block size: " << largeBlockSize << " data points." << std::endl <<
+			"Number of inputs: " << num_inputs << std::endl <<
+			"Total input buffer size: " << block_as_bytes << " bytes" << std::endl;
 
 	int input_size;
 
@@ -169,12 +175,26 @@ bool testXCorrelate() {
 	break;
 	}
 
-	float elapsed_time,throughput;
+	float elapsed_time;
+	float throughput;
+
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
 
+	float byte_throughput;
+	float bit_throughput;
+	byte_throughput = (float)block_as_bytes / elapsed_time;
+	bit_throughput = (float)block_as_bits / elapsed_time;
+
 	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+    << std::setprecision(6) << elapsed_time << " seconds" << std::endl <<
+	std::setprecision(2) <<
+	"Throughput metrics: " << std::endl <<
+	"Total float samples/sec: " << throughput*num_inputs << std::endl <<
+	"Synchronized float stream samples/sec: " << throughput << std::endl <<
+	"Bytes/sec transferred in/out: " << byte_throughput << std::endl <<
+	"Bits/sec transferred in/out: " << bit_throughput << std::endl <<
+	std::endl;
 
 	// ----------------------------------------------------------------------
 	// Clean up
@@ -195,7 +215,13 @@ bool testXCorrelate() {
 bool testFFTXCorrelate() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	std::cout << "Testing frequency domain xcorrelate with " << largeBlockSize << " data points." << std::endl;
+	int block_as_bytes = largeBlockSize * sizeof(gr_complex) * num_inputs; // size in bytes
+	int block_as_bits = block_as_bytes * 8;
+
+	std::cout << "Testing Frequency domain complex-input xcorrelate with: " << std::endl <<
+			"Complex input block size: " << largeBlockSize << " data points." << std::endl <<
+			"Number of inputs: " << num_inputs << std::endl <<
+			"Total input buffer size: " << block_as_bytes << " bytes" << std::endl;
 
 	int input_size;
 
@@ -275,8 +301,20 @@ bool testFFTXCorrelate() {
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
 
-	std::cout << "Run Time:   " << std::fixed << std::setw(11)
-    << std::setprecision(6) << elapsed_time << " s  (" << throughput << " sps)" << std::endl << std::endl;
+	float byte_throughput;
+	float bit_throughput;
+	byte_throughput = (float)block_as_bytes / elapsed_time;
+	bit_throughput = (float)block_as_bits / elapsed_time;
+
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+    << std::setprecision(6) << elapsed_time << " seconds" << std::endl <<
+	std::setprecision(2) <<
+	"Throughput metrics: " << std::endl <<
+	"Total complex Samples/sec: " << throughput*num_inputs << std::endl <<
+	"Synchronized complex stream samples/sec: " << throughput << std::endl <<
+	"Bytes/sec transferred in/out: " << byte_throughput << std::endl <<
+	"Bits/sec transferred in/out: " << bit_throughput << std::endl <<
+	std::endl;
 
 	// ----------------------------------------------------------------------
 	// Clean up
@@ -308,7 +346,7 @@ main (int argc, char **argv)
 		if (strcmp(argv[1],"--help")==0) {
 			std::cout << std::endl;
 //			std::cout << "Usage: [<test buffer size>] [--gpu] [--cpu] [--accel] [--any]" << std::endl;
-			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--fftonly] [--input_complex] [--num_inputs=<num inputs>] [--maxsearch=<search_depth>] [number of samples (default is 8192)]" << std::endl;
+			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--fftonly] [--input_complex] [--num_inputs=<num inputs>] [--maxsearch=<search_depth>] [input buffer/vector size (default is 8192)]" << std::endl;
 			std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
 			std::cout << "If not specified, maxsearch for time-domain will default to 512." << std::endl;
 			std::cout << "--input_complex will switch the time-domain test from float to complex inputs to the test routine." << std::endl;

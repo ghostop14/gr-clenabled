@@ -462,27 +462,8 @@ clMathOp::make(int idataType, int openCLPlatformType, int devSelector,int platfo
 
 	 // Map cBuffer to host pointer. This enforces a sync with
 	 // the host
-	 queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputSize,(void *)output_items[0]);
+	 queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
 
-	 queue->finish();
-
-	 /*
-    void * output = (void *) queue->enqueueMapBuffer(
-	  *cBuffer,
-        CL_TRUE, // block
-        CL_MAP_READ,
-        0,
-		inputSize);
-
-    memcpy((void *)output_items[0],output,inputSize);
-
-    cl_int err;
-
-    // Finally release our hold on accessing the memory
-    err = queue->enqueueUnmapMemObject(
-	  *cBuffer,
-        (void *) output);
-	  */
 	 // Tell runtime system how many output items we produced.
 	 return noutput_items;
  }

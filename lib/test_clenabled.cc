@@ -797,8 +797,8 @@ bool testFFT(bool runReverse) {
 
 	int fftSize = fftDataSize;
 
-	int block_as_bytes = fftDataSize * sizeof(gr_complex) * fft_num_streams; // size in bytes
-	int block_as_bits = block_as_bytes * 8;
+	long block_as_bytes = fftDataSize * sizeof(gr_complex) * fft_num_streams; // size in bytes
+	long long block_as_bits = block_as_bytes * 8;
 	if (fft_shift) {
 		std::cout << "Testing Forward FFT with an FFT size of " << fftDataSize << " and " << fft_num_streams << " simultaneous stream(s), with spectral shift." << std::endl;
 	}
@@ -1141,12 +1141,10 @@ bool testQuadDemod() {
 bool testMultiplyConst() {
 	std::cout << "----------------------------------------------------------" << std::endl;
 
-	int block_as_bytes = largeBlockSize * sizeof(gr_complex); // size in bytes
-	int block_as_bits = block_as_bytes * 8;
+	long long block_as_bytes = largeBlockSize * sizeof(gr_complex); // size in bytes
+	long long block_as_bits = block_as_bytes * 8;
 
-	std::cout << "Baseline testing: memcpy to GPU, getglobalid(), memcpy back asynchronous queue to measure OpenCL performance with a "  <<
-			largeBlockSize << " complex (" << block_as_bytes << " byte) buffer..." << std::endl;
-	std::cout << "This value represents the projected throughput of simply moving buffers to/from memory on the selected platform with asynchronous copies." << std::endl;
+	std::cout << "Baseline profiling..." << std::endl;
 	gr::clenabled::clMathConst_impl *test=NULL;
 	try {
 		test = new gr::clenabled::clMathConst_impl(DTYPE_COMPLEX,sizeof(SComplex),opencltype,selectorType,platformId,devId,2.0,MATHOP_EMPTY,false);
@@ -1204,22 +1202,6 @@ bool testMultiplyConst() {
 	inputFloatPointers.push_back((const void *)&inputFloats[0]);
 	outputFloatPointers.push_back((void *)&outputFloats[0]);
 
-	// Run empty test
-	int noutputitems;
-
-	test->set_k(0);
-	// Get a test run out of the way.
-	noutputitems = test->testOpenCL(numItems,ninitems,inputPointers,outputPointers);
-
-	start = std::chrono::steady_clock::now();
-	// make iterations calls to get average.
-	for (i=0;i<iterations;i++) {
-		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
-	}
-	end = std::chrono::steady_clock::now();
-
-	elapsed_seconds = end-start;
-
 	switch(test->GetContextType()) {
 	case CL_DEVICE_TYPE_GPU:
 		std::cout << "OpenCL Context: GPU" << std::endl;
@@ -1237,22 +1219,43 @@ bool testMultiplyConst() {
 
 	std::cout << "Running on: " << test->getPlatformName() << std::endl;
 	std::cout << std::endl;
+
+	// Run empty test
+	int noutputitems;
 	float elapsed_time;
 	float throughput;
-	float byte_throughput;
-	float bit_throughput;
+	double byte_throughput;
+	double bit_throughput;
+
+	test->set_k(0);
+
+	std::cout << "Baseline testing: memcpy to GPU, getglobalid(), memcpy back asynchronous queue to measure OpenCL performance with a "  <<
+			largeBlockSize << " complex (" << block_as_bytes << " byte) buffer..." << std::endl;
+	std::cout << "This value represents the projected throughput of simply moving buffers to/from memory on the selected platform with asynchronous copies." << std::endl;
+	// Get a test run out of the way.
+	noutputitems = test->testOpenCL(numItems,ninitems,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->testOpenCL(largeBlockSize,ninitems,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
-	byte_throughput = (float)block_as_bytes / elapsed_time;
-	bit_throughput = (float)block_as_bits / elapsed_time;
+	byte_throughput = (double)block_as_bytes / (double)elapsed_time;
+	bit_throughput = (double)block_as_bits / (double)elapsed_time;
 
-	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(14)
     << std::setprecision(6) << elapsed_time << " seconds" << std::endl <<
 	std::setprecision(2) <<
 	"Throughput metrics: " << std::endl <<
 	"Complex samples/sec: " << throughput << std::endl <<
 	"Averaged Bytes/sec transferred (READ+WRITE)/2: " << byte_throughput/2.0 << std::endl <<
-	"Averaged Bits/sec (READ+WRITE)/2: " << bit_throughput/2.0 << std:: endl <<
+	"Averaged Bits/sec (READ+WRITE)/2: " << bit_throughput/2.0 << std::endl <<
 	"NOTE: Averaged bits/sec can loosely be compared to the GPU's memory throughput to measure against max possible performance." << std::endl <<
 	std::endl;
 
@@ -1297,17 +1300,18 @@ bool testMultiplyConst() {
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
 	throughput = largeBlockSize / elapsed_time;
 
-	byte_throughput = (float)block_as_bytes / elapsed_time;
-	bit_throughput = (float)block_as_bits / elapsed_time;
+	byte_throughput = (double)block_as_bytes / (double)elapsed_time;
+	bit_throughput = (double)block_as_bits / (double)elapsed_time;
 
-	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(11)
+	std::cout << "OpenCL Run Time:   " << std::fixed << std::setw(14)
     << std::setprecision(6) << elapsed_time << " seconds" << std::endl <<
 	std::setprecision(2) <<
 	"Throughput metrics: " << std::endl <<
 	"Complex samples/sec: " << throughput << std::endl <<
 	"Averaged Bytes/sec transferred (READ+WRITE)/2: " << byte_throughput/2.0 << std::endl <<
-	"Averaged Bits/sec (READ+WRITE)/2: " << bit_throughput/2.0 << std:: endl <<
+	"Averaged Bits/sec (READ+WRITE)/2: " << bit_throughput/2.0 << std::endl <<
 	std::endl;
+
 
 	std::cout << std::endl;
 

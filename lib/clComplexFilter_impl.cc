@@ -878,7 +878,7 @@ namespace gr {
 			CL_MEM_READ_ONLY,
 			d_fir_filter->ntaps()*sizeof(gr_complex));
 
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_active_taps.size()*sizeof(gr_complex),(void *)(&d_active_taps[0]));
+        queue->enqueueWriteBuffer(*bBuffer,CL_FALSE,0,d_active_taps.size()*sizeof(gr_complex),(void *)(&d_active_taps[0]));
 
 		cBuffer = new cl::Buffer(
 			*context,
@@ -1004,15 +1004,13 @@ namespace gr {
 		int retVal;
 
 		if (d_decimation == 1) {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)output_items[0]);
-			queue->finish();
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
 			// # in=# out. Do it the quick way
 			// memcpy((void *)output_items[0],output,ninput_items*dataSize);
 			retVal = ninput_items;
 		}
 		else {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)tmpFFTBuff);
-			queue->finish();
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
 			// copy results to output buffer and increment for decimation!
 			int j=0;
 			int i=0;

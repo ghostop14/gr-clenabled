@@ -187,8 +187,8 @@ namespace gr {
     	// Protect context from switching
         gr::thread::scoped_lock guard(d_mutex);
 
-        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputSize,input_items[0]);
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,inputSize,input_items[1]);
+        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputSize,input_items[0]);
+        queue->enqueueWriteBuffer(*bBuffer,CL_FALSE,0,inputSize,input_items[1]);
 
 		// Do the work
 

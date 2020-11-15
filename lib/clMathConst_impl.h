@@ -57,10 +57,45 @@ namespace gr {
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
 
-      int processOpenCL(int noutput_items,
+      inline int processOpenCL(int noutput_items,
               gr_vector_int &ninput_items,
               gr_vector_const_void_star &input_items,
               gr_vector_void_star &output_items);
+
+      void TestMemRead(int noutput_items, gr_vector_void_star &output_items) {
+    		if (noutput_items > curBufferSize) {
+    			setBufferLength(noutput_items);
+    		}
+
+    		int inputSize = noutput_items*dataSize;
+      	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,noutput_items*dataSize,output_items[0]);
+      };
+
+      void TestMultipleQueueRead(int num_times, int noutput_items, gr_vector_void_star &output_items) {
+      	int inputSize = noutput_items*dataSize;
+      	for (int i=0;i<num_times;i++) {
+      		queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,noutput_items*dataSize,output_items[0]);
+      	}
+      	queue->finish();
+      };
+
+      void TestMemWrite(int noutput_items, gr_vector_const_void_star &input_items) {
+      	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,noutput_items*dataSize,input_items[0]);
+      };
+
+      void TestMultipleQueueWrite(int num_times, int noutput_items, gr_vector_const_void_star &input_items) {
+      	if (noutput_items > curBufferSize) {
+      		setBufferLength(noutput_items);
+      	}
+
+      	int inputSize = noutput_items*dataSize;
+
+      	for (int i=0;i<num_times;i++) {
+      		queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputSize,input_items[0]);
+      	}
+
+      	queue->finish();
+      };
 
       void setBufferLength(int numItems);
 

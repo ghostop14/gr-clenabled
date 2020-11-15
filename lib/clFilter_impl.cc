@@ -272,7 +272,7 @@ void clFilter_impl::setBufferLength(int numItems) {
 			CL_MEM_READ_ONLY,
 			d_fir_filter->ntaps()*sizeof(float));
 
-        queue->enqueueWriteBuffer(*bBuffer,CL_TRUE,0,d_active_taps.size()*sizeof(float),(void *)(&d_active_taps[0]));
+        queue->enqueueWriteBuffer(*bBuffer,CL_FALSE,0,d_active_taps.size()*sizeof(float),(void *)(&d_active_taps[0]));
 
 		cBuffer = new cl::Buffer(
 			*context,
@@ -524,11 +524,11 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Zero out the excess buffer
         //int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
 
-        queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,inputBytes,(void *)input_items[0]);
+        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputBytes,(void *)input_items[0]);
         // calculated in setTimeFilterVariables()
         // 	paddingLength = d_active_taps.size() - 1;
     	//  paddingBytes = dataSize*paddingLength;
-    	queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,inputBytes,paddingBytes,(void *)zeroBuff);
+    	queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,inputBytes,paddingBytes,(void *)zeroBuff);
 
 		kernel->setArg(0, *aBuffer);
 		// bBuffer is prepopulated with the taps so we only have to do the copy when the taps change
@@ -558,14 +558,14 @@ clFilter_impl::filterGPU(int ninput_items,
 		int retVal;
 
 		if (d_decimation == 1) {
-			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
+			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)output_items[0]);
 
 			// # in=# out. Do it the quick way
 			// memcpy((void *)output_items[0],output,ninput_items*dataSize);
 			retVal = ninput_items;
 		}
 		else {
-			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
+			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)tmpFFTBuff);
 
 			// copy results to output buffer and increment for decimation!
 			int j=0;
@@ -588,6 +588,8 @@ clFilter_impl::filterGPU(int ninput_items,
 
 			retVal = i;
 		}
+
+		queue->finish();
 
     	return retVal;  // expecting nitems which is ninput_items/decimation
     }
@@ -620,14 +622,15 @@ clFilter_impl::filterGPU(int ninput_items,
     	  d_fwdfft->execute();	// compute fwd xform
     */
 
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fft_filter->d_nsamples*dataSize,(void *)&in[i]);
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,d_fft_filter->d_nsamples*dataSize,(d_fft_filter->d_fftsize-d_fft_filter->d_nsamples)*dataSize,(void *)zeroBuff);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,d_fft_filter->d_nsamples*dataSize,(void *)&in[i]);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,d_fft_filter->d_nsamples*dataSize,(d_fft_filter->d_fftsize-d_fft_filter->d_nsamples)*dataSize,(void *)zeroBuff);
     	  err = clfftEnqueueTransform(planHandle, CLFFT_FORWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
-    	  err = clFinish((*queue)());
 
     	  // Get the fwd FFT data out
     //	  gr_complex *a = d_fwdfft->get_outbuf();
-    	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)tmpFFTBuff);
+    	  queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,d_fft_filter->d_fftsize*dataSize,(void *)tmpFFTBuff);
+    	  queue->finish();
+
     	  gr_complex *a;
     	  a=(gr_complex *)tmpFFTBuff;
 
@@ -648,15 +651,15 @@ clFilter_impl::filterGPU(int ninput_items,
 
 
  //    	  memcpy(d_invfft->get_inbuf(),(void *)c,d_fft_filter->d_fftsize*dataSize);
-    	  queue->enqueueWriteBuffer(*aBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)ifftBuff);
+    	  queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,d_fft_filter->d_fftsize*dataSize,(void *)ifftBuff);
 
     	  // Run the inverse FFT
     	  //  d_invfft->execute();	// compute inv xform
     	  err = clfftEnqueueTransform(planHandle, CLFFT_BACKWARD, 1, &(*queue)(), 0, NULL, NULL, &(*aBuffer)(), &(*cBuffer)(), NULL);
-    	  err = clFinish((*queue)());
 
       	  // outdata = (gr_complex *)d_invfft->get_outbuf();
     	  queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,d_fft_filter->d_fftsize*dataSize,(void *)tmpFFTBuff);
+
       	  gr_complex *outdata;
     	  outdata=(gr_complex *)tmpFFTBuff;
 

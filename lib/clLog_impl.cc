@@ -267,8 +267,8 @@ namespace gr {
 
     // Map cBuffer to host pointer. This enforces a sync with
     // the host
-	queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputSize,(void *)output_items[0]);
-	queue->finish();
+	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputSize,(void *)output_items[0]);
+
       // Tell runtime system how many output items we produced.
       return noutput_items;
     }

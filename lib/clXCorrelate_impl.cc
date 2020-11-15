@@ -1419,7 +1419,8 @@ void clXCorrelate_impl::find_max(cl::Buffer *input_buffer, float& corr, int& lag
 	// let's get the matrix back and go through it by hand.
 	float *tmp_buffer = new float[max_shift_2];
 
-	queue->enqueueReadBuffer(*input_buffer,CL_TRUE,0,max_shift_2*sizeof(float),(void *)tmp_buffer);
+	queue->enqueueReadBuffer(*input_buffer,CL_FALSE,0,max_shift_2*sizeof(float),(void *)tmp_buffer);
+	queue->finish();
 
 	float cur_max = tmp_buffer[0];
 	int cur_index  = 0;

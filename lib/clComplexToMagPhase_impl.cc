@@ -279,8 +279,7 @@ namespace gr {
     // the host
 
 	queue->enqueueReadBuffer(*bBuffer,CL_FALSE,0,noutput_items*sizeof(float),(void *)output_items[0]);
-	queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,noutput_items*sizeof(float),(void *)output_items[1]);
-	queue->finish();
+	queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,noutput_items*sizeof(float),(void *)output_items[1]);
 
       // Tell runtime system how many output items we produced.
       return noutput_items;

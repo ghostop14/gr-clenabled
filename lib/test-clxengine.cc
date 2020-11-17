@@ -65,7 +65,7 @@ int num_inputs = 16;
 // single_polarization=false = X/Y dual polarization
 bool single_polarization = false;
 int integration_time = 1024;
-int iterations = 4;
+int iterations = 100;
 int num_procs=0;
 
 int opencltype=OCLTYPE_ANY;
@@ -243,59 +243,29 @@ bool testXCorrelate() {
 		}
 	}
 
-	/*
-	for (int i=0;i<num_inputs-1;i++) {
-		outputPointers.push_back((void *)&outputItems[0]);
-	}
-	*/
-
 	// Run empty test
 	int noutputitems;
-
-	// Get a test run out of the way.
-	// Note: output items is 1 since it's expecting vectors in.
-	noutputitems = test->work_test(integration_time,inputPointers,outputPointers);
-
-	start = std::chrono::steady_clock::now();
-	// make iterations calls to get average.
-	for (i=0;i<iterations;i++) {
-		noutputitems = test->work_test(integration_time,inputPointers,outputPointers);
-	}
-	end = std::chrono::steady_clock::now();
-
-	elapsed_seconds = end-start;
-
 	float elapsed_time,throughput;
-	elapsed_time = elapsed_seconds.count()/(float)iterations;
-	throughput = num_inputs * polarization * num_channels * integration_time / elapsed_time;
-	long input_buffer_total_bytes = test->get_input_buffer_size() * sizeof(gr_complex);
-	float bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+	long input_buffer_total_bytes;
+	float bits_throughput;
 
-	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
-	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
-	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
-				"Total throughput: " << std::setprecision(2) << throughput << " float complex samples/sec" << std::endl <<
-				"Synchronized stream (" << num_inputs << " inputs) throughput: " << throughput / num_inputs << " float complex samples/sec" << std::endl <<
-				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+	// Testing Correlation Routine Only
+	long input_length = test->get_input_buffer_size();
+	long output_length = test->get_output_buffer_size();
 
-	// Reset test
-	if (test != NULL) {
-		delete test;
-	}
+	gr_complex *input_buffer;
+	gr_complex *output_buffer;
 
-	// ------------  Test with char input data --------------------------------------------------------
-	// The one specifies output triangular order rather than full matrix.
-	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,true,DTYPE_COMPLEX,sizeof(gr_complex),
-			polarization, num_inputs, 1, num_channels, integration_time);
-
-	// Get a test run out of the way.
-	// Note: output items is 1 since it's expecting vectors in.
-	noutputitems = test->work_test(integration_time,inputPointers,outputPointers);
+	input_buffer = new gr_complex[input_length];
+	output_buffer = new gr_complex[output_length];
+// #define PROFILETEST
+#ifndef PROFILETEST
+	test->xcorrelate((XComplex *)input_buffer, (XComplex *)output_buffer);
 
 	start = std::chrono::steady_clock::now();
 	// make iterations calls to get average.
 	for (i=0;i<iterations;i++) {
-		noutputitems = test->work_test(integration_time,inputPointers,outputPointers);
+		test->xcorrelate((XComplex *)input_buffer, (XComplex *)output_buffer);
 	}
 	end = std::chrono::steady_clock::now();
 
@@ -306,19 +276,121 @@ bool testXCorrelate() {
 	input_buffer_total_bytes = test->get_input_buffer_size() * sizeof(gr_complex);
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
 
+	std::cout << std::endl << "Direct XCorrelate function Float Complex Test:" << std::endl;
+	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " float complex samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " float complex samples/sec" << std::endl <<
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+#endif
+	delete[] input_buffer;
+	delete[] output_buffer;
+
+#ifndef PROFILETEST
+#define TIME_WORK
+#ifdef TIME_WORK
+	// Test memory queueing approach
+	noutputitems = test->work_test(1,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->work_test(1,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = num_inputs * polarization * num_channels / elapsed_time;
+	input_buffer_total_bytes = num_inputs * polarization * num_channels * sizeof(gr_complex);
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "GNURadio work() queueing Float Complex Test:" << std::endl;
+	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " float complex samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " float complex samples/sec" << std::endl <<
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+#endif
+#endif
+	// Reset test
+	if (test != NULL) {
+		delete test;
+	}
+	// Now test char version
+	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_BYTE,sizeof(char)*2,
+			polarization, num_inputs, 1, num_channels, integration_time);
+
+	char *char_input_buffer;
+
+	input_length = test->get_input_buffer_size();
+	output_length = test->get_output_buffer_size();
+	char_input_buffer = new char[input_length*2];
+	output_buffer = new gr_complex[output_length];
+#ifndef PROFILETEST
+	test->xcorrelate((char *)char_input_buffer, (XComplex *)output_buffer);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		test->xcorrelate((char *)char_input_buffer, (XComplex *)output_buffer);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = num_inputs * polarization * num_channels * integration_time / elapsed_time;
+	input_buffer_total_bytes = test->get_input_buffer_size() * sizeof(gr_complex);
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "Direct XCorrelate function Byte Complex Test:" << std::endl;
+	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " byte complex (IChar) samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " byte complex (IChar) samples/sec" << std::endl <<
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+#endif
+
+#if defined(TIME_WORK) || defined(PROFILETEST)
+	// Test memory queueing approach
+	noutputitems = test->work_test(1,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->work_test(1,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = num_inputs * polarization * num_channels / elapsed_time;
+	input_buffer_total_bytes = num_inputs * polarization * num_channels * sizeof(char)*2;
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "GNURadio work() queueing Byte Complex Test:" << std::endl;
 	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
 				"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
-				"Synchronized stream (" << num_inputs << " inputs) throughput: " << throughput / num_inputs << " byte complex samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " byte complex samples/sec" << std::endl <<
 				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+#endif
+	delete[] char_input_buffer;
+	delete[] output_buffer;
 
 	// Reset test
 	if (test != NULL) {
 		delete test;
 	}
 
-// #define TEST_GOLDEN_DATA
+//#define TEST_GOLDEN_DATA
 
 #ifdef TEST_GOLDEN_DATA
 	// ------------------------  Test Golden Data -------------------------
@@ -326,17 +398,14 @@ bool testXCorrelate() {
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,true,DTYPE_COMPLEX,sizeof(gr_complex),
 			2, 16, 1, 1024, 1024);
 
-	long input_length = test->get_input_buffer_size();
-	long output_length = test->get_output_buffer_size();
-
-	gr_complex *input_buffer;
-	gr_complex *output_buffer;
+	input_length = test->get_input_buffer_size();
+	output_length = test->get_output_buffer_size();
 
 	input_buffer = new gr_complex[input_length];
 	output_buffer = new gr_complex[output_length];
 
 	std::string input_file = "/opt/tmp/ata/xgpu_input_data.bin";
-	std::string output_file = "/opt/tmp/ata/opencl_xengine_output_data.bin";
+	std::string output_file = "/opt/tmp/ata/opencl_xengine_output_data2.bin";
 
 	std::cout << "Testing golden data..." << std::endl;
 	std::cout << "Reading data from input file " << input_file << "..." << std::endl;

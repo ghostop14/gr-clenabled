@@ -9,6 +9,7 @@ parameters:
     options: [Complex, IChar]
     option_attributes:
         data_type: [1, 5]
+        input_format: [complex, char]
     hide: part
 - id: polarization
   label: Polarizations
@@ -62,13 +63,13 @@ asserts:
 inputs:
 - label: pol1_
   domain: stream
-  dtype: complex
-  vlen: ${num_channels}
+  dtype: ${ type.input_format }
+  vlen: ${ (num_channels if type.data_type == 1 else num_channels*2) }
   multiplicity: ${num_inputs}
 - label: pol2_
   domain: stream
-  dtype: complex
-  vlen: ${ (num_channels if type.data_type == '1' else num_channels*2) }
+  dtype: ${ type.input_format }
+  vlen: ${ (num_channels if type.data_type == 1 else num_channels*2) }
   multiplicity: ${ (0 if polarization == '1' else num_inputs) }
   optional: ${ (True if polarization == '1' else False) }
   hide: ${ (True if polarization == '1' else False) }

@@ -145,6 +145,21 @@ if(NOT CLFFT_FOUND)
 endif()
 
 ########################################################################
+# Find OpenMP
+########################################################################
+find_package(OpenMP)
+
+########################################################################
+# Setup OpenMP option
+########################################################################
+if(OpenMP_CXX_FOUND)
+    option(ENABLE_OPENMP "Enabling OpenMP boost for X-Engine" ON)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+else(OpenMP_CXX_FOUND)
+    option(ENABLE_OPENMP "OpenMP not found.  Disabling OpenMP boost for X-Engine" OFF)
+endif(OpenMP_CXX_FOUND)
+
+########################################################################
 # Find gnuradio build dependencies
 ########################################################################
 find_package(Doxygen)

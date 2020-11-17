@@ -725,6 +725,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int num_chan_x2;
 	size_t matrix_flat_length;
 	int output_size;
+	int num_procs;
 
 	int d_data_type;
 	int d_data_size;
@@ -792,8 +793,8 @@ public:
 		// Have to convert first.
 		queue->enqueueWriteBuffer(*char_matrix_buffer,CL_FALSE,0,frame_size_times_integration_bytes,input_matrix);
 		// Execute the conversion kernel
-		kernel->setArg(0, *char_matrix_buffer);
-		kernel->setArg(1, *input_matrix_buffer);
+		char_to_cc_kernel->setArg(0, *char_matrix_buffer);
+		char_to_cc_kernel->setArg(1, *input_matrix_buffer);
 
 		queue->enqueueNDRangeKernel(
 				*char_to_cc_kernel,

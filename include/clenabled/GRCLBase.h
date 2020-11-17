@@ -31,6 +31,8 @@
 #define DTYPE_COMPLEX 1
 #define DTYPE_FLOAT 2
 #define DTYPE_INT 3
+#define DTYPE_SHORT 4
+#define DTYPE_BYTE 5
 
 #define OCLTYPE_GPU 1
 #define OCLTYPE_ACCELERATOR 2

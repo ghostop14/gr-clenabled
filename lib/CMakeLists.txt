@@ -54,6 +54,7 @@ list(APPEND clenabled_sources
     clPolyphaseChannelizer_impl.cc
     clXCorrelate_impl.cc
     clxcorrelate_fft_vcf_impl.cc
+    clXEngine_impl.cc
 )
 
 set(clenabled_sources "${clenabled_sources}" PARENT_SCOPE)
@@ -249,6 +250,28 @@ target_link_libraries(
   ${Boost_LIBRARIES}
   gnuradio-clenabled
 )
+
+########################################################################
+# Build and register test-xengine
+########################################################################
+list(APPEND test_clxengine_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/test-clxengine.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/clXEngine_impl.cc
+)
+
+add_executable(test-clxengine ${test_clxengine_sources})
+
+target_link_libraries(
+  test-clxengine
+  ${GNURADIO_RUNTIME_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenMP_CXX_LIBRARIES}
+  volk
+  gnuradio-clenabled
+)
+
+install(TARGETS test-clxengine DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" RUNTIME)
+
 ########################################################################
 # Print summary
 ########################################################################

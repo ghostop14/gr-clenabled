@@ -43,5 +43,6 @@ install(FILES
     clComplexFilter.h
     clPolyphaseChannelizer.h
     clXCorrelate.h
-    clxcorrelate_fft_vcf.h DESTINATION include/clenabled
+    clxcorrelate_fft_vcf.h
+    clXEngine.h DESTINATION include/clenabled
 )

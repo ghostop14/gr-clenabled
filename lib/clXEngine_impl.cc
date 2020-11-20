@@ -814,6 +814,9 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 #ifdef _OPENMP
 	num_procs = omp_get_num_procs() - 2;
+	if (num_procs > 6)
+		num_procs = 6;
+
 	if (num_procs < 1)
 		num_procs = 1;
 

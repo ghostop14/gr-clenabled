@@ -687,12 +687,36 @@
 #include <omp.h>
 #endif
 
+// Some carry-forward tricks from file_sink_base.cc
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
+// win32 (mingw/msvc) specific
+#ifdef HAVE_IO_H
+#include <io.h>
+#endif
+#ifdef O_BINARY
+#define	OUR_O_BINARY O_BINARY
+#else
+#define	OUR_O_BINARY 0
+#endif
+
+// should be handled via configure
+#ifdef O_LARGEFILE
+#define	OUR_O_LARGEFILE	O_LARGEFILE
+#else
+#define	OUR_O_LARGEFILE 0
+#endif
+
 namespace gr {
 namespace clenabled {
 
 clXEngine::sptr
 clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type,
-		int polarization, int num_inputs, int output_format, int num_channels, int integration)
+		int polarization, int num_inputs, int output_format, int num_channels, int integration,
+		bool output_file, std::string file_base, int rollover_size_mb)
 {
 	int data_size = 1;
 
@@ -709,7 +733,8 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 	}
 
 	return gnuradio::get_initial_sptr
-			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs, output_format, num_channels, integration));
+			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs,
+					output_format, num_channels, integration, output_file, file_base, rollover_size_mb));
 }
 
 
@@ -717,14 +742,31 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
  * The private constructor
  */
 clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-		int polarization, int num_inputs, int output_format, int num_channels, int integration)
+		int polarization, int num_inputs, int output_format, int num_channels, int integration, bool output_file, std::string file_base, int rollover_size_mb)
 : gr::sync_block("clXEngine",
 		gr::io_signature::make(2, num_inputs*polarization, num_channels*data_size),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),
-		d_num_channels(num_channels), d_integration_time(integration), integration_tracker(0),d_data_type(data_type), d_data_size(data_size)
+		d_num_channels(num_channels), d_integration_time(integration), integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
+		d_output_file(output_file), d_file_base(file_base), d_rollover_size_mb(rollover_size_mb)
 {
+	if (d_output_file) {
+		if ((d_rollover_size_mb) > 0) {
+			d_rollover_files = true;
+			d_bytesWritten = 0;
+			rollover_size_bytes = d_rollover_size_mb * 1000000;
+		}
+		else {
+			d_rollover_files = false;
+		}
+
+		bool retval = open();
+
+		if (!retval) {
+			throw std::runtime_error ("[X-Engine] can't open file");
+		}
+	}
 	// See "Accelerating Radio Astronomy Cross-Correlation with Graphics Processing Units" by M. A. Clark
 	// and xGPU on github for reference documentation and reference implementation.
 
@@ -829,6 +871,64 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
 }
 
+bool clXEngine_impl::open()
+{
+	gr::thread::scoped_lock guard(d_fpmutex);	// hold mutex for duration of this function
+	// we use the open system call to get access to the O_LARGEFILE flag.
+	int fd;
+	int flags;
+	flags = O_WRONLY|O_CREAT|O_TRUNC|OUR_O_LARGEFILE|OUR_O_BINARY;
+	/*
+  if(d_append) {
+    flags = O_WRONLY|O_CREAT|O_APPEND|OUR_O_LARGEFILE|OUR_O_BINARY;
+  } else {
+    flags = O_WRONLY|O_CREAT|O_TRUNC|OUR_O_LARGEFILE|OUR_O_BINARY;
+  }
+	 */
+
+	std::string filename=d_file_base;
+
+	if (d_rollover_files) {
+		std::string newStr = std::to_string(current_rollover_index++);
+
+		while (newStr.length() < 5)
+			newStr = "0" + newStr;
+
+		filename += "_" + newStr;
+	}
+
+	if((fd = ::open(filename.c_str(), flags, 0664)) < 0){
+		GR_LOG_ERROR(d_logger,"Error in initial 0664 open");
+		return false;
+	}
+
+	if(d_fp) {		// if we've already got a new one open, close it
+		fclose(d_fp);
+		d_fp = NULL;
+	}
+
+	if((d_fp = fdopen (fd, "wb")) == NULL) {
+		::close(fd);        // don't leak file descriptor if fdopen fails.
+		GR_LOG_ERROR(d_logger,"open-for-write returned NULL");
+		return false;
+	}
+
+	// Finalize setup
+	bool fileOpen = d_fp != 0;
+
+	d_bytesWritten = 0;
+
+	return fileOpen;
+}
+
+void clXEngine_impl::close() {
+	gr::thread::scoped_lock guard(d_fpmutex);	// hold mutex for duration of this function
+	if (d_fp) {
+		fclose(d_fp);
+		d_fp = NULL;
+	}
+}
+
 bool clXEngine_impl::stop() {
 	if (proc_thread) {
 		stop_thread = true;
@@ -839,6 +939,8 @@ bool clXEngine_impl::stop() {
 		delete proc_thread;
 		proc_thread = NULL;
 	}
+
+	close();
 
 	if (complex_input1) {
 		// delete[] complex_input1;
@@ -1111,10 +1213,10 @@ clXEngine_impl::work_test(int noutput_items,
 
 		if (d_npol == 1) {
 			if (d_data_type == DTYPE_BYTE) {
-				#pragma omp parallel num_threads(num_procs)
+#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const char *cur_signal = (const char *) input_items[i];
 						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
@@ -1122,10 +1224,10 @@ clXEngine_impl::work_test(int noutput_items,
 				}
 			}
 			else {
-				#pragma omp parallel num_threads(num_procs)
+#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
 						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
@@ -1276,10 +1378,10 @@ clXEngine_impl::work(int noutput_items,
 
 		if (d_npol == 1) {
 			if (d_data_type == DTYPE_BYTE) {
-				#pragma omp parallel num_threads(num_procs)
+#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const char *cur_signal = (const char *) input_items[i];
 						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
@@ -1287,10 +1389,10 @@ clXEngine_impl::work(int noutput_items,
 				}
 			}
 			else {
-				#pragma omp parallel num_threads(num_procs)
+#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
 						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
@@ -1359,7 +1461,7 @@ clXEngine_impl::work(int noutput_items,
 		if (!thread_process_data) {
 			// thread_is_processing will only be FALSE if thread_process_data == false on the first pass,
 			// in which case we don't want to send any pmt's.  Otherwise, we're in async pickup mode.
-			if (thread_is_processing) {
+			if (thread_is_processing && (!d_output_file)) {
 				// So this case is that we have a new block ready and the old one is complete.
 				// So before transitioning to the new one, let's send the data from the last one.
 				pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
@@ -1429,6 +1531,36 @@ void clXEngine_impl::runThread() {
 			}
 			else {
 				xcorrelate((XComplex *)thread_complex_input, (XComplex *)thread_output_matrix);
+			}
+
+			if (d_fp) {
+				char *inbuf;
+				inbuf = (char *)thread_output_matrix;
+				long nwritten = 0;
+
+				// If we have an open file, we're supposed to rollover files, and we're over our limit
+				// reset the file.
+				if ((d_fp) && (rollover_size_bytes > 0) && (d_bytesWritten >= rollover_size_bytes)) {
+					close();
+					open();
+				}
+
+				while(nwritten < matrix_flat_length) {
+					// fwrite: returns number of elements written
+					// Takes: ptr to array of elements, element size, count, file stream pointer
+					long count = fwrite(inbuf, sizeof(gr_complex), matrix_flat_length - nwritten, d_fp);
+					if(count == 0) {
+						// Error condition, nothing written for some reason.
+						if(ferror(d_fp)) {
+							std::cout << "[X-Engine] Write failed with error: " << std::strerror(errno) << std::endl;
+						}
+					}
+					nwritten += count;
+
+					long bytes_written = count * sizeof(gr_complex);
+					d_bytesWritten += bytes_written;
+					inbuf += bytes_written;
+				}
 			}
 
 			// clear the trigger.  This will inform that data is ready.

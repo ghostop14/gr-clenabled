@@ -702,7 +702,9 @@ namespace gr {
        * class. clenabled::clXEngine::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs, int output_format, int num_channels, int integration);
+      static sptr make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
+    		  int output_format, int num_channels, int integration,
+			  bool output_file=false, std::string file_base="", int rollover_size_mb=0);
     };
 
   } // namespace clenabled

@@ -200,7 +200,7 @@ bool testXCorrelate() {
 		}
 
 		// The one specifies output triangular order rather than full matrix.
-		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,true,DTYPE_COMPLEX,sizeof(gr_complex),
+		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_COMPLEX,sizeof(gr_complex),
 				polarization, num_inputs, 1, num_channels, integration_time);
 	}
 	catch (...) {
@@ -252,6 +252,10 @@ bool testXCorrelate() {
 	// Testing Correlation Routine Only
 	long input_length = test->get_input_buffer_size();
 	long output_length = test->get_output_buffer_size();
+
+	std::cout << "Input block size (complex): " << input_length << std::endl;
+	std::cout << "Output block size (complex): " << output_length << std::endl;
+	std::cout << "In/Out decimation: " << input_length / output_length << std::endl;
 
 	gr_complex *input_buffer;
 	gr_complex *output_buffer;

@@ -3,43 +3,20 @@ label: OpenCL X-Engine
 category: '[OpenCL-Accelerated]'
 
 parameters:
--   id: type
-    label: Input Type
-    dtype: enum
-    options: [Complex, IChar]
-    option_attributes:
-        data_type: [1, 5]
-        input_format: [complex, char]
-    hide: part
-- id: polarization
-  label: Polarizations
-  dtype: enum
-  options: ['1', '2']
-  option_labels: ['Single', 'XY']
-- id: num_channels
-  label: Channels
-  dtype: int
-  default: '1024'
-- id: num_inputs
-  label: Num Antennas
-  dtype: int
-  default: '2'
-- id: integration
-  label: Integration NTIME
-  dtype: int
-  default: '1024'
 - id: openCLPlatform
   label: OpenCL Platform Type
   dtype: enum
   options: ['1', '2', '3', '4']
   option_labels: [GPU, Accelerator, CPU, Any]
+  hide: part
 - id: devices
   label: OpenCL Device
   dtype: enum
   options: ['1', '2']
   option_labels: [Any, Specific]
   option_attributes:
-      hide_specific: [all, '']
+      hide_specific: [all, part]
+  hide: part
 - id: platformId
   label: Platform Id
   dtype: enum
@@ -50,6 +27,45 @@ parameters:
   dtype: enum
   options: ['0', '1', '2', '3']
   hide: ${ devices.hide_specific }
+- id: type
+  label: Input Type
+  dtype: enum
+  options: [Complex, IChar]
+  option_attributes:
+      data_type: [1, 5]
+      input_format: [complex, char]
+  hide: part
+- id: num_channels
+  label: Channels
+  dtype: int
+  default: '1024'
+- id: num_inputs
+  label: Num Antennas
+  dtype: int
+  default: '2'
+- id: polarization
+  label: Polarizations
+  dtype: enum
+  options: ['1', '2']
+  option_labels: ['Single', 'XY']
+- id: integration
+  label: Integration NTIME
+  dtype: int
+  default: '1024'
+- id: output_file
+  label: Output
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: [Message, File]
+- id: file_base
+  label: File Base Descriptor
+  dtype: string
+  hide: ${ 'part' if output_file=='True' else 'all' }
+- id: rollover_size_mb
+  label: Rollover Size (MB)
+  dtype: int
+  default: '0'
+  hide: ${ 'part' if output_file=='True' else 'all' }
 - id: setDebug
   label: Debug
   dtype: enum
@@ -78,14 +94,15 @@ outputs:
 - label: xcorr
   domain: message
   optional: True
+  hide: ${ output_file }
 
 templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\

@@ -724,11 +724,25 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int input_size;
 	int num_chan_x2;
 	size_t matrix_flat_length;
-	int output_size;
+	long output_size;
 	int num_procs;
 
 	int d_data_type;
 	int d_data_size;
+
+	bool d_output_file;
+	std::string d_file_base;
+	int d_rollover_size_mb;
+	size_t rollover_size_bytes;
+	int current_rollover_index=1;
+	bool d_rollover_files;
+    size_t d_bytesWritten = 0;
+    FILE *d_fp = NULL;
+    boost::mutex d_fpmutex;
+
+	virtual bool open();
+	virtual void close();
+
 	size_t frame_size_times_integration;
 	size_t frame_size_times_integration_bytes;
 	int channels_times_baselines;
@@ -775,7 +789,8 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 
 public:
 	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-			int polarization, int num_inputs, int output_format, int num_channels, int integration);
+			int polarization, int num_inputs, int output_format, int num_channels, int integration,
+			bool output_file=false, std::string file_base="", int rollover_size_mb=0);
 	~clXEngine_impl();
 
 	bool stop();

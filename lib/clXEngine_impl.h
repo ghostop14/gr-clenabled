@@ -805,6 +805,8 @@ public:
 
 	void xcorrelate(char *input_matrix, XComplex *cross_correlation) {
 		// Have to convert first.
+		// For 4-bit, frame_size_times_integration_bytes = frame_size_times_integration
+		// For 8-bit, frame_size_times_integration_bytes = frame_size_times_integration * 2
 		queue->enqueueWriteBuffer(*char_matrix_buffer,CL_FALSE,0,frame_size_times_integration_bytes,input_matrix);
 
 		// Execute the conversion kernel

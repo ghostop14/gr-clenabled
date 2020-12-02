@@ -744,7 +744,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		int polarization, int num_inputs, int output_format, int num_channels, int integration,
 		bool output_file, std::string file_base, int rollover_size_mb)
 : gr::sync_block("clXEngine",
-		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*data_size*(data_type==DTYPE_PACKEDXY?2:1)),
+		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*(data_type==DTYPE_PACKEDXY?2:data_size)),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),
@@ -832,6 +832,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 	if (d_data_type == DTYPE_COMPLEX) {
 		input_matrix_type = CL_MEM_READ_ONLY;
+		char_matrix_buffer = NULL; // Don't need it in this case
 	}
 	else {
 		char_matrix_buffer = new cl::Buffer(
@@ -1116,25 +1117,31 @@ void clXEngine_impl::buildCharToComplexKernel() {
 	std::string fnName = "CharToComplex";
 
 	// Switch division to multiplication for speed.
-	srcStdStr += "#define ONE_OVER_SCHAR_MAX 0.007874015748031496063\n";
 
 	if (d_data_type == DTYPE_PACKEDXY) {
 		// Need a two's complement lookup table.
-		srcStdStr += "__constant char twosComplementLUT[16] = {0,1,2,3,4,5,6,7,0,-7,-6,-5,-4,-3,-2,-1};\n";
+		srcStdStr += "__constant char twosComplementLUT[16] = {0, 1, 2, 3, 4, 5, 6, 7, 0,-7,-6,-5,-4,-3,-2,-1};\n";
 	}
 	srcStdStr += "struct ComplexStruct {\n";
 	srcStdStr += "float real;\n";
 	srcStdStr += "float imag; };\n";
 	srcStdStr += "typedef struct ComplexStruct SComplex;\n";
 
-	srcStdStr += "__kernel void CharToComplex(__global char * restrict a, __global SComplex * restrict c) {\n";
-	srcStdStr += "    size_t index =  get_global_id(0);\n";
 	if (d_data_type == DTYPE_PACKEDXY) {
-		srcStdStr += "    char tmp_char1 = a[index];\n";
-		srcStdStr += "	  c[index].real = (float)twosComplementLUT[tmp_char1 >> 4] * ONE_OVER_SCHAR_MAX;\n";
-		srcStdStr += "	  c[index].imag = (float)twosComplementLUT[tmp_char1 & 0x0F] * ONE_OVER_SCHAR_MAX;\n";
+		// In this mode, we know we have packed 4-bit in.  So we can use that to determine full scale.
+		srcStdStr += "#define ONE_OVER_S4BIT_MAX 0.142857142857142857143\n";
+
+		srcStdStr += "__kernel void CharToComplex(__global unsigned char * restrict a, __global SComplex * restrict c) {\n";
+		srcStdStr += "    size_t index =  get_global_id(0);\n";
+		srcStdStr += "    unsigned char tmp_char1 = a[index];\n";
+		srcStdStr += "	  c[index].real = (float)twosComplementLUT[tmp_char1 >> 4] * ONE_OVER_S4BIT_MAX;\n";
+		srcStdStr += "	  c[index].imag = (float)twosComplementLUT[tmp_char1 & 0x0F] * ONE_OVER_S4BIT_MAX;\n";
 	}
 	else {
+		// In this mode, we don't know what produced the byte input, so we'll have to use full SCHAR scale
+		srcStdStr += "#define ONE_OVER_SCHAR_MAX 0.007874015748031496063\n";
+		srcStdStr += "__kernel void CharToComplex(__global char * restrict a, __global SComplex * restrict c) {\n";
+		srcStdStr += "    size_t index =  get_global_id(0);\n";
 		srcStdStr += "    size_t two_index =  index*2;\n";
 		srcStdStr += "	  c[index].real = (float)a[two_index] * ONE_OVER_SCHAR_MAX;\n";
 		srcStdStr += "	  c[index].imag = (float)a[two_index+1] * ONE_OVER_SCHAR_MAX;\n";
@@ -1218,8 +1225,8 @@ clXEngine_impl::work_processor(int noutput_items,
 		// For reference: 	frame_size = d_num_channels * d_num_inputs * d_npol;
 		int input_start = frame_size * (integration_tracker + cur_block);
 
-		if (d_data_type != DTYPE_COMPLEX) {
-			input_start *= 2; // interleaved IQ, so 2 data_size's at a clip
+		if (d_data_type == DTYPE_BYTE) {
+			input_start *= d_data_size; // interleaved IQ, so 2 data_size's at a clip
 		}
 
 		if (d_npol == 1) {
@@ -1260,9 +1267,8 @@ clXEngine_impl::work_processor(int noutput_items,
 						// Each interleaved channel will now be num_channels*2 long
 						// X Y X Y X Y...
 						for (int k=0;k<d_num_channels;k++) {
-							int k2 = 2*k;
-							int input_index = input_start + i*num_chan_x2+k2;
-							int pol_index = cur_block*d_num_channels+k;
+							int input_index = input_start + i*num_chan_x2*2+k*4;
+							int pol_index = cur_block*num_chan_x2+k*2;
 							// char_input[input_index++] = pol1[pol_index];
 							// char_input[input_index++] = pol1[pol_index+1];
 							// char_input[input_index++] = pol2[pol_index];

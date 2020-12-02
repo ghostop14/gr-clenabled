@@ -246,8 +246,12 @@ bool testXCorrelate() {
 	// Run empty test
 	int noutputitems;
 	float elapsed_time,throughput;
+	float baseline_xcorr_elapsed_time;
+	float baseline_queuing_elapsed_time;
 	long input_buffer_total_bytes;
 	float bits_throughput;
+	float num_samples;
+	float num_bytes;
 
 	// Testing Correlation Routine Only
 	long input_length = test->get_input_buffer_size();
@@ -276,12 +280,16 @@ bool testXCorrelate() {
 	elapsed_seconds = end-start;
 
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
-	throughput = num_inputs * polarization * num_channels * integration_time / elapsed_time;
-	input_buffer_total_bytes = test->get_input_buffer_size() * sizeof(gr_complex);
+	baseline_xcorr_elapsed_time = elapsed_time;
+	num_samples = num_inputs * polarization * num_channels * integration_time;
+	num_bytes = num_samples * sizeof(gr_complex);
+
+	throughput = num_samples / elapsed_time;
+	input_buffer_total_bytes = num_bytes;
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
 
 	std::cout << std::endl << "Direct XCorrelate function Float Complex Test:" << std::endl;
-	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Elapsed time: "  << std::setprecision(6) << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
 				"Total throughput: " << std::setprecision(2) << throughput << " float complex samples/sec" << std::endl <<
@@ -307,12 +315,13 @@ bool testXCorrelate() {
 	elapsed_seconds = end-start;
 
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	baseline_queuing_elapsed_time = elapsed_time;
 	throughput = num_inputs * polarization * num_channels / elapsed_time;
 	input_buffer_total_bytes = num_inputs * polarization * num_channels * sizeof(gr_complex);
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
 
 	std::cout << std::endl << "GNURadio work() queueing Float Complex Test:" << std::endl;
-	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Elapsed time: "  << std::setprecision(6) << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
 				"Total throughput: " << std::setprecision(2) << throughput << " float complex samples/sec" << std::endl <<
@@ -332,6 +341,7 @@ bool testXCorrelate() {
 
 	input_length = test->get_input_buffer_size();
 	output_length = test->get_output_buffer_size();
+
 	char_input_buffer = new char[input_length*2];
 	output_buffer = new gr_complex[output_length];
 #ifndef PROFILETEST
@@ -347,17 +357,21 @@ bool testXCorrelate() {
 	elapsed_seconds = end-start;
 
 	elapsed_time = elapsed_seconds.count()/(float)iterations;
-	throughput = num_inputs * polarization * num_channels * integration_time / elapsed_time;
-	input_buffer_total_bytes = test->get_input_buffer_size() * sizeof(gr_complex);
+	num_samples = num_inputs * polarization * num_channels * integration_time;
+	num_bytes = num_samples * sizeof(char)*2;
+
+	throughput = num_samples / elapsed_time;
+	input_buffer_total_bytes = num_bytes;
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
 
 	std::cout << std::endl << "Direct XCorrelate function Byte Complex Test:" << std::endl;
-	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Elapsed time: "  << std::setprecision(6) << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
 				"Total throughput: " << std::setprecision(2) << throughput << " byte complex (IChar) samples/sec" << std::endl <<
 				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " byte complex (IChar) samples/sec" << std::endl <<
-				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl <<
+				"Speedup relative to complex case: " << (1.0 - elapsed_time / baseline_xcorr_elapsed_time) * 100.0 << "%" << std::endl;
 #endif
 
 #if defined(TIME_WORK) || defined(PROFILETEST)
@@ -379,12 +393,87 @@ bool testXCorrelate() {
 	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
 
 	std::cout << std::endl << "GNURadio work() queueing Byte Complex Test:" << std::endl;
-	std::cout << "Elapsed time: " << elapsed_seconds.count() << std::endl;
+	std::cout << "Elapsed time: "  << std::setprecision(6) << elapsed_seconds.count() << std::endl;
 	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
 	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
 				"Total throughput: " << std::setprecision(2) << throughput << " byte complex samples/sec" << std::endl <<
 				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs / polarization << " byte complex samples/sec" << std::endl <<
-				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl;
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl <<
+				"Speedup relative to complex case: " << (1.0 - elapsed_time / baseline_queuing_elapsed_time) * 100.0 << "%" << std::endl;
+#endif
+	delete[] char_input_buffer;
+	delete[] output_buffer;
+
+	// ----------------  Test 4-bit packed ------------------------
+	// Reset test
+	if (test != NULL) {
+		delete test;
+	}
+	// Now test char version
+	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_PACKEDXY,sizeof(char),
+			2, num_inputs, 1, num_channels, integration_time);
+
+	input_length = test->get_input_buffer_size();
+	output_length = test->get_output_buffer_size();
+
+	char_input_buffer = new char[input_length*2];
+	output_buffer = new gr_complex[output_length];
+#ifndef PROFILETEST
+	test->xcorrelate((char *)char_input_buffer, (XComplex *)output_buffer);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		test->xcorrelate((char *)char_input_buffer, (XComplex *)output_buffer);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	num_samples = num_inputs * polarization * num_channels * integration_time;
+	num_bytes = num_samples * sizeof(char);
+
+	throughput = num_samples / elapsed_time;
+	input_buffer_total_bytes = num_bytes;
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "Direct XCorrelate function 4-Bit Packed XY Test:" << std::endl;
+	std::cout << "Elapsed time: "  << std::setprecision(6) << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " packed 4-bit complex samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs << " packed 4-bit complex samples/sec" << std::endl <<
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl <<
+				"Speedup relative to complex case: " << (1.0 - elapsed_time / baseline_xcorr_elapsed_time)  * 100.0 << "%" << std::endl;
+#endif
+
+#if defined(TIME_WORK) || defined(PROFILETEST)
+	// Test memory queueing approach
+	noutputitems = test->work_test(1,inputPointers,outputPointers);
+
+	start = std::chrono::steady_clock::now();
+	// make iterations calls to get average.
+	for (i=0;i<iterations;i++) {
+		noutputitems = test->work_test(1,inputPointers,outputPointers);
+	}
+	end = std::chrono::steady_clock::now();
+
+	elapsed_seconds = end-start;
+
+	elapsed_time = elapsed_seconds.count()/(float)iterations;
+	throughput = num_inputs * 2 * num_channels / elapsed_time;
+	input_buffer_total_bytes = num_inputs * 2 * num_channels * sizeof(char);
+	bits_throughput = 8 * input_buffer_total_bytes / elapsed_time;
+
+	std::cout << std::endl << "GNURadio work() queueing 4-Bit Packed XY Test:" << std::endl;
+	std::cout << "Elapsed time: " << std::setprecision(6) << elapsed_seconds.count() << std::endl;
+	std::cout << "Timing Averaging Iterations: " << iterations << std::endl;
+	std::cout << "Average Run Time:   " << std::fixed << std::setw(11) << std::setprecision(6) << elapsed_time << " s" << std::endl <<
+				"Total throughput: " << std::setprecision(2) << throughput << " packed 4-bit complex samples/sec" << std::endl <<
+				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs << " packed 4-bit complex samples/sec" << std::endl <<
+				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl <<
+				"Speedup relative to complex case: " << (1.0 - elapsed_time / baseline_queuing_elapsed_time)  * 100.0 << "%" << std::endl;
 #endif
 	delete[] char_input_buffer;
 	delete[] output_buffer;

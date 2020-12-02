@@ -30,10 +30,10 @@ parameters:
 - id: type
   label: Input Type
   dtype: enum
-  options: [Complex, IChar]
+  options: [Complex, IChar, Packed XY]
   option_attributes:
-      data_type: [1, 5]
-      input_format: [complex, char]
+      data_type: [1, 5, 6]
+      input_format: [complex, char, char]
   hide: part
 - id: num_channels
   label: Channels
@@ -86,9 +86,9 @@ inputs:
   domain: stream
   dtype: ${ type.input_format }
   vlen: ${ (num_channels if type.data_type == 1 else num_channels*2) }
-  multiplicity: ${ (0 if polarization == '1' else num_inputs) }
-  optional: ${ (True if polarization == '1' else False) }
-  hide: ${ (True if polarization == '1' else False) }
+  multiplicity: ${ (0 if ((polarization == '1') or (type.data_type == 6)) else num_inputs) }
+  optional: ${ (True if ((polarization == '1') or (type.data_type == 6)) else False) }
+  hide: ${ (True if ((polarization == '1') or (type.data_type == 6)) else False) }
 
 outputs:
 - label: xcorr

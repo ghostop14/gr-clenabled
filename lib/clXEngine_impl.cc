@@ -724,11 +724,11 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 	case DTYPE_COMPLEX:
 		data_size = sizeof(gr_complex);
 		break;
-	case DTYPE_SHORT:
-		data_size = sizeof(short)*2;
-		break;
 	case DTYPE_BYTE:
 		data_size = sizeof(char)*2;  // Need 2 bytes to make up the complex input (will still be complex, just char, not float)
+		break;
+	case DTYPE_PACKEDXY:
+		data_size = sizeof(char);  // Need 2 bytes to make up the packed xy input
 		break;
 	}
 
@@ -737,14 +737,14 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 					output_format, num_channels, integration, output_file, file_base, rollover_size_mb));
 }
 
-
 /*
  * The private constructor
  */
 clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-		int polarization, int num_inputs, int output_format, int num_channels, int integration, bool output_file, std::string file_base, int rollover_size_mb)
+		int polarization, int num_inputs, int output_format, int num_channels, int integration,
+		bool output_file, std::string file_base, int rollover_size_mb)
 : gr::sync_block("clXEngine",
-		gr::io_signature::make(2, num_inputs*polarization, num_channels*data_size),
+		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*data_size*(data_type==DTYPE_PACKEDXY?2:1)),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),
@@ -767,6 +767,13 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 			throw std::runtime_error ("[X-Engine] can't open file");
 		}
 	}
+
+	// Override just in case pol doesn't come through right.
+
+	if (d_data_type == DTYPE_PACKEDXY) {
+		d_npol = 2;
+	}
+
 	// See "Accelerating Radio Astronomy Cross-Correlation with Graphics Processing Units" by M. A. Clark
 	// and xGPU on github for reference documentation and reference implementation.
 
@@ -823,16 +830,16 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 	int input_matrix_type;
 
-	if (d_data_type == DTYPE_BYTE) {
+	if (d_data_type == DTYPE_COMPLEX) {
+		input_matrix_type = CL_MEM_READ_ONLY;
+	}
+	else {
 		char_matrix_buffer = new cl::Buffer(
 				*context,
 				CL_MEM_READ_ONLY,
 				frame_size_times_integration * d_data_size);
 
 		input_matrix_type = CL_MEM_READ_WRITE;
-	}
-	else {
-		input_matrix_type = CL_MEM_READ_ONLY;
 	}
 
 	// This will always be complex, regardless of the block input type.
@@ -856,8 +863,8 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 #ifdef _OPENMP
 	num_procs = omp_get_num_procs() - 2;
-	if (num_procs > 6)
-		num_procs = 6;
+	if (num_procs > 4)
+		num_procs = 4;
 
 	if (num_procs < 1)
 		num_procs = 1;
@@ -878,13 +885,6 @@ bool clXEngine_impl::open()
 	int fd;
 	int flags;
 	flags = O_WRONLY|O_CREAT|O_TRUNC|OUR_O_LARGEFILE|OUR_O_BINARY;
-	/*
-  if(d_append) {
-    flags = O_WRONLY|O_CREAT|O_APPEND|OUR_O_LARGEFILE|OUR_O_BINARY;
-  } else {
-    flags = O_WRONLY|O_CREAT|O_TRUNC|OUR_O_LARGEFILE|OUR_O_BINARY;
-  }
-	 */
 
 	std::string filename=d_file_base;
 
@@ -1118,6 +1118,10 @@ void clXEngine_impl::buildCharToComplexKernel() {
 	// Switch division to multiplication for speed.
 	srcStdStr += "#define ONE_OVER_SCHAR_MAX 0.007874015748031496063\n";
 
+	if (d_data_type == DTYPE_PACKEDXY) {
+		// Need a two's complement lookup table.
+		srcStdStr += "__constant char twosComplementLUT[16] = {0,1,2,3,4,5,6,7,0,-7,-6,-5,-4,-3,-2,-1};\n";
+	}
 	srcStdStr += "struct ComplexStruct {\n";
 	srcStdStr += "float real;\n";
 	srcStdStr += "float imag; };\n";
@@ -1125,9 +1129,16 @@ void clXEngine_impl::buildCharToComplexKernel() {
 
 	srcStdStr += "__kernel void CharToComplex(__global char * restrict a, __global SComplex * restrict c) {\n";
 	srcStdStr += "    size_t index =  get_global_id(0);\n";
-	srcStdStr += "    size_t two_index =  index*2;\n";
-	srcStdStr += "	  c[index].real = (float)a[two_index] * ONE_OVER_SCHAR_MAX;\n";
-	srcStdStr += "	  c[index].imag = (float)a[two_index+1] * ONE_OVER_SCHAR_MAX;\n";
+	if (d_data_type == DTYPE_PACKEDXY) {
+		srcStdStr += "    char tmp_char1 = a[index];\n";
+		srcStdStr += "	  c[index].real = (float)twosComplementLUT[tmp_char1 >> 4] * ONE_OVER_SCHAR_MAX;\n";
+		srcStdStr += "	  c[index].imag = (float)twosComplementLUT[tmp_char1 & 0x0F] * ONE_OVER_SCHAR_MAX;\n";
+	}
+	else {
+		srcStdStr += "    size_t two_index =  index*2;\n";
+		srcStdStr += "	  c[index].real = (float)a[two_index] * ONE_OVER_SCHAR_MAX;\n";
+		srcStdStr += "	  c[index].imag = (float)a[two_index+1] * ONE_OVER_SCHAR_MAX;\n";
+	}
 	srcStdStr += "}\n";
 
 	try {
@@ -1173,9 +1184,9 @@ void clXEngine_impl::buildCharToComplexKernel() {
 }
 
 int
-clXEngine_impl::work_test(int noutput_items,
+clXEngine_impl::work_processor(int noutput_items,
 		gr_vector_const_void_star &input_items,
-		gr_vector_void_star &output_items)
+		gr_vector_void_star &output_items, bool liveWork)
 {
 	gr::thread::scoped_lock guard(d_setlock);
 
@@ -1208,15 +1219,15 @@ clXEngine_impl::work_test(int noutput_items,
 		int input_start = frame_size * (integration_tracker + cur_block);
 
 		if (d_data_type != DTYPE_COMPLEX) {
-			input_start *= d_data_size; // interleaved IQ, so 2 data_size's at a clip
+			input_start *= 2; // interleaved IQ, so 2 data_size's at a clip
 		}
 
 		if (d_npol == 1) {
 			if (d_data_type == DTYPE_BYTE) {
-#pragma omp parallel num_threads(num_procs)
+				#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-#pragma omp for schedule(dynamic)
+					#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const char *cur_signal = (const char *) input_items[i];
 						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
@@ -1224,10 +1235,10 @@ clXEngine_impl::work_test(int noutput_items,
 				}
 			}
 			else {
-#pragma omp parallel num_threads(num_procs)
+				#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-#pragma omp for schedule(dynamic)
+					#pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
 						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
@@ -1236,12 +1247,12 @@ clXEngine_impl::work_test(int noutput_items,
 			}
 		}
 		else {
-			// We need to interleave....
 			if (d_data_type == DTYPE_BYTE) {
-#pragma omp parallel num_threads(num_procs)
+				// We need to interleave....
+				#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-#pragma omp for schedule(dynamic)
+					#pragma omp for schedule(dynamic)
 					for (i=0;i<d_num_inputs;i++) {
 						const char *pol1 = (const char *) input_items[i];
 						const char *pol2 = (const char *) input_items[i+d_num_inputs];
@@ -1262,176 +1273,25 @@ clXEngine_impl::work_test(int noutput_items,
 					}
 				}
 			}
-			else {
-#pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-#pragma omp for schedule(dynamic)
-					for (i=0;i<d_num_inputs;i++) {
-						const gr_complex *pol1 = (const gr_complex *) input_items[i];
-						const gr_complex *pol2 = (const gr_complex *) input_items[i+d_num_inputs];
-
-						// Each interleaved channel will now be num_channels*2 long
-						// X Y X Y X Y...
-						for (int k=0;k<d_num_channels;k++) {
-							int input_index = input_start + i*num_chan_x2+k*2;
-							int pol_index = cur_block*d_num_channels+k;
-							// complex_input[input_index++] = pol1[pol_index];
-							// complex_input[input_index] = pol2[pol_index];
-							// The memcpy is slightly faster.
-							// sizeof(gr_complex) is faster than d_data_size
-							memcpy(&complex_input[input_index++],&pol1[pol_index],sizeof(gr_complex));
-							memcpy(&complex_input[input_index],&pol2[pol_index],sizeof(gr_complex));
-						}
-					} // for i
-				} // omp
-			} // else datatype
-		} // else interleave
-	} // for curblock
-
-	integration_tracker += items_processed;
-
-	if (integration_tracker == d_integration_time) {
-		// Buffer is ready for processing.
-		// Set up the pointers to the new data the thread should work with.
-		thread_output_matrix = output_matrix;
-		if (d_data_type == DTYPE_BYTE) {
-			thread_char_input = char_input;
-
-			// Move the current pointer to the other buffer
-			if (current_write_buffer == 1) {
-				// Move to buffer 2
-				char_input = char_input2;
-				output_matrix = output_matrix2;
-				current_write_buffer = 2;
-			}
-			else {
-				// Move to buffer 1
-				char_input = char_input1;
-				output_matrix = output_matrix1;
-				current_write_buffer = 1;
-			}
-		}
-		else {
-			thread_complex_input = complex_input;
-
-			// Move the current pointer to the other buffer
-			if (current_write_buffer == 1) {
-				// Move to buffer 2
-				complex_input = complex_input2;
-				output_matrix = output_matrix2;
-				current_write_buffer = 2;
-			}
-			else {
-				// Move to buffer 1
-				complex_input = complex_input1;
-				output_matrix = output_matrix1;
-				current_write_buffer = 1;
-			}
-		}
-
-		integration_tracker = 0;
-	}
-
-	// Tell runtime system how many output items we produced.
-	return items_processed;
-}
-
-int
-clXEngine_impl::work(int noutput_items,
-		gr_vector_const_void_star &input_items,
-		gr_vector_void_star &output_items)
-{
-	gr::thread::scoped_lock guard(d_setlock);
-
-	int items_remaining = d_integration_time - integration_tracker;
-
-	int items_processed;
-
-	if (noutput_items > items_remaining) {
-		items_processed = items_remaining;
-	}
-	else {
-		items_processed = noutput_items;
-	}
-
-	if (thread_process_data && ((integration_tracker+items_processed) == d_integration_time)) {
-		// If a thread is already processing data and this would trigger a new one,
-		// the buffer has backed up.  Let's hold and tell the engine we're not ready for this data.
-		usleep(10);
-
-		return 0;
-	}
-
-	// First we need to load the data into a matrix in the format expected by the correlator.
-	// For a single polarization it's easy, we can just chain them.
-	// For dual polarization, we have to interleave them so it's
-	// x0r x0i y0r y0i.....
-
-	for (int cur_block=0;cur_block<items_processed;cur_block++) {
-		// For reference: 	frame_size = d_num_channels * d_num_inputs * d_npol;
-		int input_start = frame_size * (integration_tracker + cur_block);
-
-		if (d_data_type != DTYPE_COMPLEX) {
-			input_start *= d_data_size; // interleaved IQ, so 2 data_size's at a clip
-		}
-
-		if (d_npol == 1) {
-			if (d_data_type == DTYPE_BYTE) {
-#pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-#pragma omp for schedule(dynamic)
-					for (int i=0;i<d_num_inputs;i++) {
-						const char *cur_signal = (const char *) input_items[i];
-						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
-					}
+			else if (d_data_type == DTYPE_PACKEDXY) {
+				// Already interleaved
+				int pol_index = cur_block*num_chan_x2;
+				#pragma omp parallel for num_threads(num_procs)
+				for (int i=0;i<d_num_inputs;i++) {
+					const char *pol1 = (const char *) input_items[i];
+					int input_index = input_start + i*num_chan_x2;
+					// Each interleaved channel will now be num_channels*2 long
+					// X Y X Y X Y...
+					// In packed xy mode, the input is already xyxy, just packed 4-bit in each byte.
+					memcpy(&char_input[input_index],&pol1[pol_index],num_chan_x2);
 				}
 			}
 			else {
-#pragma omp parallel num_threads(num_procs)
+				// We need to interleave....
+				#pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-#pragma omp for schedule(dynamic)
-					for (int i=0;i<d_num_inputs;i++) {
-						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
-						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
-					}
-				}
-			}
-		}
-		else {
-			// We need to interleave....
-			if (d_data_type == DTYPE_BYTE) {
-#pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-#pragma omp for schedule(dynamic)
-					for (i=0;i<d_num_inputs;i++) {
-						const char *pol1 = (const char *) input_items[i];
-						const char *pol2 = (const char *) input_items[i+d_num_inputs];
-
-						// Each interleaved channel will now be num_channels*2 long
-						// X Y X Y X Y...
-						for (int k=0;k<d_num_channels;k++) {
-							int k2 = 2*k;
-							int input_index = input_start + i*num_chan_x2+k2;
-							int pol_index = cur_block*d_num_channels+k;
-							// char_input[input_index++] = pol1[pol_index];
-							// char_input[input_index++] = pol1[pol_index+1];
-							// char_input[input_index++] = pol2[pol_index];
-							// char_input[input_index] = pol2[pol_index+1];
-							memcpy(&char_input[input_index],&pol1[pol_index],d_data_size);
-							memcpy(&char_input[input_index+2],&pol2[pol_index],d_data_size);
-						}
-					}
-				}
-			}
-			else {
-#pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-#pragma omp for schedule(dynamic)
+					#pragma omp for schedule(dynamic)
 					for (i=0;i<d_num_inputs;i++) {
 						const gr_complex *pol1 = (const gr_complex *) input_items[i];
 						const gr_complex *pol2 = (const gr_complex *) input_items[i+d_num_inputs];
@@ -1464,32 +1324,18 @@ clXEngine_impl::work(int noutput_items,
 			if (thread_is_processing && (!d_output_file)) {
 				// So this case is that we have a new block ready and the old one is complete.
 				// So before transitioning to the new one, let's send the data from the last one.
-				pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
 
+				pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
 				pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
-				message_port_pub(pmt::mp("xcorr"), pdu);
+
+				if (liveWork) {
+					message_port_pub(pmt::mp("xcorr"), pdu);
+				}
 			}
 
 			// Set up the pointers to the new data the thread should work with.
 			thread_output_matrix = output_matrix;
-			if (d_data_type == DTYPE_BYTE) {
-				thread_char_input = char_input;
-
-				// Move the current pointer to the other buffer
-				if (current_write_buffer == 1) {
-					// Move to buffer 2
-					char_input = char_input2;
-					output_matrix = output_matrix2;
-					current_write_buffer = 2;
-				}
-				else {
-					// Move to buffer 1
-					char_input = char_input1;
-					output_matrix = output_matrix1;
-					current_write_buffer = 1;
-				}
-			}
-			else {
+			if (d_data_type == DTYPE_COMPLEX) {
 				thread_complex_input = complex_input;
 
 				// Move the current pointer to the other buffer
@@ -1506,6 +1352,23 @@ clXEngine_impl::work(int noutput_items,
 					current_write_buffer = 1;
 				}
 			}
+			else {
+				thread_char_input = char_input;
+
+				// Move the current pointer to the other buffer
+				if (current_write_buffer == 1) {
+					// Move to buffer 2
+					char_input = char_input2;
+					output_matrix = output_matrix2;
+					current_write_buffer = 2;
+				}
+				else {
+					// Move to buffer 1
+					char_input = char_input1;
+					output_matrix = output_matrix1;
+					current_write_buffer = 1;
+				}
+			}
 
 			// Trigger the thread to process
 			thread_process_data = true;
@@ -1518,6 +1381,23 @@ clXEngine_impl::work(int noutput_items,
 	return items_processed;
 }
 
+int
+clXEngine_impl::work_test(int noutput_items,
+		gr_vector_const_void_star &input_items,
+		gr_vector_void_star &output_items)
+{
+	return work_processor(noutput_items, input_items, output_items, false);
+}
+
+int
+clXEngine_impl::work(int noutput_items,
+		gr_vector_const_void_star &input_items,
+		gr_vector_void_star &output_items)
+{
+	return work_processor(noutput_items, input_items, output_items, true);
+	// return noutput_items;
+}
+
 void clXEngine_impl::runThread() {
 	threadRunning = true;
 
@@ -1526,11 +1406,11 @@ void clXEngine_impl::runThread() {
 			// This is really a one-time variable set to true on the first pass.
 			thread_is_processing = true;
 
-			if (d_data_type == DTYPE_BYTE) {
-				xcorrelate(thread_char_input, (XComplex *)thread_output_matrix);
+			if (d_data_type == DTYPE_COMPLEX) {
+				xcorrelate((XComplex *)thread_complex_input, (XComplex *)thread_output_matrix);
 			}
 			else {
-				xcorrelate((XComplex *)thread_complex_input, (XComplex *)thread_output_matrix);
+				xcorrelate(thread_char_input, (XComplex *)thread_output_matrix);
 			}
 
 			if (d_fp) {

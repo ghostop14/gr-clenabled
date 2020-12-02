@@ -800,13 +800,13 @@ public:
 
 	void xcorrelate(XComplex *input_matrix, XComplex *cross_correlation) {
 		queue->enqueueWriteBuffer(*input_matrix_buffer,CL_FALSE,0,frame_size_times_integration_bytes,input_matrix);
-
 		xcorrelate(cross_correlation);
     };
 
 	void xcorrelate(char *input_matrix, XComplex *cross_correlation) {
 		// Have to convert first.
 		queue->enqueueWriteBuffer(*char_matrix_buffer,CL_FALSE,0,frame_size_times_integration_bytes,input_matrix);
+
 		// Execute the conversion kernel
 		char_to_cc_kernel->setArg(0, *char_matrix_buffer);
 		char_to_cc_kernel->setArg(1, *input_matrix_buffer);
@@ -820,11 +820,18 @@ public:
 		xcorrelate(cross_correlation);
     };
 
+	int work_processor(
+			int noutput_items,
+			gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items, bool liveWork
+	);
+
 	int work_test(
 			int noutput_items,
 			gr_vector_const_void_star &input_items,
 			gr_vector_void_star &output_items
 	);
+
 	int work(
 			int noutput_items,
 			gr_vector_const_void_star &input_items,

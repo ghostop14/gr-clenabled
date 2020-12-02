@@ -33,6 +33,7 @@
 #define DTYPE_INT 3
 #define DTYPE_SHORT 4
 #define DTYPE_BYTE 5
+#define DTYPE_PACKEDXY 6
 
 #define OCLTYPE_GPU 1
 #define OCLTYPE_ACCELERATOR 2

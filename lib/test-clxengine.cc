@@ -201,7 +201,7 @@ bool testXCorrelate() {
 
 		// The one specifies output triangular order rather than full matrix.
 		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_COMPLEX,sizeof(gr_complex),
-				polarization, num_inputs, 1, num_channels, integration_time);
+				polarization, num_inputs, 1, 0, num_channels, integration_time);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up environment." << std::endl;
@@ -335,7 +335,7 @@ bool testXCorrelate() {
 	}
 	// Now test char version
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_BYTE,sizeof(char)*2,
-			polarization, num_inputs, 1, num_channels, integration_time);
+			polarization, num_inputs, 1, 0, num_channels, integration_time);
 
 	char *char_input_buffer;
 
@@ -411,7 +411,7 @@ bool testXCorrelate() {
 	}
 	// Now test char version
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_PACKEDXY,sizeof(char),
-			2, num_inputs, 1, num_channels, integration_time);
+			2, num_inputs, 1, 0, num_channels, integration_time);
 
 	input_length = test->get_input_buffer_size();
 	output_length = test->get_output_buffer_size();

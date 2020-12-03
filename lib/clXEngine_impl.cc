@@ -715,7 +715,7 @@ namespace clenabled {
 
 clXEngine::sptr
 clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type,
-		int polarization, int num_inputs, int output_format, int num_channels, int integration,
+		int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
 		bool output_file, std::string file_base, int rollover_size_mb)
 {
 	int data_size = 1;
@@ -734,20 +734,20 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 
 	return gnuradio::get_initial_sptr
 			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs,
-					output_format, num_channels, integration, output_file, file_base, rollover_size_mb));
+					output_format, first_channel, num_channels, integration, output_file, file_base, rollover_size_mb));
 }
 
 /*
  * The private constructor
  */
 clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-		int polarization, int num_inputs, int output_format, int num_channels, int integration,
+		int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
 		bool output_file, std::string file_base, int rollover_size_mb)
 : gr::sync_block("clXEngine",
 		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*(data_type==DTYPE_PACKEDXY?2:data_size)),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
-		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),
+		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),d_first_channel(first_channel),
 		d_num_channels(num_channels), d_integration_time(integration), integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
 		d_output_file(output_file), d_file_base(file_base), d_rollover_size_mb(rollover_size_mb)
 {
@@ -764,7 +764,12 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		bool retval = open();
 
 		if (!retval) {
-			throw std::runtime_error ("[X-Engine] can't open file");
+			std::string errmsg = "[X-Engine] can't open file: ";
+			errmsg += filename;
+
+			GR_LOG_ERROR(d_logger,errmsg);
+
+			throw std::runtime_error (errmsg);
 		}
 	}
 
@@ -883,16 +888,18 @@ bool clXEngine_impl::open()
 {
 	gr::thread::scoped_lock guard(d_fpmutex);	// hold mutex for duration of this function
 	// we use the open system call to get access to the O_LARGEFILE flag.
+	d_wrote_json = false;
+
 	int fd;
 	int flags;
 	flags = O_WRONLY|O_CREAT|O_TRUNC|OUR_O_LARGEFILE|OUR_O_BINARY;
 
-	std::string filename=d_file_base;
+	filename = d_file_base;
 
 	if (d_rollover_files) {
 		std::string newStr = std::to_string(current_rollover_index++);
 
-		while (newStr.length() < 5)
+		while (newStr.length() < 3)
 			newStr = "0" + newStr;
 
 		filename += "_" + newStr;
@@ -920,6 +927,27 @@ bool clXEngine_impl::open()
 	d_bytesWritten = 0;
 
 	return fileOpen;
+}
+
+void clXEngine_impl::write_json(long seq_num) {
+	   FILE * pFile;
+
+	   std::string json_file = filename;
+	   json_file += ".json";
+
+	   try {
+		   pFile = fopen (json_file.c_str(),"w");
+	   }
+	   catch(...) {
+		   GR_LOG_ERROR(d_logger,"Error writing data json descriptor file " + json_file);
+		   return;
+	   }
+
+	   fprintf(pFile,"{\"first_seq_num\":%ld,\"num_baselines\":%d, \"first_channel\":%d, \"channels\":%d,\"polarizations\":%d,\"antennas\":%d,\"ntime\":%d,\"samples_per_block\":%ld,\"bytes_per_block\":%ld,\"data_type\":\"cf32_le\", \"data_format\": \"triangular order\"}",
+			   seq_num, d_num_baselines, d_first_channel, d_num_channels, d_npol, d_num_inputs, d_integration_time, matrix_flat_length, matrix_flat_length*sizeof(gr_complex));
+	   fclose (pFile);
+
+	   d_wrote_json = true;
 }
 
 void clXEngine_impl::close() {
@@ -1214,6 +1242,20 @@ clXEngine_impl::work_processor(int noutput_items,
 		usleep(10);
 
 		return 0;
+	}
+
+	if (d_fp && !d_wrote_json) {
+		// We're writing to file and we haven't written any bytes to the current file
+		std::vector<gr::tag_t> tags;
+		this->get_tags_in_window(tags, 0, 0, noutput_items);
+
+		if (tags.size() > 0) {
+			long tag_val = pmt::to_long(tags[0].value);
+			write_json(tag_val);
+		}
+		else {
+			write_json(-1);
+		}
 	}
 
 	// First we need to load the data into a matrix in the format expected by the correlator.

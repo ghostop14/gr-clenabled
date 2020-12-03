@@ -716,6 +716,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int d_npol;
 	int d_num_inputs;
 	int d_output_format;
+	int d_first_channel;
 	int d_num_channels;
 	int d_num_baselines;
 	int d_integration_time;
@@ -732,6 +733,8 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 
 	bool d_output_file;
 	std::string d_file_base;
+	bool d_wrote_json = false;
+	std::string filename;
 	int d_rollover_size_mb;
 	size_t rollover_size_bytes;
 	int current_rollover_index=1;
@@ -742,6 +745,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 
 	virtual bool open();
 	virtual void close();
+	virtual void write_json(long seq_num);
 
 	size_t frame_size_times_integration;
 	size_t frame_size_times_integration_bytes;
@@ -789,7 +793,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 
 public:
 	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-			int polarization, int num_inputs, int output_format, int num_channels, int integration,
+			int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
 			bool output_file=false, std::string file_base="", int rollover_size_mb=0);
 	~clXEngine_impl();
 

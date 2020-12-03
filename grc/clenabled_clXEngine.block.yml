@@ -35,6 +35,10 @@ parameters:
       data_type: [1, 5, 6]
       input_format: [complex, char, char]
   hide: part
+- id: first_channel
+  label: Starting Chanel
+  dtype: int
+  default: '0'
 - id: num_channels
   label: Channels
   dtype: int
@@ -100,9 +104,9 @@ templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\

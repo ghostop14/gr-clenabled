@@ -257,9 +257,9 @@ bool testXCorrelate() {
 	long input_length = test->get_input_buffer_size();
 	long output_length = test->get_output_buffer_size();
 
-	std::cout << "Input block size (complex): " << input_length << std::endl;
-	std::cout << "Output block size (complex): " << output_length << std::endl;
-	std::cout << "In/Out decimation: " << input_length / output_length << std::endl;
+	std::cout << "Input block size in bytes for complex inputs: " << input_length << std::endl;
+	std::cout << "Output block size in bytes (output matrix is always complex): " << output_length << std::endl;
+	std::cout << "In/Out complex data decimation: " << input_length / output_length << std::endl;
 
 	gr_complex *input_buffer;
 	gr_complex *output_buffer;

@@ -1473,6 +1473,7 @@ void clXEngine_impl::runThread() {
 					open();
 				}
 
+				/*
 				while(nwritten < matrix_flat_length) {
 					// fwrite: returns number of elements written
 					// Takes: ptr to array of elements, element size, count, file stream pointer
@@ -1488,6 +1489,15 @@ void clXEngine_impl::runThread() {
 					long bytes_written = count * sizeof(gr_complex);
 					d_bytesWritten += bytes_written;
 					inbuf += bytes_written;
+				}
+				*/
+				// Optimize write as one call
+				long count = fwrite(inbuf, matrix_flat_length * sizeof(gr_complex),1,d_fp);
+				if(count == 0) {
+					// Error condition, nothing written for some reason.
+					if(ferror(d_fp)) {
+						std::cout << "[X-Engine] Write failed with error: " << std::strerror(errno) << std::endl;
+					}
 				}
 			}
 

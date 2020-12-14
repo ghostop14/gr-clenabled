@@ -51,9 +51,9 @@ The following blocks are implemented in this project:
 	
 	g.	SNR Helper (a custom block performing divide->log10->abs)
 	
-	h.	Forward FFT
+	h.	**[Updated]** Forward FFT: This block now supports multiple input/output streams using the same FFT parameters.  This allows one GPU to process multiple FFT streams within a single flowgraph.  The ability to handle FFT shifts and taps was also added such that this is a true drop-in replacement for the native FFT block.
 	
-	i.	Reverse FFT
+	i.	**[Updated]** Reverse FFT: Multiple stream support was added here as well. The ability to handle FFT shifts and taps was also added such that this is a true drop-in replacement for the native FFT block.
 	
 3.	Digital Signal Processing 
 
@@ -67,9 +67,20 @@ The following blocks are implemented in this project:
 	
 	e.	**[New]** Cross-Correlator (time domain and frequency domain, multiple signals) - For the examples included, you'll want gr-xcorrelate (CPU-based cross-correlation with some helper blocks) and gr-lfast for some filter convenience wrappers.
 
+	f.	**[New]** Interferometry X-Engine - This block provides a full X-Engine implementation in GNU Radio based on the industry standard xGPU library.  However, it provides dynamic configuration (xGPU requires re-compiling to change parameters), and more flexibility within the parameters.  The block can also write correlated data directly to disk for performance, and supports a number of input formats: Packed 4-bit FFT vectors (each byte has 4-bit I and 4-bit Q packed as two's complement), IChar (interleaved byte IQ data) complex FFT vectors, or standard complex FFT vectors.
+
+## Supporting Throughput Commandline Tools
+There are also a number of performance-measuring command-line tools installed with the module as well:
+
+**test-clenabled**: Provides throughput timing of the implemented blocks
+**test-clfilter**: Provides more granular filter timing
+**test-clfft**: Provides specific timing capabilities around FFT throughput.
+**test-clxcorrelate**: Provides timing of the reference correlator blocks
+**test-clxengine**: Provides timing of the full x-engine block
+
 ## Important Usage Notes
 
-### [New] Cross-Correlators
+### [New] Reference Cross-Correlators
 
 Time-domain (OpenCL XCorrelate) and frequency-domain (OpenCL XCorrelate FFT) cross-correlator blocks have been added to support combining inputs from multiple antennas.  
 
@@ -135,7 +146,7 @@ test-clfilter - Provide filter timing information based on a specified number of
 
 If you use trig functions in your kernel, verify your hardware supports double precision math.  You can do this with clview which will immediately tell you if your card supports it.  Then in your kernel, you can still pass floats but make sure you typecast parameters to the trig functions as (double) first or you will notice too much variation in the calculated results.  
 
-The following snippit from the project’s <project>/examples/ kernel1to1_sincos.cl example file shows the cast:
+The following snippit from the projectï¿½s <project>/examples/ kernel1to1_sincos.cl example file shows the cast:
 
 c[index].real = cos((double)a[index].real);
 

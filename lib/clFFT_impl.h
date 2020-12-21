@@ -74,7 +74,7 @@ namespace gr {
 		float round(float input, int precision);
 
      public:
-		int FFTValidationTest(bool fwdXForm);
+		void FFTValidationTest(bool fwdXForm);
 
     int testCPU(int noutput_items,
             gr_vector_const_void_star &input_items,

@@ -358,7 +358,7 @@ clFFT_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
 	/* <+forecast+> e.g. ninput_items_required[0] = noutput_items */
 }
 
-int clFFT_impl::FFTValidationTest(bool fwdXForm) {
+void clFFT_impl::FFTValidationTest(bool fwdXForm) {
 	gr_complex input_items[d_fft_size];
 	gr_complex output_items_gnuradio[d_fft_size];
 	gr_complex output_items_opencl[d_fft_size];

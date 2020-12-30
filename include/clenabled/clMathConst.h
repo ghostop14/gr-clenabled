@@ -38,7 +38,7 @@ namespace gr {
      public:
 
 
-      typedef boost::shared_ptr<clMathConst> sptr;
+      typedef std::shared_ptr<clMathConst> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clMathConst.

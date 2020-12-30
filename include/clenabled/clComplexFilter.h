@@ -693,7 +693,7 @@ namespace gr {
     class CLENABLED_API clComplexFilter : virtual public gr::sync_decimator
     {
      public:
-      typedef boost::shared_ptr<clComplexFilter> sptr;
+      typedef std::shared_ptr<clComplexFilter> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clComplexFilter.

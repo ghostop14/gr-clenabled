@@ -36,7 +36,7 @@ namespace gr {
     class CLENABLED_API clSignalSource : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clSignalSource> sptr;
+      typedef std::shared_ptr<clSignalSource> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clSignalSource.

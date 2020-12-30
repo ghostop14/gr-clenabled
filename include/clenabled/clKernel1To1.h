@@ -36,7 +36,7 @@ namespace gr {
     class CLENABLED_API clKernel1To1 : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clKernel1To1> sptr;
+      typedef std::shared_ptr<clKernel1To1> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clKernel1To1.

@@ -36,7 +36,7 @@ namespace gr {
     class CLENABLED_API clMagPhaseToComplex : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clMagPhaseToComplex> sptr;
+      typedef std::shared_ptr<clMagPhaseToComplex> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clMagPhaseToComplex.

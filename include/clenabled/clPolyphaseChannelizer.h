@@ -35,7 +35,7 @@ namespace gr {
     class CLENABLED_API clPolyphaseChannelizer : virtual public gr::block
     {
      public:
-      typedef boost::shared_ptr<clPolyphaseChannelizer> sptr;
+      typedef std::shared_ptr<clPolyphaseChannelizer> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clPolyphaseChannelizer.

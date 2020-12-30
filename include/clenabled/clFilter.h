@@ -39,7 +39,7 @@ namespace gr {
     class CLENABLED_API clFilter : virtual public gr::sync_decimator // gr::block
     {
      public:
-      typedef boost::shared_ptr<clFilter> sptr;
+      typedef std::shared_ptr<clFilter> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clFilter.

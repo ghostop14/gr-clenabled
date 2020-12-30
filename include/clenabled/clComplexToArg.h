@@ -36,7 +36,7 @@ namespace gr {
     class CLENABLED_API clComplexToArg : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clComplexToArg> sptr;
+      typedef std::shared_ptr<clComplexToArg> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clComplexToArg.

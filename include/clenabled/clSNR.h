@@ -36,7 +36,7 @@ namespace gr {
     class CLENABLED_API clSNR : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clSNR> sptr;
+      typedef std::shared_ptr<clSNR> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clSNR.

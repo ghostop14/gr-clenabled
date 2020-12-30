@@ -37,7 +37,7 @@ namespace gr {
     class CLENABLED_API clMathOp : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<clMathOp> sptr;
+      typedef std::shared_ptr<clMathOp> sptr;
 
       /*!
        * \brief Return a shared_ptr to a new instance of clenabled::clMathOp.

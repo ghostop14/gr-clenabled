@@ -39,15 +39,6 @@ namespace gr {
      public:
       typedef std::shared_ptr<clMathOp> sptr;
 
-      /*!
-       * \brief Return a shared_ptr to a new instance of clenabled::clMathOp.
-       *
-       * To avoid accidental use of raw pointers, clenabled::clMathOp's
-       * constructor is in a private implementation
-       * class. clenabled::clMathOp::make is the public interface for
-       * creating new instances.
-       */
-      static sptr make(int idataType, int openCLPlatformType,int operatorType,int setDebug=0);
       static sptr make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId, int operatorType,int setDebug=0);
     };
 

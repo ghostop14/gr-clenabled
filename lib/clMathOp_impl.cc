@@ -30,33 +30,6 @@ namespace gr {
 namespace clenabled {
 
 clMathOp::sptr
-clMathOp::make(int idataType, int openCLPlatformType,int operatorType,int setDebug)
-{
-	int dsize=sizeof(float);
-
-	switch(idataType) {
-	case DTYPE_FLOAT:
-		dsize=sizeof(float);
-		break;
-	case DTYPE_INT:
-		dsize=sizeof(int);
-		break;
-	case DTYPE_COMPLEX:
-		dsize=sizeof(gr_complex);
-		break;
-	}
-
-	if (setDebug == 1) {
-		return gnuradio::get_initial_sptr
-				(new clMathOp_impl(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,operatorType,true));
-	}
-	else {
-		return gnuradio::get_initial_sptr
-				(new clMathOp_impl(idataType,dsize,openCLPlatformType,OCLDEVICESELECTOR_FIRST,0,0,operatorType,false));
-	}
-}
-
-clMathOp::sptr
 clMathOp::make(int idataType, int openCLPlatformType, int devSelector,int platformId, int devId,int operatorType,int setDebug)
 {
 	int dsize=sizeof(float);

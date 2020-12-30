@@ -22,9 +22,6 @@
  static const char *__doc_gr_clenabled_clMathOp_clMathOp = R"doc()doc";
 
 
- static const char *__doc_gr_clenabled_clMathOp_make_0 = R"doc()doc";
-
-
- static const char *__doc_gr_clenabled_clMathOp_make_1 = R"doc()doc";
+ static const char *__doc_gr_clenabled_clMathOp_make = R"doc()doc";
 
   

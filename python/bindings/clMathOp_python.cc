@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(clMathOp.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(f7e62506102f3c2e3fc80fc712b99832)                     */
+/* BINDTOOL_HEADER_FILE_HASH(c2a78a20a9094f4059c03c0c89b0e02c)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -39,13 +39,14 @@ void bind_clMathOp(py::module& m)
         .def(py::init(&clMathOp::make),
            py::arg("idataType"),
            py::arg("openCLPlatformType"),
+           py::arg("devSelector"),
+           py::arg("platformId"),
+           py::arg("devId"),
            py::arg("operatorType"),
            py::arg("setDebug") = 0,
            D(clMathOp,make)
         )
         
-
-
 
 
 

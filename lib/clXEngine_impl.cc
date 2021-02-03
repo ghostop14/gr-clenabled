@@ -1239,9 +1239,12 @@ clXEngine_impl::work_processor(int noutput_items,
 	if (thread_process_data && ((integration_tracker+items_processed) == d_integration_time)) {
 		// If a thread is already processing data and this would trigger a new one,
 		// the buffer has backed up.  Let's hold and tell the engine we're not ready for this data.
-		usleep(10);
 
-		return 0;
+		while (thread_process_data) {
+			usleep(10);
+		}
+
+		// return 0;
 	}
 
 	if (d_fp && !d_wrote_json) {

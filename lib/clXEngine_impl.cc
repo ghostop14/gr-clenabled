@@ -1066,6 +1066,8 @@ void clXEngine_impl::buildKernel() {
 	srcStdStr += "#define d_integration_time " + std::to_string(d_integration_time) + "\n";
 	srcStdStr += "#define d_num_inputs " + std::to_string(d_num_inputs) + "\n";
 	srcStdStr += "#define d_npol " + std::to_string(d_npol) + "\n";
+	// frame_size = inputs * channels * pol
+	srcStdStr += "#define d_frame_size " + std::to_string(frame_size) + "\n";
 	srcStdStr += "\n"; // Just for legibility
 
 	srcStdStr += "struct ComplexStruct {\n";
@@ -1103,9 +1105,16 @@ void clXEngine_impl::buildKernel() {
 	srcStdStr += "XComplex inputRowX, inputRowY, inputColX, inputColY;\n";
 
 	srcStdStr += "for(int t=0; t<d_integration_time; t++){\n";
+	// Had to adapt index lookups.  xGPU was expecting [t][freq][station][pol],
+	// But we have [t][station][freq][pol]
+	// So the index1/2 calcs are different than xGPU's
+	/*
 	srcStdStr += "  int index_base = (t*d_num_channels + f)*d_num_inputs;\n";
 	srcStdStr += "  int index1 = (index_base + station1)*d_npol;\n";
 	srcStdStr += "  int index2 = (index_base + station2)*d_npol;\n";
+	*/
+	srcStdStr += "  int index1 = t*d_frame_size + (station1 * d_num_channels + f) * d_npol;\n";
+	srcStdStr += "  int index2 = t*d_frame_size + (station2 * d_num_channels + f) * d_npol;\n";
 
 	srcStdStr += "	inputRowX = input_matrix[index1];\n";
 	srcStdStr += "	inputColX = input_matrix[index2];\n";

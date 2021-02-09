@@ -1252,7 +1252,7 @@ clXEngine_impl::work_processor(int noutput_items,
 		// the buffer has backed up.  Let's hold and tell the engine we're not ready for this data.
 
 		while (thread_process_data) {
-			usleep(10);
+			usleep(4);
 		}
 
 		// return 0;
@@ -1287,58 +1287,38 @@ clXEngine_impl::work_processor(int noutput_items,
 
 		if (d_npol == 1) {
 			if (d_data_type == DTYPE_BYTE) {
-				// #pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-					// #pragma omp for schedule(dynamic)
-					for (int i=0;i<d_num_inputs;i++) {
-						const char *cur_signal = (const char *) input_items[i];
-						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
-					}
+				for (int i=0;i<d_num_inputs;i++) {
+					const char *cur_signal = (const char *) input_items[i];
+					memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
 				}
 			}
 			else {
-				// #pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-					// #pragma omp for schedule(dynamic)
-					for (int i=0;i<d_num_inputs;i++) {
-						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
-						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
-					}
+				for (int i=0;i<d_num_inputs;i++) {
+					const gr_complex *cur_signal = (const gr_complex *) input_items[i];
+					memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
 				}
 			}
 		}
 		else {
 			if (d_data_type == DTYPE_BYTE) {
 				// We need to interleave....
-				// #pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-					// #pragma omp for schedule(dynamic)
-					for (i=0;i<d_num_inputs;i++) {
-						const char *pol1 = (const char *) input_items[i];
-						const char *pol2 = (const char *) input_items[i+d_num_inputs];
+				for (int i=0;i<d_num_inputs;i++) {
+					const char *pol1 = (const char *) input_items[i];
+					const char *pol2 = (const char *) input_items[i+d_num_inputs];
 
-						// Each interleaved channel will now be num_channels*2 long
-						// X Y X Y X Y...
-						for (int k=0;k<d_num_channels;k++) {
-							int input_index = input_start + i*num_chan_x2*2+k*4;
-							int pol_index = cur_block*num_chan_x2+k*2;
-							// char_input[input_index++] = pol1[pol_index];
-							// char_input[input_index++] = pol1[pol_index+1];
-							// char_input[input_index++] = pol2[pol_index];
-							// char_input[input_index] = pol2[pol_index+1];
-							memcpy(&char_input[input_index],&pol1[pol_index],d_data_size);
-							memcpy(&char_input[input_index+2],&pol2[pol_index],d_data_size);
-						}
+					// Each interleaved channel will now be num_channels*2 long
+					// X Y X Y X Y...
+					for (int k=0;k<d_num_channels;k++) {
+						int input_index = input_start + i*num_chan_x2*2+k*4;
+						int pol_index = cur_block*num_chan_x2+k*2;
+						memcpy(&char_input[input_index],&pol1[pol_index],d_data_size);
+						memcpy(&char_input[input_index+2],&pol2[pol_index],d_data_size);
 					}
 				}
 			}
 			else if (d_data_type == DTYPE_PACKEDXY) {
 				// Already interleaved
 				int pol_index = cur_block*num_chan_x2;
-				// #pragma omp parallel for num_threads(num_procs)
 				for (int i=0;i<d_num_inputs;i++) {
 					const char *pol1 = (const char *) input_items[i];
 					int input_index = input_start + i*num_chan_x2;
@@ -1350,28 +1330,23 @@ clXEngine_impl::work_processor(int noutput_items,
 			}
 			else {
 				// We need to interleave....
-				// #pragma omp parallel num_threads(num_procs)
-				{
-					int i;
-					// #pragma omp for schedule(dynamic)
-					for (i=0;i<d_num_inputs;i++) {
-						const gr_complex *pol1 = (const gr_complex *) input_items[i];
-						const gr_complex *pol2 = (const gr_complex *) input_items[i+d_num_inputs];
+				for (int i=0;i<d_num_inputs;i++) {
+					const gr_complex *pol1 = (const gr_complex *) input_items[i];
+					const gr_complex *pol2 = (const gr_complex *) input_items[i+d_num_inputs];
 
-						// Each interleaved channel will now be num_channels*2 long
-						// X Y X Y X Y...
-						for (int k=0;k<d_num_channels;k++) {
-							int input_index = input_start + i*num_chan_x2+k*2;
-							int pol_index = cur_block*d_num_channels+k;
-							// complex_input[input_index++] = pol1[pol_index];
-							// complex_input[input_index] = pol2[pol_index];
-							// The memcpy is slightly faster.
-							// sizeof(gr_complex) is faster than d_data_size
-							memcpy(&complex_input[input_index++],&pol1[pol_index],sizeof(gr_complex));
-							memcpy(&complex_input[input_index],&pol2[pol_index],sizeof(gr_complex));
-						}
-					} // for i
-				} // omp
+					// Each interleaved channel will now be num_channels*2 long
+					// X Y X Y X Y...
+					for (int k=0;k<d_num_channels;k++) {
+						int input_index = input_start + i*num_chan_x2+k*2;
+						int pol_index = cur_block*d_num_channels+k;
+						// complex_input[input_index++] = pol1[pol_index];
+						// complex_input[input_index] = pol2[pol_index];
+						// The memcpy is slightly faster.
+						// sizeof(gr_complex) is faster than d_data_size
+						memcpy(&complex_input[input_index++],&pol1[pol_index],sizeof(gr_complex));
+						memcpy(&complex_input[input_index],&pol2[pol_index],sizeof(gr_complex));
+					}
+				} // for i
 			} // else datatype
 		} // else interleave
 	} // for curblock
@@ -1500,7 +1475,12 @@ void clXEngine_impl::runThread() {
 			// clear the trigger.  This will inform that data is ready.
 			thread_process_data = false;
 		}
-		usleep(8);
+
+		int ct = 0;
+
+		while (!thread_process_data && (ct++ < 4) ) {
+			usleep(2);
+		}
 	}
 
 	threadRunning = false;

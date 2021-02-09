@@ -682,11 +682,11 @@
 #include <gnuradio/io_signature.h>
 #include "clXEngine_impl.h"
 #include <volk/volk.h>
-
+/*
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-
+*/
 // Some carry-forward tricks from file_sink_base.cc
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -866,7 +866,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 			output_size);
 
 	message_port_register_out(pmt::mp("xcorr"));
-
+/*
 #ifdef _OPENMP
 	num_procs = omp_get_num_procs() - 2;
 	if (num_procs > 4)
@@ -880,6 +880,8 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 #else
 	num_procs = 1;
 #endif
+*/
+	num_procs = 1;
 
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
 }
@@ -1285,10 +1287,10 @@ clXEngine_impl::work_processor(int noutput_items,
 
 		if (d_npol == 1) {
 			if (d_data_type == DTYPE_BYTE) {
-				#pragma omp parallel num_threads(num_procs)
+				// #pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+					// #pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const char *cur_signal = (const char *) input_items[i];
 						memcpy(&char_input[input_start + i*d_num_channels*d_data_size],&cur_signal[cur_block*input_size],input_size);
@@ -1296,10 +1298,10 @@ clXEngine_impl::work_processor(int noutput_items,
 				}
 			}
 			else {
-				#pragma omp parallel num_threads(num_procs)
+				// #pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+					// #pragma omp for schedule(dynamic)
 					for (int i=0;i<d_num_inputs;i++) {
 						const gr_complex *cur_signal = (const gr_complex *) input_items[i];
 						memcpy(&complex_input[input_start + i*d_num_channels],&cur_signal[cur_block*d_num_channels],input_size);
@@ -1310,10 +1312,10 @@ clXEngine_impl::work_processor(int noutput_items,
 		else {
 			if (d_data_type == DTYPE_BYTE) {
 				// We need to interleave....
-				#pragma omp parallel num_threads(num_procs)
+				// #pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+					// #pragma omp for schedule(dynamic)
 					for (i=0;i<d_num_inputs;i++) {
 						const char *pol1 = (const char *) input_items[i];
 						const char *pol2 = (const char *) input_items[i+d_num_inputs];
@@ -1336,7 +1338,7 @@ clXEngine_impl::work_processor(int noutput_items,
 			else if (d_data_type == DTYPE_PACKEDXY) {
 				// Already interleaved
 				int pol_index = cur_block*num_chan_x2;
-				#pragma omp parallel for num_threads(num_procs)
+				// #pragma omp parallel for num_threads(num_procs)
 				for (int i=0;i<d_num_inputs;i++) {
 					const char *pol1 = (const char *) input_items[i];
 					int input_index = input_start + i*num_chan_x2;
@@ -1348,10 +1350,10 @@ clXEngine_impl::work_processor(int noutput_items,
 			}
 			else {
 				// We need to interleave....
-				#pragma omp parallel num_threads(num_procs)
+				// #pragma omp parallel num_threads(num_procs)
 				{
 					int i;
-					#pragma omp for schedule(dynamic)
+					// #pragma omp for schedule(dynamic)
 					for (i=0;i<d_num_inputs;i++) {
 						const gr_complex *pol1 = (const gr_complex *) input_items[i];
 						const gr_complex *pol2 = (const gr_complex *) input_items[i+d_num_inputs];
@@ -1485,24 +1487,6 @@ void clXEngine_impl::runThread() {
 					open();
 				}
 
-				/*
-				while(nwritten < matrix_flat_length) {
-					// fwrite: returns number of elements written
-					// Takes: ptr to array of elements, element size, count, file stream pointer
-					long count = fwrite(inbuf, sizeof(gr_complex), matrix_flat_length - nwritten, d_fp);
-					if(count == 0) {
-						// Error condition, nothing written for some reason.
-						if(ferror(d_fp)) {
-							std::cout << "[X-Engine] Write failed with error: " << std::strerror(errno) << std::endl;
-						}
-					}
-					nwritten += count;
-
-					long bytes_written = count * sizeof(gr_complex);
-					d_bytesWritten += bytes_written;
-					inbuf += bytes_written;
-				}
-				*/
 				// Optimize write as one call
 				long count = fwrite(inbuf, matrix_flat_length * sizeof(gr_complex),1,d_fp);
 				if(count == 0) {
@@ -1516,7 +1500,7 @@ void clXEngine_impl::runThread() {
 			// clear the trigger.  This will inform that data is ready.
 			thread_process_data = false;
 		}
-		usleep(10);
+		usleep(8);
 	}
 
 	threadRunning = false;

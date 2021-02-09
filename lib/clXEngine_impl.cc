@@ -1263,12 +1263,16 @@ clXEngine_impl::work_processor(int noutput_items,
 		std::vector<gr::tag_t> tags;
 		this->get_tags_in_window(tags, 0, 0, noutput_items);
 
-		if (tags.size() > 0) {
-			long tag_val = pmt::to_long(tags[0].value);
-			write_json(tag_val);
-		}
-		else {
-			write_json(-1);
+		int cur_tag = 0;
+		int tag_size = tags.size();
+
+		while (cur_tag < tag_size && !d_wrote_json) {
+			long tag_val = pmt::to_long(tags[cur_tag].value);
+
+			if (tag_val >= 0) {
+				write_json(tag_val);
+			}
+			cur_tag++;
 		}
 	}
 

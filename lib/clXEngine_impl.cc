@@ -1266,13 +1266,17 @@ clXEngine_impl::work_processor(int noutput_items,
 		int cur_tag = 0;
 		int tag_size = tags.size();
 
-		while (cur_tag < tag_size && !d_wrote_json) {
+		while ( (cur_tag < tag_size) && !d_wrote_json) {
 			long tag_val = pmt::to_long(tags[cur_tag].value);
 
 			if (tag_val >= 0) {
 				write_json(tag_val);
 			}
 			cur_tag++;
+		}
+
+		if (!d_wrote_json) {
+			write_json(-1);
 		}
 	}
 

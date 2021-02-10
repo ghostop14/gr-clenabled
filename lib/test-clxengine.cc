@@ -445,7 +445,9 @@ bool testXCorrelate() {
 				"Total throughput: " << std::setprecision(2) << throughput << " packed 4-bit complex samples/sec" << std::endl <<
 				"Synchronized stream (" << num_inputs << " stations) throughput: " << throughput / num_inputs << " packed 4-bit complex samples/sec" << std::endl <<
 				"Input processing rate (comparable to xGPU's throughput number): " << bits_throughput << " bps" << std::endl <<
-				"Speedup relative to complex case: " << (1.0 - elapsed_time / baseline_xcorr_elapsed_time)  * 100.0 << "%" << std::endl;
+				"Comparable throughput if these were complex sps: " << bits_throughput*8 << " bps" << std::endl <<
+				"Speedup relative to complex case (1-elapsed/base_elapsed)*100: " << (1.0 - elapsed_time / baseline_xcorr_elapsed_time)  * 100.0 << "%" << std::endl <<
+				"Ratio elapsed time / complex elapsed time: " << elapsed_time / baseline_xcorr_elapsed_time << std::endl;
 #endif
 
 #if defined(TIME_WORK) || defined(PROFILETEST)

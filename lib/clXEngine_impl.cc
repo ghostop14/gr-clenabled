@@ -1260,19 +1260,30 @@ clXEngine_impl::work_processor(int noutput_items,
 
 	if (d_fp && !d_wrote_json) {
 		// We're writing to file and we haven't written any bytes to the current file
-		std::vector<gr::tag_t> tags;
-		this->get_tags_in_window(tags, 0, 0, noutput_items);
+		unsigned long lowest_tag = -1;
 
-		int cur_tag = 0;
-		int tag_size = tags.size();
+		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+			std::vector<gr::tag_t> tags;
+			this->get_tags_in_window(tags, cur_input, 0, noutput_items);
 
-		while ( (cur_tag < tag_size) && !d_wrote_json) {
-			long tag_val = pmt::to_long(tags[cur_tag].value);
+			int cur_tag = 0;
+			int tag_size = tags.size();
 
-			if (tag_val >= 0) {
-				write_json(tag_val);
+			// Find the lowest tag number in this set.
+			while ( cur_tag < tag_size ) {
+				long tag_val = pmt::to_long(tags[cur_tag].value);
+				if ( (tag_val >=0) && ( (lowest_tag == -1) || (tag_val < lowest_tag) ) ) {
+					lowest_tag = tag_val;
+					break;
+				}
+				cur_tag++;
 			}
-			cur_tag++;
+
+		}
+
+		// If we found a tag, this'll write the lowest value
+		if (lowest_tag >= 0) {
+			write_json(lowest_tag);
 		}
 	}
 

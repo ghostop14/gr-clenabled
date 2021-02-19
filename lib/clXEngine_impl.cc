@@ -1274,10 +1274,6 @@ clXEngine_impl::work_processor(int noutput_items,
 			}
 			cur_tag++;
 		}
-
-		if (!d_wrote_json) {
-			write_json(-1);
-		}
 	}
 
 	// First we need to load the data into a matrix in the format expected by the correlator.

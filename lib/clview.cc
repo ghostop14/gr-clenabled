@@ -8,10 +8,13 @@
 // #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define CL_VERSION_1_2
 
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 200
+
 #if defined(__APPLE__) || defined(__MACOSX)
 #include <OpenCL/cl.hpp>
 #else
-#include <CL/cl.hpp>
+#include <CL/opencl.hpp>
 #endif
 
 #include <iostream>

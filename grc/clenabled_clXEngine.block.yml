@@ -64,12 +64,18 @@ parameters:
 - id: file_base
   label: File Base Descriptor
   dtype: string
-  hide: ${ 'part' if output_file=='True' else 'all' }
+  hide: ${ 'none' if output_file=='True' else 'all' }
 - id: rollover_size_mb
   label: Rollover Size (MB)
   dtype: int
   default: '0'
   hide: ${ 'part' if output_file=='True' else 'all' }
+- id: internal_synchronizer
+  label: ATA Synchronizer
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: ['Off', 'On']
+  hide: part
 - id: setDebug
   label: Debug
   dtype: enum
@@ -104,9 +110,9 @@ templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\

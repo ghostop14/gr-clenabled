@@ -728,6 +728,10 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	long output_size;
 	int num_procs;
 
+	bool d_synchronized;
+	bool d_use_internal_synchronizer;
+	unsigned long *tag_list;
+
 	int d_data_type;
 	int d_data_size;
 
@@ -794,10 +798,12 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 public:
 	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
 			int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
-			bool output_file=false, std::string file_base="", int rollover_size_mb=0);
+			bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false);
 	~clXEngine_impl();
 
 	bool stop();
+
+    void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 
 	long get_input_buffer_size() { return d_num_inputs * d_num_channels * d_npol * d_integration_time; };
 	long get_output_buffer_size() { return matrix_flat_length; };
@@ -838,11 +844,10 @@ public:
 			gr_vector_void_star &output_items
 	);
 
-	int work(
-			int noutput_items,
-			gr_vector_const_void_star &input_items,
-			gr_vector_void_star &output_items
-	);
+    int general_work(int noutput_items,
+         gr_vector_int &ninput_items,
+         gr_vector_const_void_star &input_items,
+         gr_vector_void_star &output_items);
 };
 
 } // namespace clenabled

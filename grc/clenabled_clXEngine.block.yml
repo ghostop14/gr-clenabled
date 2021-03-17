@@ -105,6 +105,9 @@ outputs:
   domain: message
   optional: True
   hide: ${ output_file }
+- label: sync
+  domain: message
+  optional: True
 
 templates:
   imports: import clenabled

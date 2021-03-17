@@ -841,6 +841,20 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 	unsigned long gpu_memory_allocated = 0;
 
+	// Want to precalc in case these throw an error:
+	if (d_data_type != DTYPE_COMPLEX) {
+		// char input matrix
+		gpu_memory_allocated += frame_size_times_integration * d_data_size;
+	}
+	// input_matrix_buffer
+	gpu_memory_allocated += frame_size_times_integration * sizeof(gr_complex);
+	// output correlation buffer
+	gpu_memory_allocated += matrix_flat_length * sizeof(gr_complex);
+
+	std::stringstream msg;
+	msg << "Total GPU memory requested: " << gpu_memory_allocated / 1e6 << " MB (" << gpu_memory_allocated << " bytes)";
+	GR_LOG_INFO(d_logger,msg.str());
+
 	if (d_data_type == DTYPE_COMPLEX) {
 		input_matrix_type = CL_MEM_READ_ONLY;
 		char_matrix_buffer = NULL; // Don't need it in this case
@@ -850,8 +864,6 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 				*context,
 				CL_MEM_READ_ONLY,
 				frame_size_times_integration * d_data_size);
-
-		gpu_memory_allocated += frame_size_times_integration * d_data_size;
 
 		input_matrix_type = CL_MEM_READ_WRITE;
 	}
@@ -865,8 +877,6 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 			input_matrix_type,
 			frame_size_times_integration * sizeof(gr_complex));
 
-	gpu_memory_allocated += frame_size_times_integration * sizeof(gr_complex);
-
 	// Output will always be complex
 	output_size = matrix_flat_length * sizeof(gr_complex);
 
@@ -875,13 +885,8 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 			CL_MEM_READ_WRITE,
 			output_size);
 
-	gpu_memory_allocated += output_size;
-
-	// std::stringstream msg;
-	std::cout << "[" << identifier() << "] Total GPU memory allocated (bytes): " << gpu_memory_allocated << std::endl;
-	// GR_LOG_INFO(d_logger,msg);
-
 	message_port_register_out(pmt::mp("xcorr"));
+	message_port_register_out(pmt::mp("sync"));
 
 	if (d_use_internal_synchronizer) {
 		set_tag_propagation_policy(TPP_DONT);
@@ -1295,32 +1300,35 @@ clXEngine_impl::work_processor(int noutput_items,
 		// return 0;
 	}
 
-	if (d_fp && !d_wrote_json) {
-		// We're writing to file and we haven't written any bytes to the current file
-		unsigned long lowest_tag = -1;
+	if (!d_use_internal_synchronizer) {
+		// with the internal synchronizer, we'll handle this once when we sync
+		if (d_fp && !d_wrote_json) {
+			// We're writing to file and we haven't written any bytes to the current file
+			unsigned long lowest_tag = -1;
 
-		for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
-			std::vector<gr::tag_t> tags;
-			this->get_tags_in_window(tags, cur_input, 0, noutput_items);
+			for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
+				std::vector<gr::tag_t> tags;
+				this->get_tags_in_window(tags, cur_input, 0, noutput_items);
 
-			int cur_tag = 0;
-			int tag_size = tags.size();
+				int cur_tag = 0;
+				int tag_size = tags.size();
 
-			// Find the lowest tag number in this set.
-			while ( cur_tag < tag_size ) {
-				long tag_val = pmt::to_long(tags[cur_tag].value);
-				if ( (tag_val >=0) && ( (lowest_tag == -1) || (tag_val < lowest_tag) ) ) {
-					lowest_tag = tag_val;
-					break;
+				// Find the lowest tag number in this set.
+				while ( cur_tag < tag_size ) {
+					long tag_val = pmt::to_long(tags[cur_tag].value);
+					if ( (tag_val >=0) && ( (lowest_tag == -1) || (tag_val < lowest_tag) ) ) {
+						lowest_tag = tag_val;
+						break;
+					}
+					cur_tag++;
 				}
-				cur_tag++;
+
 			}
 
-		}
-
-		// If we found a tag, this'll write the lowest value
-		if (lowest_tag >= 0) {
-			write_json(lowest_tag);
+			// If we found a tag, this'll write the lowest value
+			if (lowest_tag >= 0) {
+				write_json(lowest_tag);
+			}
 		}
 	}
 
@@ -1522,7 +1530,16 @@ clXEngine_impl::general_work (int noutput_items,
 		if (test_sync) {
 			// we're actually now synchronized.  We'll set our sync flag and process as if we came in sync'd
 			d_synchronized = true;
-			std::cout << identifier() << " - Synchronized on timestamp " << highest_tag << std::endl;
+			if (d_fp && !d_wrote_json) {
+					write_json(highest_tag);
+			}
+
+	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_long(highest_tag) );
+			message_port_pub(pmt::mp("sync"),pdu);
+
+			std::stringstream msg_stream;
+			msg_stream << "Synchronized on timestamp " << highest_tag;
+			GR_LOG_INFO(d_logger, msg_stream.str());
 		}
 		else {
 			// So we're still not sync'd so we need to figure out what we need to dump.

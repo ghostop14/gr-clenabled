@@ -730,7 +730,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 
 	bool d_synchronized;
 	bool d_use_internal_synchronizer;
-	unsigned long *tag_list;
+	uint64_t *tag_list;
 
 	int d_data_type;
 	int d_data_size;

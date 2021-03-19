@@ -775,7 +775,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 	}
 
 	d_synchronized = false;
-	tag_list = new unsigned long[d_num_inputs];
+	tag_list = new uint64_t[d_num_inputs];
 
 	// Override just in case pol doesn't come through right.
 
@@ -1497,8 +1497,8 @@ clXEngine_impl::general_work (int noutput_items,
 		// Each timestamp will always be t[n+1] = t[n] + 16
 		// Look at each input channel's tags and find the highest starting tag.
 		// Take the timestamp diff for each input, and that's how many items we need to consume.
-		unsigned long highest_tag = 0;
-		unsigned long first_input_timestamp;
+		uint64_t highest_tag = 0;
+		uint64_t first_input_timestamp;
 
 		bool test_sync = true;
 
@@ -1508,7 +1508,7 @@ clXEngine_impl::general_work (int noutput_items,
 			// We only need the first tag.  No need to get them all.
 			this->get_tags_in_window(tags, cur_input, 0, 1);
 
-			unsigned long tag0 = pmt::to_long(tags[0].value);
+			uint64_t tag0 = pmt::to_uint64(tags[0].value);
 
 			if (cur_input == 0) {
 				first_input_timestamp = tag0;
@@ -1534,7 +1534,7 @@ clXEngine_impl::general_work (int noutput_items,
 					write_json(highest_tag);
 			}
 
-	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_long(highest_tag) );
+	        pmt::pmt_t pdu = pmt::cons( pmt::intern("synctimestamp"), pmt::from_uint64(highest_tag) );
 			message_port_pub(pmt::mp("sync"),pdu);
 
 			std::stringstream msg_stream;
@@ -1543,13 +1543,13 @@ clXEngine_impl::general_work (int noutput_items,
 		}
 		else {
 			// So we're still not sync'd so we need to figure out what we need to dump.
-			unsigned long relative_tags = noutput_items - 16;
+			uint64_t relative_tags = noutput_items - 16;
 
 			for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
 
 				// tag_diff will increment by 16 with the tag #'s so no need to divide by 16.
 				// We need this # anyway.
-				unsigned long tag_diff = highest_tag - tag_list[cur_input];
+				uint64_t tag_diff = highest_tag - tag_list[cur_input];
 
 				if (tag_diff == 0) {
 					consume(cur_input,0);

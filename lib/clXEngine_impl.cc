@@ -682,11 +682,7 @@
 #include <gnuradio/io_signature.h>
 #include "clXEngine_impl.h"
 #include <volk/volk.h>
-/*
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-*/
+
 // Some carry-forward tricks from file_sink_base.cc
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -894,21 +890,6 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		set_output_multiple(16);
 	}
 
-/*
-#ifdef _OPENMP
-	num_procs = omp_get_num_procs() - 2;
-	if (num_procs > 4)
-		num_procs = 4;
-
-	if (num_procs < 1)
-		num_procs = 1;
-
-	if (num_procs > d_num_inputs)
-		num_procs = d_num_inputs;
-#else
-	num_procs = 1;
-#endif
-*/
 	num_procs = 1;
 
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
@@ -1543,25 +1524,16 @@ clXEngine_impl::general_work (int noutput_items,
 		}
 		else {
 			// So we're still not sync'd so we need to figure out what we need to dump.
-			uint64_t relative_tags = noutput_items - 16;
-
 			for (int cur_input=0;cur_input<d_num_inputs;cur_input++) {
 
 				// tag_diff will increment by 16 with the tag #'s so no need to divide by 16.
 				// We need this # anyway.
-				uint64_t tag_diff = highest_tag - tag_list[cur_input];
+				uint64_t items_to_consume = highest_tag - tag_list[cur_input];
 
-				if (tag_diff == 0) {
-					consume(cur_input,0);
-				}
-				else {
-					if (tag_diff > relative_tags) {
-						consume(cur_input,noutput_items);
-					}
-					else {
-						consume(cur_input, tag_diff);
-					}
-				}
+				if (items_to_consume > noutput_items)
+					items_to_consume = noutput_items;
+
+				consume(cur_input,items_to_consume);
 			}
 
 			// We're going to return 0 here so we don't forward any data along yet.  That won't happen till we're synchronized.

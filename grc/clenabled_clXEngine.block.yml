@@ -35,14 +35,29 @@ parameters:
       data_type: [1, 5, 6]
       input_format: [complex, char, char]
   hide: part
+- id: sync_timestamp
+  label: Sync Timestamp
+  dtype: int
+  default: '0'
+  hide: part
 - id: first_channel
   label: Starting Chanel
   dtype: int
   default: '0'
+- id: starting_chan_center_freq
+  label: Starting Chan Freq
+  dtype: float
+  default: '0'
+  hide: part
 - id: num_channels
   label: Channels
   dtype: int
-  default: '1024'
+  default: '256'
+- id: channel_width
+  label: Channel Width
+  dtype: float
+  default: '0'
+  hide: part
 - id: num_inputs
   label: Num Antennas
   dtype: int
@@ -53,9 +68,9 @@ parameters:
   options: ['1', '2']
   option_labels: ['Single', 'XY']
 - id: integration
-  label: Integration NTIME
+  label: Integration Frames
   dtype: int
-  default: '1024'
+  default: '10000'
 - id: output_file
   label: Output
   dtype: enum
@@ -72,6 +87,22 @@ parameters:
   hide: ${ 'part' if output_file=='True' else 'all' }
 - id: internal_synchronizer
   label: ATA Synchronizer
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: ['Off', 'On']
+  hide: part
+- id: object_name
+  label: Object Name
+  dtype: string
+  default: ''
+  hide: part
+- id: antenna_list
+  label: Antenna List
+  dtype: string
+  default: ''
+  hide: part
+- id: disable_output
+  label: Disable Output
   dtype: enum
   options: ['False', 'True']
   option_labels: ['Off', 'On']
@@ -113,9 +144,9 @@ templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\

@@ -755,6 +755,15 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	size_t frame_size_times_integration_bytes;
 	int channels_times_baselines;
 
+	std::vector<std::string> d_antenna_list;
+	std::string str_antenna_list;
+
+	long d_sync_timestamp;
+	std::string d_object_name;
+	double d_starting_chan_center_freq;
+	double d_channel_width;
+	bool d_disable_output;
+
 	// For async mode, threading:
 	boost::thread *proc_thread=NULL;
 	bool threadRunning=false;
@@ -796,9 +805,10 @@ class clXEngine_impl : public clXEngine, public GRCLBase
     };
 
 public:
-	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-			int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
-			bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false);
+	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
+  		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
+			  bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false,
+			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0, bool disable_output=false);
 	~clXEngine_impl();
 
 	bool stop();

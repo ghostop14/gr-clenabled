@@ -710,9 +710,10 @@ namespace gr {
 namespace clenabled {
 
 clXEngine::sptr
-clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type,
-		int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
-		bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer)
+clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
+		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
+		  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
+		  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output)
 {
 	int data_size = 1;
 
@@ -730,15 +731,17 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 
 	return gnuradio::get_initial_sptr
 			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs,
-					output_format, first_channel, num_channels, integration, output_file, file_base, rollover_size_mb, internal_synchronizer));
+					output_format, first_channel, num_channels, integration, antenna_list, output_file, file_base, rollover_size_mb,
+					internal_synchronizer,sync_timestamp, object_name, starting_chan_center_freq, channel_width, disable_output));
 }
 
 /*
  * The private constructor
  */
-clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-		int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
-		bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer)
+clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
+		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
+			  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
+			  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output)
 : gr::block("clXEngine",
 		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*(data_type==DTYPE_PACKEDXY?2:data_size)),
 		gr::io_signature::make(0, 0, 0)),
@@ -746,8 +749,30 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),d_first_channel(first_channel),
 		d_num_channels(num_channels), d_integration_time(integration), integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
 		d_output_file(output_file), d_file_base(file_base), d_rollover_size_mb(rollover_size_mb),
-		d_use_internal_synchronizer(internal_synchronizer)
+		d_use_internal_synchronizer(internal_synchronizer),
+		d_antenna_list(antenna_list),
+		d_sync_timestamp(sync_timestamp),
+		d_object_name(object_name),
+		d_starting_chan_center_freq(starting_chan_center_freq),
+		d_channel_width(channel_width),
+		d_disable_output(disable_output)
+
 {
+	if (num_inputs < 2) {
+		GR_LOG_ERROR(d_logger, "Please specify at least 2 inputs to correlate.");
+		throw std::out_of_range ("Please specify at least 2 inputs to correlate.");
+	}
+
+	if (internal_synchronizer) {
+		if ((integration % 16) > 0) {
+			GR_LOG_ERROR(d_logger, "For the ATA synchronizer, the number of integration frames should be a multiple of 16 to align with blocks coming from the SNAP.");
+			throw std::out_of_range ("ATA xengine: The number of integration frames should be a multiple of 16 to align with blocks coming from the SNAP.");
+		}
+	}
+
+	if (d_disable_output)
+		d_output_file = false;
+
 	if (d_output_file) {
 		if ((d_rollover_size_mb) > 0) {
 			d_rollover_files = true;
@@ -768,6 +793,34 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 			throw std::runtime_error (errmsg);
 		}
+	}
+
+	// GR's YML doesn't allow a list of strings as a _vector type.  So we're
+	// Working the system a bit.  If no antennas are defined, the list could be [''].
+	// So since we're supposed to have more than 1 antenna anyway we can use that here
+	// to check.
+	if (d_antenna_list.size() > 1) {
+		int num_ants = d_antenna_list.size();
+
+		str_antenna_list = "[";
+
+		int i=0;
+
+		for (auto ant=d_antenna_list.begin(); ant!=d_antenna_list.end(); ++ant) {
+		    str_antenna_list += "\"" + *ant + "\"";
+
+		    if (i < (num_ants-1)) {
+			    str_antenna_list += ",";
+		    }
+
+		    i++;
+		}
+
+
+		str_antenna_list += "]";
+	}
+	else {
+		str_antenna_list = "[]";
 	}
 
 	d_synchronized = false;
@@ -847,9 +900,26 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 	// output correlation buffer
 	gpu_memory_allocated += matrix_flat_length * sizeof(gr_complex);
 
-	std::stringstream msg;
-	msg << "Total GPU memory requested: " << gpu_memory_allocated / 1e6 << " MB (" << gpu_memory_allocated << " bytes)";
-	GR_LOG_INFO(d_logger,msg.str());
+	std::stringstream msg_stream;
+	msg_stream << "X-Engine Startup Parameters:" << std::endl;
+	msg_stream << "Total GPU memory requested: " << gpu_memory_allocated / 1e6 << " MB (" << gpu_memory_allocated << " bytes)" << std::endl;
+
+	if (d_data_type == DTYPE_COMPLEX) {
+		msg_stream << "GPU Input Buffer Size (bytes): " << frame_size_times_integration * sizeof(gr_complex) << std::endl;
+	}
+	else {
+		msg_stream << "GPU Input Buffer Size (bytes): " << frame_size_times_integration * d_data_size << std::endl;
+	}
+
+	msg_stream << "Integrated output frame size (bytes): " << matrix_flat_length*sizeof(gr_complex) << std::endl <<
+				  "Number of Antennas: " << num_inputs << std::endl <<
+				  "Starting Channel: " << d_first_channel << std::endl <<
+				  "Number of Channels: " << d_num_channels << std::endl <<
+				  "Number of Polarizations: " << d_npol << std::endl <<
+				  "Number of Baselines (including autocorrelations): " << d_num_baselines << std::endl <<
+				  "Number of Integration Frames: " << d_integration_time;
+
+	GR_LOG_INFO(d_logger,msg_stream.str());
 
 	if (d_data_type == DTYPE_COMPLEX) {
 		input_matrix_type = CL_MEM_READ_ONLY;
@@ -963,8 +1033,8 @@ void clXEngine_impl::write_json(long seq_num) {
 		   return;
 	   }
 
-	   fprintf(pFile,"{\"first_seq_num\":%ld,\"num_baselines\":%d, \"first_channel\":%d, \"channels\":%d,\"polarizations\":%d,\"antennas\":%d,\"ntime\":%d,\"samples_per_block\":%ld,\"bytes_per_block\":%ld,\"data_type\":\"cf32_le\", \"data_format\": \"triangular order\"}",
-			   seq_num, d_num_baselines, d_first_channel, d_num_channels, d_npol, d_num_inputs, d_integration_time, matrix_flat_length, matrix_flat_length*sizeof(gr_complex));
+	   fprintf(pFile,"{\n\"sync_timestamp\":%ld,\n\"first_seq_num\":%ld,\n\"object_name\":\"%s\",\n\"num_baselines\":%d,\n\"first_channel\":%d,\n\"first_channel_center_freq\":%f,\n\"channels\":%d,\n\"channel_width\":%f,\n\"polarizations\":%d,\n\"antennas\":%d,\n\"antenna_names\":%s,\n\"ntime\":%d,\n\"samples_per_block\":%ld,\n\"bytes_per_block\":%ld,\n\"data_type\":\"cf32_le\",\n\"data_format\": \"triangular order\"\n}\n",
+			   d_sync_timestamp, seq_num, d_object_name.c_str(), d_num_baselines, d_first_channel, d_starting_chan_center_freq, d_num_channels, d_channel_width, d_npol, d_num_inputs, str_antenna_list.c_str(), d_integration_time, matrix_flat_length, matrix_flat_length*sizeof(gr_complex));
 	   fclose (pFile);
 
 	   d_wrote_json = true;
@@ -1399,7 +1469,7 @@ clXEngine_impl::work_processor(int noutput_items,
 		if (!thread_process_data) {
 			// thread_is_processing will only be FALSE if thread_process_data == false on the first pass,
 			// in which case we don't want to send any pmt's.  Otherwise, we're in async pickup mode.
-			if (thread_is_processing && (!d_output_file)) {
+			if (thread_is_processing && (!d_output_file) && (!d_disable_output)) {
 				// So this case is that we have a new block ready and the old one is complete.
 				// So before transitioning to the new one, let's send the data from the last one.
 

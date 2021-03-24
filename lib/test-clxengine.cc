@@ -60,11 +60,11 @@
 #include "clXEngine_impl.h"
 
 bool verbose=false;
-int num_channels=1024;
-int num_inputs = 16;
+int num_channels=256;
+int num_inputs = 12;
 // single_polarization=false = X/Y dual polarization
 bool single_polarization = false;
-int integration_time = 1024;
+int integration_time = 10000;
 int iterations = 100;
 int num_procs=0;
 
@@ -187,6 +187,8 @@ bool testXCorrelate() {
 		std::cout << "X/Y" << std::endl;
 	}
 
+	std::vector<std::string> ant_list;
+
 	std::cout << "Integration time (NTIME): " << integration_time << std::endl;
 	int polarization;
 
@@ -201,7 +203,7 @@ bool testXCorrelate() {
 
 		// The one specifies output triangular order rather than full matrix.
 		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_COMPLEX,sizeof(gr_complex),
-				polarization, num_inputs, 1, 0, num_channels, integration_time);
+				polarization, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 	}
 	catch (...) {
 		std::cout << "ERROR: error setting up environment." << std::endl;
@@ -335,7 +337,7 @@ bool testXCorrelate() {
 	}
 	// Now test char version
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_BYTE,sizeof(char)*2,
-			polarization, num_inputs, 1, 0, num_channels, integration_time);
+			polarization, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 
 	char *char_input_buffer;
 
@@ -411,7 +413,7 @@ bool testXCorrelate() {
 	}
 	// Now test char version
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_PACKEDXY,sizeof(char),
-			2, num_inputs, 1, 0, num_channels, integration_time);
+			2, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 
 	input_length = test->get_input_buffer_size();
 	output_length = test->get_output_buffer_size();
@@ -491,7 +493,7 @@ bool testXCorrelate() {
 	// ------------------------  Test Golden Data -------------------------
 	// The one specifies output triangular order rather than full matrix.
 	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,true,DTYPE_COMPLEX,sizeof(gr_complex),
-			2, 16, 1, 1024, 1024);
+			2, 16, 1, 1024, 1024, ant_list);
 
 	input_length = test->get_input_buffer_size();
 	output_length = test->get_output_buffer_size();

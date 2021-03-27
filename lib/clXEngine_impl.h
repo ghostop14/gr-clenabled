@@ -811,7 +811,9 @@ public:
 			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0, bool disable_output=false);
 	~clXEngine_impl();
 
-	bool stop();
+
+	virtual bool start();
+	virtual bool stop();
 
     void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 

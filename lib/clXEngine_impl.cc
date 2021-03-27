@@ -847,29 +847,9 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 	channels_times_baselines = d_num_channels*d_num_baselines;
 
-	// 2 buffers will allow us to process one in a worker thread while the other
-	// is being loaded.
-	size_t mem_alignment = volk_get_alignment();
-
-	if (d_data_type == DTYPE_COMPLEX) {
-		// complex_input1 = new gr_complex[frame_size_times_integration];
-		// complex_input2 = new gr_complex[frame_size_times_integration];
-		complex_input1 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
-		complex_input2 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
-		complex_input = complex_input1;
-		thread_complex_input = complex_input;
-	}
-	else {
-		// char_input1 = new char[frame_size_times_integration_bytes];
-		// char_input2 = new char[frame_size_times_integration_bytes];
-		char_input1 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
-		char_input2 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
-		char_input = char_input1;
-		thread_char_input = char_input;
-	}
 	current_write_buffer = 1;
 
-	if (output_format == CLXCORR_TRIANGULAR_ORDER) {
+	if (d_output_format == CLXCORR_TRIANGULAR_ORDER) {
 		// This is only the lower triangular matrix size (including the autocorrelation diagonal
 		matrix_flat_length = d_num_channels * d_num_baselines * d_npol * d_npol;
 	}
@@ -877,11 +857,6 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		// This is the full matrix
 		matrix_flat_length = d_num_channels * (d_num_inputs*d_num_inputs*d_npol*d_npol);
 	}
-
-	output_matrix1 = new gr_complex[matrix_flat_length];
-	output_matrix2 = new gr_complex[matrix_flat_length];
-	output_matrix = output_matrix1;
-	thread_output_matrix = output_matrix;
 
 	buildKernel();
 	buildCharToComplexKernel();
@@ -962,7 +937,36 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 
 	num_procs = 1;
 
+}
+
+bool clXEngine_impl::start() {
+	// 2 buffers will allow us to process one in a worker thread while the other
+	// is being loaded.
+	size_t mem_alignment = volk_get_alignment();
+
+	if (d_data_type == DTYPE_COMPLEX) {
+		// complex_input1 = new gr_complex[frame_size_times_integration];
+		// complex_input2 = new gr_complex[frame_size_times_integration];
+		complex_input1 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
+		complex_input2 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
+		complex_input = complex_input1;
+		thread_complex_input = complex_input;
+	}
+	else {
+		// char_input1 = new char[frame_size_times_integration_bytes];
+		// char_input2 = new char[frame_size_times_integration_bytes];
+		char_input1 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
+		char_input2 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
+		char_input = char_input1;
+		thread_char_input = char_input;
+	}
+	output_matrix1 = new gr_complex[matrix_flat_length];
+	output_matrix2 = new gr_complex[matrix_flat_length];
+	output_matrix = output_matrix1;
+	thread_output_matrix = output_matrix;
+
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
+	return true;
 }
 
 void

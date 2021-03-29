@@ -68,9 +68,14 @@ parameters:
   options: ['1', '2']
   option_labels: ['Single', 'XY']
 - id: integration
-  label: Integration Frames
+  label: GPU Integration Frames
   dtype: int
   default: '10000'
+- id: cpu_integration
+  label: Additional CPU Integration
+  dtype: int
+  default: '0'
+  hide: part
 - id: output_file
   label: Output
   dtype: enum
@@ -144,13 +149,13 @@ templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output}, ${cpu_integration})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output},${cpu_integration})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\
-    \ an FX correlator. The block assumes the input stream is FFT vectors (Complex or signed Char) of\
+    \ an FX correlator. The block assumes the input stream is FFT vectors (Complex or signed char) of\
     \ the specified channel length, where a channel represents an fft bin.\
     \ For instance, a 1024 FFT would be considered 1024 channels of width Bandwidth/channels.\
     \ The output format  is in a format called Triangular\
@@ -161,10 +166,7 @@ documentation: "This block provides the full signal cross correlation function (
     \ This approach does save space in memory and for transmission, so it provides an efficient\
     \ format for those types of activities.  To complete the full matrix, each missing transposed\
     \ cell is the complex conjugate.  So [0,1] is the complex conjugate of [1,0], etc.\
-    \ For full matrix output, the block completes the 2-dimensional full matrix.\
-    \ \n\nNOTE: If the block is built with OMP support (libomp is installed), the OMP Threads parameter\
-    \ allows the number of threads to be controlled.  0 means max supported processes, but any number\
-    \ less than that could also be specified to not consume the CPU for other blocks."
+    \ For full matrix output, the block completes the 2-dimensional full matrix."
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

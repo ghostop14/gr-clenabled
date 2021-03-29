@@ -713,7 +713,7 @@ clXEngine::sptr
 clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
 		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 		  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
-		  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output)
+		  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output, int cpu_integration)
 {
 	int data_size = 1;
 
@@ -732,7 +732,7 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 	return gnuradio::get_initial_sptr
 			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs,
 					output_format, first_channel, num_channels, integration, antenna_list, output_file, file_base, rollover_size_mb,
-					internal_synchronizer,sync_timestamp, object_name, starting_chan_center_freq, channel_width, disable_output));
+					internal_synchronizer,sync_timestamp, object_name, starting_chan_center_freq, channel_width, disable_output,cpu_integration));
 }
 
 /*
@@ -741,13 +741,14 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
 		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 			  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
-			  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output)
+			  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output,int cpu_integration)
 : gr::block("clXEngine",
 		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*(data_type==DTYPE_PACKEDXY?2:data_size)),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),d_first_channel(first_channel),
-		d_num_channels(num_channels), d_integration_time(integration), integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
+		d_num_channels(num_channels), d_integration_time(integration), d_cpu_integration(cpu_integration), d_cpu_integration_counter(0),
+		integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
 		d_output_file(output_file), d_file_base(file_base), d_rollover_size_mb(rollover_size_mb),
 		d_use_internal_synchronizer(internal_synchronizer),
 		d_antenna_list(antenna_list),
@@ -892,7 +893,9 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 				  "Number of Channels: " << d_num_channels << std::endl <<
 				  "Number of Polarizations: " << d_npol << std::endl <<
 				  "Number of Baselines (including autocorrelations): " << d_num_baselines << std::endl <<
-				  "Number of Integration Frames: " << d_integration_time;
+				  "Number of GPU Integration Frames: " << d_integration_time << std::endl <<
+				  "Number of Additional CPU Integration of GPU Frames: " << d_cpu_integration << std::endl;
+
 
 	GR_LOG_INFO(d_logger,msg_stream.str());
 
@@ -960,10 +963,18 @@ bool clXEngine_impl::start() {
 		char_input = char_input1;
 		thread_char_input = char_input;
 	}
-	output_matrix1 = new gr_complex[matrix_flat_length];
-	output_matrix2 = new gr_complex[matrix_flat_length];
+
+	output_matrix1 = (gr_complex *)volk_malloc(matrix_flat_length*sizeof(gr_complex), mem_alignment);
+	output_matrix2 = (gr_complex *)volk_malloc(matrix_flat_length*sizeof(gr_complex), mem_alignment);
+	// output_matrix1 = new gr_complex[matrix_flat_length];
+	// output_matrix2 = new gr_complex[matrix_flat_length];
 	output_matrix = output_matrix1;
 	thread_output_matrix = output_matrix;
+
+	if (d_cpu_integration > 1) {
+		cpu_integration_buffer = (gr_complex *)volk_malloc(matrix_flat_length*sizeof(gr_complex), mem_alignment);
+		d_cpu_integration_counter = 1;
+	}
 
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
 	return true;
@@ -1037,8 +1048,16 @@ void clXEngine_impl::write_json(long seq_num) {
 		   return;
 	   }
 
-	   fprintf(pFile,"{\n\"sync_timestamp\":%ld,\n\"first_seq_num\":%ld,\n\"object_name\":\"%s\",\n\"num_baselines\":%d,\n\"first_channel\":%d,\n\"first_channel_center_freq\":%f,\n\"channels\":%d,\n\"channel_width\":%f,\n\"polarizations\":%d,\n\"antennas\":%d,\n\"antenna_names\":%s,\n\"ntime\":%d,\n\"samples_per_block\":%ld,\n\"bytes_per_block\":%ld,\n\"data_type\":\"cf32_le\",\n\"data_format\": \"triangular order\"\n}\n",
-			   d_sync_timestamp, seq_num, d_object_name.c_str(), d_num_baselines, d_first_channel, d_starting_chan_center_freq, d_num_channels, d_channel_width, d_npol, d_num_inputs, str_antenna_list.c_str(), d_integration_time, matrix_flat_length, matrix_flat_length*sizeof(gr_complex));
+	   long integ_frames;
+	   if (d_cpu_integration < 2) {
+		   integ_frames = (long)d_integration_time;
+	   }
+	   else {
+		   integ_frames = (long)d_integration_time * (long)d_cpu_integration;
+	   }
+
+	   fprintf(pFile,"{\n\"sync_timestamp\":%ld,\n\"first_seq_num\":%ld,\n\"object_name\":\"%s\",\n\"num_baselines\":%d,\n\"first_channel\":%d,\n\"first_channel_center_freq\":%f,\n\"channels\":%d,\n\"channel_width\":%f,\n\"polarizations\":%d,\n\"antennas\":%d,\n\"antenna_names\":%s,\n\"ntime\":%ld,\n\"samples_per_block\":%ld,\n\"bytes_per_block\":%ld,\n\"data_type\":\"cf32_le\",\n\"data_format\": \"triangular order\"\n}\n",
+			   d_sync_timestamp, seq_num, d_object_name.c_str(), d_num_baselines, d_first_channel, d_starting_chan_center_freq, d_num_channels, d_channel_width, d_npol, d_num_inputs, str_antenna_list.c_str(), integ_frames, matrix_flat_length, matrix_flat_length*sizeof(gr_complex));
 	   fclose (pFile);
 
 	   d_wrote_json = true;
@@ -1090,13 +1109,22 @@ bool clXEngine_impl::stop() {
 	}
 
 	if (output_matrix1) {
-		delete[] output_matrix1;
+		//delete[] output_matrix1;
+		volk_free(output_matrix1);
 		output_matrix1 = NULL;
 	}
 
 	if (output_matrix2) {
-		delete[] output_matrix2;
+		// delete[] output_matrix2;
+		volk_free(output_matrix2);
 		output_matrix2 = NULL;
+	}
+
+	if (cpu_integration_buffer) {
+		// delete[] cpu_integration_buffer;
+		volk_free(cpu_integration_buffer);
+
+		cpu_integration_buffer = NULL;
 	}
 
 	if (char_matrix_buffer) {
@@ -1477,11 +1505,26 @@ clXEngine_impl::work_processor(int noutput_items,
 				// So this case is that we have a new block ready and the old one is complete.
 				// So before transitioning to the new one, let's send the data from the last one.
 
-				pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
-				pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
+				if (d_cpu_integration < 2) {
+					// We're not CPU accumulating too, so just send
+					pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
+					pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
 
-				if (liveWork) {
-					message_port_pub(pmt::mp("xcorr"), pdu);
+					if (liveWork) {
+						message_port_pub(pmt::mp("xcorr"), pdu);
+					}
+				}
+				else {
+					// We're also CPU accumulating.
+					if (d_cpu_integration_counter > d_cpu_integration) {
+						pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,cpu_integration_buffer));
+						pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
+
+						if (liveWork) {
+							message_port_pub(pmt::mp("xcorr"), pdu);
+						}
+						d_cpu_integration_counter = 1;
+					}
 				}
 			}
 
@@ -1636,9 +1679,36 @@ void clXEngine_impl::runThread() {
 				xcorrelate(thread_char_input, (XComplex *)thread_output_matrix);
 			}
 
-			if (d_fp) {
+			// If we have cpu integration enabled, we need to do that next
+			if (d_cpu_integration > 1) {
+				if (d_cpu_integration_counter == 1) {
+					// Start a new integration
+					memcpy(cpu_integration_buffer, thread_output_matrix,matrix_flat_length * sizeof(gr_complex));
+				}
+				else {
+					// Add to existing accumulator
+					volk_32fc_x2_add_32fc(cpu_integration_buffer,cpu_integration_buffer, thread_output_matrix,matrix_flat_length);
+					/*
+					for (int i=0;i<matrix_flat_length;i++) {
+						cpu_integration_buffer[i] += thread_output_matrix[i];
+					}
+					*/
+				}
+				d_cpu_integration_counter++;
+			}
+
+			// If file and either no cpu integration or we've completed our integration, write to disk
+			if ( d_fp && ( (d_cpu_integration < 2) || (d_cpu_integration_counter > d_cpu_integration)) ) {
 				char *inbuf;
-				inbuf = (char *)thread_output_matrix;
+
+				if (d_cpu_integration < 2) {
+					inbuf = (char *)thread_output_matrix;
+				}
+				else {
+					inbuf = (char *)cpu_integration_buffer;
+					d_cpu_integration_counter = 1;
+				}
+
 				long nwritten = 0;
 
 				// If we have an open file, we're supposed to rollover files, and we're over our limit

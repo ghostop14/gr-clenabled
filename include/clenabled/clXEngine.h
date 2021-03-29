@@ -705,7 +705,8 @@ namespace gr {
       static sptr make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
     		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 			  bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false,
-			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0, bool disable_output=false);
+			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0, bool disable_output=false,
+			  int cpu_integration=0);
     };
 
   } // namespace clenabled

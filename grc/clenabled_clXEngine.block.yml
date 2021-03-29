@@ -35,14 +35,29 @@ parameters:
       data_type: [1, 5, 6]
       input_format: [complex, char, char]
   hide: part
+- id: sync_timestamp
+  label: Sync Timestamp
+  dtype: int
+  default: '0'
+  hide: part
 - id: first_channel
   label: Starting Chanel
   dtype: int
   default: '0'
+- id: starting_chan_center_freq
+  label: Starting Chan Freq
+  dtype: float
+  default: '0'
+  hide: part
 - id: num_channels
   label: Channels
   dtype: int
-  default: '1024'
+  default: '256'
+- id: channel_width
+  label: Channel Width
+  dtype: float
+  default: '0'
+  hide: part
 - id: num_inputs
   label: Num Antennas
   dtype: int
@@ -53,9 +68,14 @@ parameters:
   options: ['1', '2']
   option_labels: ['Single', 'XY']
 - id: integration
-  label: Integration NTIME
+  label: GPU Integration Frames
   dtype: int
-  default: '1024'
+  default: '10000'
+- id: cpu_integration
+  label: Additional CPU Integration
+  dtype: int
+  default: '0'
+  hide: part
 - id: output_file
   label: Output
   dtype: enum
@@ -64,12 +84,34 @@ parameters:
 - id: file_base
   label: File Base Descriptor
   dtype: string
-  hide: ${ 'part' if output_file=='True' else 'all' }
+  hide: ${ 'none' if output_file=='True' else 'all' }
 - id: rollover_size_mb
   label: Rollover Size (MB)
   dtype: int
   default: '0'
   hide: ${ 'part' if output_file=='True' else 'all' }
+- id: internal_synchronizer
+  label: ATA Synchronizer
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: ['Off', 'On']
+  hide: part
+- id: object_name
+  label: Object Name
+  dtype: string
+  default: ''
+  hide: part
+- id: antenna_list
+  label: Antenna List
+  dtype: string
+  default: ''
+  hide: part
+- id: disable_output
+  label: Disable Output
+  dtype: enum
+  options: ['False', 'True']
+  option_labels: ['Off', 'On']
+  hide: part
 - id: setDebug
   label: Debug
   dtype: enum
@@ -99,18 +141,21 @@ outputs:
   domain: message
   optional: True
   hide: ${ output_file }
+- label: sync
+  domain: message
+  optional: True
 
 templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output}, ${cpu_integration})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId},${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${output_file},${file_base},${rollover_size_mb})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output},${cpu_integration})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\
-    \ an FX correlator. The block assumes the input stream is FFT vectors (Complex or signed Char) of\
+    \ an FX correlator. The block assumes the input stream is FFT vectors (Complex or signed char) of\
     \ the specified channel length, where a channel represents an fft bin.\
     \ For instance, a 1024 FFT would be considered 1024 channels of width Bandwidth/channels.\
     \ The output format  is in a format called Triangular\
@@ -121,10 +166,7 @@ documentation: "This block provides the full signal cross correlation function (
     \ This approach does save space in memory and for transmission, so it provides an efficient\
     \ format for those types of activities.  To complete the full matrix, each missing transposed\
     \ cell is the complex conjugate.  So [0,1] is the complex conjugate of [1,0], etc.\
-    \ For full matrix output, the block completes the 2-dimensional full matrix.\
-    \ \n\nNOTE: If the block is built with OMP support (libomp is installed), the OMP Threads parameter\
-    \ allows the number of threads to be controlled.  0 means max supported processes, but any number\
-    \ less than that could also be specified to not consume the CPU for other blocks."
+    \ For full matrix output, the block completes the 2-dimensional full matrix."
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

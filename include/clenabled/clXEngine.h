@@ -22,7 +22,7 @@
 #define INCLUDED_CLENABLED_CLXENGINE_H
 
 #include <clenabled/api.h>
-#include <gnuradio/sync_block.h>
+#include <gnuradio/block.h>
 
 namespace gr {
   namespace clenabled {
@@ -32,7 +32,7 @@ namespace gr {
      * \ingroup clenabled
      *
      */
-    class CLENABLED_API clXEngine : virtual public gr::sync_block
+    class CLENABLED_API clXEngine : virtual public gr::block
     {
      public:
       typedef std::shared_ptr<clXEngine> sptr;
@@ -46,8 +46,10 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
-    		  int output_format, int first_channel, int num_channels, int integration,
-			  bool output_file=false, std::string file_base="", int rollover_size_mb=0);
+    		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
+			  bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false,
+			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0, bool disable_output=false,
+			  int cpu_integration=0);
     };
 
   } // namespace clenabled

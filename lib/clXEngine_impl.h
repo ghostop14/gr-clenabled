@@ -711,6 +711,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	gr_complex *output_matrix1 = NULL;
 	gr_complex *complex_input2 = NULL;
 	gr_complex *output_matrix2 = NULL;
+	gr_complex *cpu_integration_buffer = NULL;
 	char *char_input1 = NULL;
 	char *char_input2 = NULL;
 	int d_npol;
@@ -720,6 +721,8 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int d_num_channels;
 	int d_num_baselines;
 	int d_integration_time;
+	int d_cpu_integration;
+	int d_cpu_integration_counter;
 	int integration_tracker;
 	int frame_size;
 	int input_size;
@@ -727,6 +730,10 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	size_t matrix_flat_length;
 	long output_size;
 	int num_procs;
+
+	bool d_synchronized;
+	bool d_use_internal_synchronizer;
+	uint64_t *tag_list;
 
 	int d_data_type;
 	int d_data_size;
@@ -750,6 +757,15 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	size_t frame_size_times_integration;
 	size_t frame_size_times_integration_bytes;
 	int channels_times_baselines;
+
+	std::vector<std::string> d_antenna_list;
+	std::string str_antenna_list;
+
+	long d_sync_timestamp;
+	std::string d_object_name;
+	double d_starting_chan_center_freq;
+	double d_channel_width;
+	bool d_disable_output;
 
 	// For async mode, threading:
 	boost::thread *proc_thread=NULL;
@@ -792,12 +808,18 @@ class clXEngine_impl : public clXEngine, public GRCLBase
     };
 
 public:
-	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size,
-			int polarization, int num_inputs, int output_format, int first_channel, int num_channels, int integration,
-			bool output_file=false, std::string file_base="", int rollover_size_mb=0);
+	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
+  		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
+			  bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false,
+			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0,
+			  bool disable_output=false, int cpu_integration=0);
 	~clXEngine_impl();
 
-	bool stop();
+
+	virtual bool start();
+	virtual bool stop();
+
+    void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 
 	long get_input_buffer_size() { return d_num_inputs * d_num_channels * d_npol * d_integration_time; };
 	long get_output_buffer_size() { return matrix_flat_length; };
@@ -838,11 +860,10 @@ public:
 			gr_vector_void_star &output_items
 	);
 
-	int work(
-			int noutput_items,
-			gr_vector_const_void_star &input_items,
-			gr_vector_void_star &output_items
-	);
+    int general_work(int noutput_items,
+         gr_vector_int &ninput_items,
+         gr_vector_const_void_star &input_items,
+         gr_vector_void_star &output_items);
 };
 
 } // namespace clenabled

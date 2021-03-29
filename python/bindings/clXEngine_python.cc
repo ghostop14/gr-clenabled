@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Free Software Foundation, Inc.
+ * Copyright 2021 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(clXEngine.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(128ce9d50a1a1f5a7687405883fa99f3)                     */
+/* BINDTOOL_HEADER_FILE_HASH(38f80702cc43718a0d1823b06b15b271)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -33,7 +33,7 @@ void bind_clXEngine(py::module& m)
     using clXEngine    = ::gr::clenabled::clXEngine;
 
 
-    py::class_<clXEngine, gr::sync_block, gr::block, gr::basic_block,
+    py::class_<clXEngine, gr::block, gr::basic_block,
         std::shared_ptr<clXEngine>>(m, "clXEngine", D(clXEngine))
 
         .def(py::init(&clXEngine::make),
@@ -49,9 +49,17 @@ void bind_clXEngine(py::module& m)
            py::arg("first_channel"),
            py::arg("num_channels"),
            py::arg("integration"),
+           py::arg("antenna_list"),
            py::arg("output_file") = false,
            py::arg("file_base") = "",
            py::arg("rollover_size_mb") = 0,
+           py::arg("internal_synchronizer") = false,
+           py::arg("sync_timestamp") = 0,
+           py::arg("object_name") = "",
+           py::arg("starting_chan_center_freq") = 0.,
+           py::arg("channel_width") = 0.,
+           py::arg("disable_output") = false,
+           py::arg("cpu_integration") = 0,
            D(clXEngine,make)
         )
         

@@ -950,16 +950,48 @@ bool clXEngine_impl::start() {
 	if (d_data_type == DTYPE_COMPLEX) {
 		// complex_input1 = new gr_complex[frame_size_times_integration];
 		// complex_input2 = new gr_complex[frame_size_times_integration];
+#ifdef INPUT_PINNED
+		pinned_input1 = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+				frame_size_times_integration * sizeof(gr_complex));
+		pinned_input2 = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+				frame_size_times_integration * sizeof(gr_complex));
+
+		complex_input1 = (gr_complex *)queue->enqueueMapBuffer(*pinned_input1, CL_TRUE, CL_MAP_WRITE, 0,
+													frame_size_times_integration * sizeof(gr_complex));
+		complex_input2 = (gr_complex *)queue->enqueueMapBuffer(*pinned_input2, CL_TRUE, CL_MAP_WRITE, 0,
+													frame_size_times_integration * sizeof(gr_complex));
+#else
 		complex_input1 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
 		complex_input2 = (gr_complex *)volk_malloc(frame_size_times_integration*sizeof(gr_complex), mem_alignment);
+#endif
 		complex_input = complex_input1;
 		thread_complex_input = complex_input;
 	}
 	else {
 		// char_input1 = new char[frame_size_times_integration_bytes];
 		// char_input2 = new char[frame_size_times_integration_bytes];
+#ifdef INPUT_PINNED
+		pinned_input1 = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+				frame_size_times_integration);
+		pinned_input2 = new cl::Buffer(
+				*context,
+				CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
+				frame_size_times_integration);
+
+		char_input1 = (char *)queue->enqueueMapBuffer(*pinned_input1, CL_TRUE, CL_MAP_WRITE, 0,
+													frame_size_times_integration);
+		char_input2 = (char *)queue->enqueueMapBuffer(*pinned_input2, CL_TRUE, CL_MAP_WRITE, 0,
+													frame_size_times_integration);
+#else
 		char_input1 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
 		char_input2 = (char *)volk_malloc(frame_size_times_integration_bytes, mem_alignment);
+#endif
 		char_input = char_input1;
 		thread_char_input = char_input;
 	}
@@ -1084,6 +1116,29 @@ bool clXEngine_impl::stop() {
 
 	close();
 
+#ifdef INPUT_PINNED
+	if (pinned_input1) {
+		if (complex_input1) {
+			queue->enqueueUnmapMemObject(*pinned_input1,complex_input1);
+		}
+		else {
+			queue->enqueueUnmapMemObject(*pinned_input1,char_input1);
+		}
+
+		delete pinned_input1;
+		pinned_input1 = NULL;
+	}
+	if (pinned_input2) {
+		if (complex_input1) {
+			queue->enqueueUnmapMemObject(*pinned_input2,complex_input2);
+		}
+		else {
+			queue->enqueueUnmapMemObject(*pinned_input2,char_input2);
+		}
+		delete pinned_input2;
+		pinned_input2 = NULL;
+	}
+#else
 	if (complex_input1) {
 		// delete[] complex_input1;
 		volk_free(complex_input1);
@@ -1107,6 +1162,8 @@ bool clXEngine_impl::stop() {
 		volk_free(char_input2);
 		char_input2 = NULL;
 	}
+
+#endif
 
 	if (output_matrix1) {
 		//delete[] output_matrix1;
@@ -1272,7 +1329,7 @@ void clXEngine_impl::buildKernel() {
 
 	srcStdStr += "}\n"; // End function
 
-	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str());
+	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str(),true,"-cl-fast-relaxed-math");
 }
 
 void clXEngine_impl::buildCharToComplexKernel() {
@@ -1326,6 +1383,7 @@ void clXEngine_impl::buildCharToComplexKernel() {
 		char_to_cc_program = new cl::Program(*context, *char_to_cc_sources);
 
 		// Build program
+		// This seems faster withtout fast-math
 		char_to_cc_program->build(devices);
 
 		char_to_cc_kernel=new cl::Kernel(*char_to_cc_program, (const char *)fnName.c_str());

@@ -707,9 +707,15 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int current_write_buffer;
 
 	// Actual Memory
+#define INPUT_PINNED
+
+#ifdef INPUT_PINNED
+	cl::Buffer *pinned_input1=NULL;
+	cl::Buffer *pinned_input2=NULL;
+#endif
 	gr_complex *complex_input1 = NULL;
-	gr_complex *output_matrix1 = NULL;
 	gr_complex *complex_input2 = NULL;
+	gr_complex *output_matrix1 = NULL;
 	gr_complex *output_matrix2 = NULL;
 	gr_complex *cpu_integration_buffer = NULL;
 	char *char_input1 = NULL;

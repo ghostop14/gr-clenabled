@@ -1376,10 +1376,12 @@ clXEngine_impl::work_processor(int noutput_items,
 		// If a thread is already processing data and this would trigger a new one,
 		// the buffer has backed up.  Let's hold and tell the engine we're not ready for this data.
 
+		/*
 		while (thread_process_data) {
 			usleep(4);
 		}
-
+		*/
+		gr::thread::scoped_lock guard(d_thread_active_lock);
 		// return 0;
 	}
 
@@ -1669,6 +1671,7 @@ void clXEngine_impl::runThread() {
 
 	while (!stop_thread) {
 		if (thread_process_data) {
+			gr::thread::scoped_lock guard(d_thread_active_lock);
 			// This is really a one-time variable set to true on the first pass.
 			thread_is_processing = true;
 

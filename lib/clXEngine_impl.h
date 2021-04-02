@@ -750,6 +750,8 @@ class clXEngine_impl : public clXEngine, public GRCLBase
     FILE *d_fp = NULL;
     boost::mutex d_fpmutex;
 
+    boost::mutex d_thread_active_lock;
+
 	virtual bool open();
 	virtual void close();
 	virtual void write_json(long seq_num);

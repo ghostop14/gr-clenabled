@@ -91,7 +91,7 @@ protected:
     std::vector<std::string> deviceNames;
     std::vector<std::string> deviceTypes;
 
-    bool CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail=true);
+    bool CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail=true,const char *options=NULL);
 
 	virtual void InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, int devSelector,int platformId, int devId, bool setDebug=false,bool outOfOrderQueue=false);
 

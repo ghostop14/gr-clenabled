@@ -150,7 +150,7 @@ find_path(CL_HPP
 # Testing NOTE: you may need to delete the build directory to remove any cmake cache
 # then recreate it for changes here to actually show up as expected.
    CL/clxxasdf.hpp OpenCL/clxxasdf.hpp
-   CL/cl.hpp OpenCL/cl.hpp
+   CL/opencl.hpp OpenCL/cl.hpp
   PATHS
     ENV "PROGRAMFILES(X86)"
     ENV AMDAPPSDKROOT

@@ -7,6 +7,7 @@
 
 #include <iostream>
 
+#define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
 #include <clenabled/GRCLBase.h>
 
 namespace gr {

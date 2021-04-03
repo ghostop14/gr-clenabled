@@ -679,6 +679,7 @@
 #include "config.h"
 #endif
 
+#define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
 #include <gnuradio/io_signature.h>
 #include "clxcorrelate_fft_vcf_impl.h"
 

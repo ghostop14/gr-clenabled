@@ -19,10 +19,13 @@
 #define CL_VERSION_2_2
 #define CL_TARGET_OPENCL_VERSION 220
 
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 220
+
 #if defined(__APPLE__) || defined(__MACOSX)
 #include <OpenCL/cl.hpp>
 #else
-#include <CL/cl.hpp>
+#include <CL/opencl.hpp>
 #endif
 
 #include "clSComplex.h"

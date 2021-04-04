@@ -371,7 +371,7 @@ cl_device_type GRCLBase::GetContextType() {
 	return contextType;
 }
 
-bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail) {
+bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionName, bool exitOnFail,const char *options) {
 	try {
 		// Create and program from source
 		if (program) {
@@ -386,7 +386,7 @@ bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 		program = new cl::Program(*context, *sources);
 
 		// Build program
-		program->build(devices);
+		program->build(devices,options);
 
 		kernel=new cl::Kernel(*program, (const char *)kernelFunctionName);
 	}

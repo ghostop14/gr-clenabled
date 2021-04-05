@@ -23,7 +23,9 @@
 
 #define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
+// #define CL_HPP_CL_1_2_DEFAULT_BUILD
 
+/*
 #ifdef CL2_FOUND
 	// #pragma message("Compiling with CL2 support")
 	#if defined(__APPLE__) || defined(__MACOSX)
@@ -38,6 +40,13 @@
 	#else
 	#include <CL/cl.hpp>
 	#endif
+#endif
+*/
+
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.hpp>
+#else
+#include <CL/cl.hpp>
 #endif
 
 #include "clSComplex.h"

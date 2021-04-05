@@ -13,7 +13,7 @@
 
 #define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
-
+/*
 #ifdef CL2_FOUND
 	// #pragma message("Compiling with CL2 support")
 	#if defined(__APPLE__) || defined(__MACOSX)
@@ -23,11 +23,17 @@
 	#endif
 #else
 #pragma message("Consider enabling cl2.hpp support by installing with 'apt install opencl-clhpp-headers'")
-	#if defined(__APPLE__) || defined(__MACOSX)
-	#include <OpenCL/cl.hpp>
-	#else
-	#include <CL/cl.hpp>
-	#endif
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.hpp>
+#else
+#include <CL/cl.hpp>
+#endif
+#endif
+*/
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.hpp>
+#else
+#include <CL/cl.hpp>
 #endif
 
 #include <iostream>

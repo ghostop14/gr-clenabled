@@ -42,7 +42,7 @@ function(_FIND_OPENCL_VERSION)
   CMAKE_PUSH_CHECK_STATE()
 #  foreach(VERSION "2_0" "1_2" "1_1" "1_0")
 # We compile against 1.2 so 1.2 or 2.0 would work.
-  foreach(VERSION "2_0" "1_2")
+  foreach(VERSION "2_1" "2_0" "1_2")
     set(CMAKE_REQUIRED_INCLUDES "${OpenCL_INCLUDE_DIR}")
 
     if(APPLE)
@@ -73,7 +73,7 @@ endfunction()
 
 find_path(OpenCL_INCLUDE_DIR
   NAMES
-    CL/cl.h OpenCL/cl.h
+    CL/cl.h OpenCL/cl.h CL/cl2.hpp OpenCL/cl2.hpp
   PATHS
     ENV "PROGRAMFILES(X86)"
     ENV AMDAPPSDKROOT
@@ -166,13 +166,37 @@ find_path(CL_HPP
 # ------------------------------
 # MESSAGE(STATUS,"CL_HPP: ${CL_HPP}")
 
-if(NOT CL_HPP)
-	IF (APPLE)
-		MESSAGE(FATAL_ERROR "Unable to find OpenCL/cl.hpp in the OpenCL include path.  Check that you have it on your file system and create a symlink or copy it if necessary.")
-	ELSE()
-		MESSAGE(FATAL_ERROR "Unable to find CL/cl.hpp in the OpenCL include path.  Check that you have it on your file system and create a symlink or copy it if necessary.")
-	ENDIF()
-# else()
-#	MESSAGE(STATUS,"Found cl.hpp")
+find_path(CL2_HPP
+  NAMES
+# Failure testing
+# Testing NOTE: you may need to delete the build directory to remove any cmake cache
+# then recreate it for changes here to actually show up as expected.
+   CL/cl2.hpp OpenCL/cl2.hpp
+  PATHS
+    ENV "PROGRAMFILES(X86)"
+    ENV AMDAPPSDKROOT
+    ENV INTELOCLSDKROOT
+    ENV NVSDKCOMPUTE_ROOT
+    ENV CUDA_PATH
+    ENV ATISTREAMSDKROOT
+  PATH_SUFFIXES
+    include
+    OpenCL/common/inc
+    "AMD APP/include")
+
+if (NOT CL2_HPP)
+	MESSAGE("WARNING: cl2.hpp not found.  Consider enabling cl2.hpp support by installing with 'apt install opencl-clhpp-headers'")
+	if(NOT CL_HPP)
+		IF (APPLE)
+			MESSAGE(FATAL_ERROR "Unable to find OpenCL/cl.hpp in the OpenCL include path.  Check that you have it on your file system and create a symlink or copy it if necessary.")
+		ELSE()
+			MESSAGE(FATAL_ERROR "Unable to find CL/cl.hpp in the OpenCL include path.  Check that you have it on your file system and create a symlink or copy it if necessary.")
+		ENDIF()
+	# else()
+	#	MESSAGE(STATUS,"Found cl.hpp")
+	endif()
+else()
+	MESSAGE(STATUS,"Found cl2.hpp")
+	add_definitions(-DCL2_FOUND)
 endif()
   

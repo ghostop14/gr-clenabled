@@ -12,12 +12,36 @@
 // Note: If you include cl.hpp, the compiler just won't find cl::Error class.
 // You have to use cl2.hpp to get it to go away
 #define __CL_ENABLE_EXCEPTIONS
+#define CL_HPP_ENABLE_EXCEPTIONS
 // Disable the deprecated functions warning.  If you want to keep support for 1.2 devices
 // You need to use the deprecated functions.  This #define makes the warning go away.
 // #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 // #define CL_VERSION_1_2
 #define CL_VERSION_2_2
+#define CL_HPP_TARGET_OPENCL_VERSION 210
 #define CL_TARGET_OPENCL_VERSION 220
+
+#define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
+#define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
+// #define CL_HPP_CL_1_2_DEFAULT_BUILD
+
+/*
+#ifdef CL2_FOUND
+	// #pragma message("Compiling with CL2 support")
+	#if defined(__APPLE__) || defined(__MACOSX)
+	#include <OpenCL/cl2.hpp>
+	#else
+	#include <CL/cl2.hpp>
+	#endif
+#else
+#pragma message("Consider enabling cl2.hpp support by installing with 'apt install opencl-clhpp-headers'")
+	#if defined(__APPLE__) || defined(__MACOSX)
+	#include <OpenCL/cl.hpp>
+	#else
+	#include <CL/cl.hpp>
+	#endif
+#endif
+*/
 
 #if defined(__APPLE__) || defined(__MACOSX)
 #include <OpenCL/cl.hpp>

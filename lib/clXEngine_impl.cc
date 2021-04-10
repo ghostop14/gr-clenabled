@@ -298,6 +298,19 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 }
 
 bool clXEngine_impl::start() {
+
+	/*
+	 * Optimal workgroupsize seems to be 256 for 256 channels.
+	 * Max workgroup size is 1024.
+	*/
+	/* Note: This code I don't think is generally optimal.  So it's here for reference
+	 * But commented out.  For some reason maxworkgroupsize is coming back as 256 when clinfo reports 1024.
+	std::cout << "DEBUG: max workgroup size: " << maxWorkGroupSize << std::endl;
+	if (d_num_channels <= maxWorkGroupSize) {
+		localWGSize = cl::NDRange(d_num_channels);
+	}
+	*/
+
 	// 2 buffers will allow us to process one in a worker thread while the other
 	// is being loaded.
 	size_t mem_alignment = volk_get_alignment();
@@ -669,6 +682,10 @@ void clXEngine_impl::buildKernel_float4() {
 	srcStdStr += "cross_correlation[i] = outputvec;\n";
 	srcStdStr += "}\n"; // End function
 
+	if (debugMode) {
+		GR_LOG_INFO(d_logger,"Using Correlate Kernel:");
+		GR_LOG_INFO(d_logger,srcStdStr.c_str());
+	}
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str(),true,"-cl-fast-relaxed-math");
 }
 
@@ -762,6 +779,10 @@ void clXEngine_impl::buildKernel() {
 
 	srcStdStr += "}\n"; // End function
 
+	if (debugMode) {
+		GR_LOG_INFO(d_logger,"Using Correlate Kernel:");
+		GR_LOG_INFO(d_logger,srcStdStr.c_str());
+	}
 	GRCLBase::CompileKernel((const char *)srcStdStr.c_str(),(const char *)fnName.c_str(),true,"-cl-fast-relaxed-math");
 }
 
@@ -815,6 +836,11 @@ void clXEngine_impl::buildCharToComplexKernel() {
 		srcStdStr += "	  c[index].imag = (float)a[two_index+1] * ONE_OVER_SCHAR_MAX;\n";
 	}
 	srcStdStr += "}\n";
+
+	if (debugMode) {
+		GR_LOG_INFO(d_logger,"Using char to complex Kernel:");
+		GR_LOG_INFO(d_logger,srcStdStr.c_str());
+	}
 
 	try {
 		// Create and program from source

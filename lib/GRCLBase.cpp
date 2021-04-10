@@ -342,6 +342,15 @@ void GRCLBase::InitOpenCL(int idataType, size_t dsize,int openCLPlatformType, in
 	}
 
 
+	try {
+		size_t wgSize = devices[devIndex].getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+		maxWorkGroupSize = wgSize;
+	}
+	catch(cl::Error& e) {
+		std::cout << "Error getting max work group size" << std::endl;
+		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
+	}
+
 
     // Create command queue
 	try {
@@ -405,14 +414,6 @@ bool GRCLBase::CompileKernel(const char* kernelCode, const char* kernelFunctionN
 	}
 	catch(cl::Error& e) {
 		std::cout << "Error getting kernel preferred work group size multiple" << std::endl;
-		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
-	}
-
-	try {
-		maxWorkGroupSize = kernel->getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(devices[0]);
-	}
-	catch(cl::Error& e) {
-		std::cout << "Error getting kernel max work group size" << std::endl;
 		std::cout << "OpenCL Error " << e.err() << ": " << e.what()<< std::endl;
 	}
 

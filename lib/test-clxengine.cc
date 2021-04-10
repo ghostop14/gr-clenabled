@@ -202,7 +202,7 @@ bool testXCorrelate() {
 		}
 
 		// The one specifies output triangular order rather than full matrix.
-		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_COMPLEX,sizeof(gr_complex),
+		test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,verbose,DTYPE_COMPLEX,sizeof(gr_complex),
 				polarization, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 		test->start();
 	}
@@ -337,7 +337,7 @@ bool testXCorrelate() {
 		delete test;
 	}
 	// Now test char version
-	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_BYTE,sizeof(char)*2,
+	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,verbose,DTYPE_BYTE,sizeof(char)*2,
 			polarization, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 	test->start();
 
@@ -414,7 +414,7 @@ bool testXCorrelate() {
 		delete test;
 	}
 	// Now test char version
-	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,false,DTYPE_PACKEDXY,sizeof(char),
+	test = new gr::clenabled::clXEngine_impl(opencltype,selectorType,platformId,devId,verbose,DTYPE_PACKEDXY,sizeof(char),
 			2, num_inputs, 1, 0, num_channels, integration_time, ant_list);
 	test->start();
 
@@ -562,6 +562,7 @@ main (int argc, char **argv)
 			std::cout << std::endl;
 			std::cout << "Usage: [--gpu] [--cpu] [--accel] [--any] [--device=<platformid>:<device id>] [--single-polarization] [--num_inputs=#] [--integration-time=#] [number of channels (default is " << num_channels << ")]" << std::endl;
 			std::cout << "where: --gpu, --cpu, --accel[erator], or any defines the type of OpenCL device opened." << std::endl;
+			std::cout <<"--verbose  Prints out additional debug info" << std::endl;
 			std::cout <<"--num_inputs=n  Number of stations.  Default is " << num_inputs  << "." << std::endl;
 			std::cout <<"--integration-time=n  Default is " << integration_time << "." << std::endl;
 			std::cout <<"--single-polarization If not specified, correlation will assume X and Y polarizations per input." << std::endl;
@@ -604,6 +605,9 @@ main (int argc, char **argv)
 			}
 			else if (strcmp(argv[i],"--single-polarization")==0) {
 				single_polarization=true;
+			}
+			else if (strcmp(argv[i],"--verbose")==0) {
+				verbose=true;
 			}
 			else if (atoi(argv[i]) > 0) {
 				int newVal=atoi(argv[i]);

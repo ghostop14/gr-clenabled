@@ -486,6 +486,7 @@ bool clXEngine_impl::stop() {
 
 #ifdef INPUT_PINNED
 	if (pinned_input1) {
+		GR_LOG_INFO(d_logger,"Releasing GPU mapped memory objects");
 		if (complex_input1) {
 			queue->enqueueUnmapMemObject(*pinned_input1,complex_input1);
 		}
@@ -615,9 +616,9 @@ void clXEngine_impl::buildKernel_float4() {
 	// This will save time on unchanging param transfers at runtime.
 	srcStdStr += "#define d_num_channels " + std::to_string(d_num_channels) + "\n";
 	srcStdStr += "#define d_num_baselines " + std::to_string(d_num_baselines) + "\n";
-	srcStdStr += "#define d_integration_time " + std::to_string(d_integration_time) + "\n";
+	srcStdStr += "#define d_integration_time " + std::to_string(d_integration_time/2) + "\n";
 	srcStdStr += "#define d_num_inputs " + std::to_string(d_num_inputs) + "\n";
-	srcStdStr += "#define ant_times_time " + std::to_string(d_num_inputs*d_integration_time) + "\n";
+	srcStdStr += "#define ant_times_time " + std::to_string(d_num_inputs*d_integration_time/2) + "\n";
 	srcStdStr += "#define d_npol " + std::to_string(d_npol) + "\n";
 	// frame_size = inputs * channels * pol
 	srcStdStr += "#define d_frame_size " + std::to_string(frame_size) + "\n";
@@ -637,7 +638,7 @@ void clXEngine_impl::buildKernel_float4() {
 	srcStdStr += "}\n\n";
 
 	// srcStdStr += "__kernel void XCorrelate(__global XComplex * restrict input_matrix, __global XComplex * restrict cross_correlation) {\n";
-	srcStdStr += "__kernel void XCorrelate(__global float4 * restrict input_matrix, __global float8 * restrict cross_correlation) {\n";
+	srcStdStr += "__kernel void XCorrelate(__global float8 * restrict input_matrix, __global float8 * restrict cross_correlation) {\n";
 	srcStdStr += "size_t i =  get_global_id(0);\n";
 
 	srcStdStr += "int f = i/d_num_baselines;\n";
@@ -664,10 +665,24 @@ void clXEngine_impl::buildKernel_float4() {
 	srcStdStr += "  size_t index1 = index1_base + t;\n";
 	srcStdStr += "  size_t index2 = index2_base + t;\n";
 
-	srcStdStr += "	float4 inputRowXY_f4 = input_matrix[index1];\n";
+	srcStdStr += "	float8 inputRowXY_f8 = input_matrix[index1];\n";
+	srcStdStr += "	float4 inputRowXY_f4 = inputRowXY_f8.s0123;\n";
 	srcStdStr += "	inputRowX = inputRowXY_f4.xy;\n";
 	srcStdStr += "	inputRowY = inputRowXY_f4.zw;\n";
-	srcStdStr += "	float4 inputColXY_f4 = input_matrix[index2];\n";
+	srcStdStr += "	float8 inputColXY_f8 = input_matrix[index2];\n";
+	srcStdStr += "	float4 inputColXY_f4 = inputColXY_f8.s0123;\n";
+	srcStdStr += "	inputColX = inputColXY_f4.xy;\n";
+	srcStdStr += "	inputColY = inputColXY_f4.zw;\n";
+
+	srcStdStr += "	cxmac(&sumXX, &inputRowX, &inputColX);\n";
+	srcStdStr += "	cxmac(&sumXY, &inputRowX, &inputColY);\n";
+	srcStdStr += "	cxmac(&sumYX, &inputRowY, &inputColX);\n";
+	srcStdStr += "	cxmac(&sumYY, &inputRowY, &inputColY);\n";
+
+	srcStdStr += "	inputRowXY_f4 = inputRowXY_f8.s4567;\n";
+	srcStdStr += "	inputRowX = inputRowXY_f4.xy;\n";
+	srcStdStr += "	inputRowY = inputRowXY_f4.zw;\n";
+	srcStdStr += "	inputColXY_f4 = inputColXY_f8.s4567;\n";
 	srcStdStr += "	inputColX = inputColXY_f4.xy;\n";
 	srcStdStr += "	inputColY = inputColXY_f4.zw;\n";
 

@@ -666,25 +666,24 @@ void clXEngine_impl::buildKernel_float4() {
 	srcStdStr += "  size_t index2 = index2_base + t;\n";
 
 	srcStdStr += "	float8 inputRowXY_f8 = input_matrix[index1];\n";
-	srcStdStr += "	float4 inputRowXY_f4 = inputRowXY_f8.s0123;\n";
-	srcStdStr += "	inputRowX = inputRowXY_f4.xy;\n";
-	srcStdStr += "	inputRowY = inputRowXY_f4.zw;\n";
+	srcStdStr += "	inputRowX = inputRowXY_f8.s01;\n";
+	srcStdStr += "	inputRowY = inputRowXY_f8.s23;\n";
+
 	srcStdStr += "	float8 inputColXY_f8 = input_matrix[index2];\n";
 	srcStdStr += "	float4 inputColXY_f4 = inputColXY_f8.s0123;\n";
-	srcStdStr += "	inputColX = inputColXY_f4.xy;\n";
-	srcStdStr += "	inputColY = inputColXY_f4.zw;\n";
+	srcStdStr += "	inputColX = inputColXY_f8.s01;\n";
+	srcStdStr += "	inputColY = inputColXY_f8.s23;\n";
 
 	srcStdStr += "	cxmac(&sumXX, &inputRowX, &inputColX);\n";
 	srcStdStr += "	cxmac(&sumXY, &inputRowX, &inputColY);\n";
 	srcStdStr += "	cxmac(&sumYX, &inputRowY, &inputColX);\n";
 	srcStdStr += "	cxmac(&sumYY, &inputRowY, &inputColY);\n";
 
-	srcStdStr += "	inputRowXY_f4 = inputRowXY_f8.s4567;\n";
-	srcStdStr += "	inputRowX = inputRowXY_f4.xy;\n";
-	srcStdStr += "	inputRowY = inputRowXY_f4.zw;\n";
-	srcStdStr += "	inputColXY_f4 = inputColXY_f8.s4567;\n";
-	srcStdStr += "	inputColX = inputColXY_f4.xy;\n";
-	srcStdStr += "	inputColY = inputColXY_f4.zw;\n";
+	srcStdStr += "	inputRowX = inputRowXY_f8.s45;\n";
+	srcStdStr += "	inputRowY = inputRowXY_f8.s67;\n";
+
+	srcStdStr += "	inputColX = inputColXY_f8.s45;\n";
+	srcStdStr += "	inputColY = inputColXY_f8.s67;\n";
 
 	srcStdStr += "	cxmac(&sumXX, &inputRowX, &inputColX);\n";
 	srcStdStr += "	cxmac(&sumXY, &inputRowX, &inputColY);\n";

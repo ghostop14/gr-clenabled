@@ -558,14 +558,14 @@ clFilter_impl::filterGPU(int ninput_items,
 		int retVal;
 
 		if (d_decimation == 1) {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)output_items[0]);
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
 
 			// # in=# out. Do it the quick way
 			// memcpy((void *)output_items[0],output,ninput_items*dataSize);
 			retVal = ninput_items;
 		}
 		else {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)tmpFFTBuff);
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
 
 			// copy results to output buffer and increment for decimation!
 			int j=0;
@@ -588,8 +588,6 @@ clFilter_impl::filterGPU(int ninput_items,
 
 			retVal = i;
 		}
-
-		queue->finish();
 
     	return retVal;  // expecting nitems which is ninput_items/decimation
     }

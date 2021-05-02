@@ -524,11 +524,7 @@ clFilter_impl::filterGPU(int ninput_items,
     	// Zero out the excess buffer
         //int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
 
-        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputBytes,(void *)input_items[0]);
-        // calculated in setTimeFilterVariables()
-        // 	paddingLength = d_active_taps.size() - 1;
-    	//  paddingBytes = dataSize*paddingLength;
-    	queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,inputBytes,paddingBytes,(void *)zeroBuff);
+        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputBytes+paddingBytes,(void *)input_items[0]);
 
 		kernel->setArg(0, *aBuffer);
 		// bBuffer is prepopulated with the taps so we only have to do the copy when the taps change
@@ -558,14 +554,14 @@ clFilter_impl::filterGPU(int ninput_items,
 		int retVal;
 
 		if (d_decimation == 1) {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)output_items[0]);
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)output_items[0]);
 
 			// # in=# out. Do it the quick way
 			// memcpy((void *)output_items[0],output,ninput_items*dataSize);
 			retVal = ninput_items;
 		}
 		else {
-			queue->enqueueReadBuffer(*cBuffer,CL_FALSE,0,inputBytes,(void *)tmpFFTBuff);
+			queue->enqueueReadBuffer(*cBuffer,CL_TRUE,0,inputBytes,(void *)tmpFFTBuff);
 
 			// copy results to output buffer and increment for decimation!
 			int j=0;
@@ -588,8 +584,6 @@ clFilter_impl::filterGPU(int ninput_items,
 
 			retVal = i;
 		}
-
-		queue->finish();
 
     	return retVal;  // expecting nitems which is ninput_items/decimation
     }

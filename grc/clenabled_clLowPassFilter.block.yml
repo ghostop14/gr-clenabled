@@ -52,11 +52,11 @@ parameters:
     dtype: real
 -   id: win
     label: Window
-    dtype: int
-    default: firdes.WIN_HAMMING
-    options: [firdes.WIN_HAMMING, firdes.WIN_BLACKMAN, firdes.WIN_HANN, firdes.WIN_RECTANGULAR,
-        firdes.WIN_KAISER]
-    option_labels: [Hamming, Blackman, Hann, Rectangular, Kaiser]
+    dtype: raw
+    default: window.WIN_HAMMING
+    options: [window.WIN_HAMMING, window.WIN_HANN, window.WIN_BLACKMAN, window.WIN_RECTANGULAR,
+        window.WIN_KAISER]
+    option_labels: [Hamming, Hann, Blackman, Rectangular, Kaiser]
 -   id: beta
     label: Beta
     dtype: real
@@ -78,6 +78,7 @@ outputs:
 templates:
     imports: |-
         import clenabled
+        from gnuradio.filter import window
         from gnuradio.filter import firdes
     make: "% if devices == 1:\n  clenabled.clFilter(${openCLPlatform},1,0,0,${decimation},firdes.low_pass(\n\
         \t${gain}, ${samp_rate}, ${cutoff_freq}, ${width}, ${win}, ${beta}),1,${setDebug},${use_time})\n\

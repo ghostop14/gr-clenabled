@@ -979,11 +979,7 @@ namespace gr {
     	// Zero out the excess buffer
         //int remaining=(curBufferSize+d_fir_filter->ntaps())*dataSize - inputBytes;
 
-        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputBytes,(void *)input_items[0]);
-        // calculated in setTimeFilterVariables()
-        // 	paddingLength = d_active_taps.size() - 1;
-    	//  paddingBytes = dataSize*paddingLength;
-    	queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,inputBytes,paddingBytes,(void *)zeroBuff);
+        queue->enqueueWriteBuffer(*aBuffer,CL_FALSE,0,inputBytes+paddingBytes,(void *)input_items[0]);
 
 		kernel->setArg(0, *aBuffer);
 		// bBuffer is prepopulated with the taps so we only have to do the copy when the taps change

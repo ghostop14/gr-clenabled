@@ -71,8 +71,8 @@ parameters:
   label: GPU Integration Frames
   dtype: int
   default: '10000'
-- id: cpu_integration
-  label: Additional CPU Integration
+- id: pipeline_integration
+  label: Pipeline Integration
   dtype: int
   default: '0'
   hide: part
@@ -149,9 +149,9 @@ templates:
   imports: import clenabled
   make: |-
      % if devices == 1:
-     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output}, ${cpu_integration})
+     clenabled.clXEngine(${openCLPlatform},1,0,0,${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer}, ${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output}, ${pipeline_integration})
      % else:
-     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output},${cpu_integration})
+     clenabled.clXEngine(${openCLPlatform},${devices},${platformId},${deviceId}, ${setDebug}, ${type.data_type}, ${polarization}, ${num_inputs}, 1, ${first_channel}, ${num_channels}, ${integration}, ${antenna_list}.replace(' ','').split(','), ${output_file},${file_base},${rollover_size_mb},${internal_synchronizer},${sync_timestamp}, ${object_name}, ${starting_chan_center_freq}, ${channel_width}, ${disable_output},${pipeline_integration})
      % endif
 
 documentation: "This block provides the full signal cross correlation function (X) of\

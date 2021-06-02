@@ -56,7 +56,7 @@ clXEngine::sptr
 clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int polarization, int num_inputs,
 		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 		  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
-		  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output, int cpu_integration)
+		  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output, int pipeline_integration)
 {
 	int data_size = 1;
 
@@ -75,7 +75,7 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 	return gnuradio::get_initial_sptr
 			(new clXEngine_impl(openCLPlatformType, devSelector, platformId, devId, setDebug, data_type, data_size,polarization, num_inputs,
 					output_format, first_channel, num_channels, integration, antenna_list, output_file, file_base, rollover_size_mb,
-					internal_synchronizer,sync_timestamp, object_name, starting_chan_center_freq, channel_width, disable_output,cpu_integration));
+					internal_synchronizer,sync_timestamp, object_name, starting_chan_center_freq, channel_width, disable_output,pipeline_integration));
 }
 
 /*
@@ -84,18 +84,19 @@ clXEngine::make(int openCLPlatformType,int devSelector,int platformId, int devId
 clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
 		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 			  bool output_file, std::string file_base, int rollover_size_mb, bool internal_synchronizer,
-			  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output,int cpu_integration)
+			  long sync_timestamp, std::string object_name, double starting_chan_center_freq, double channel_width, bool disable_output,int pipeline_integration)
 : gr::block("clXEngine",
 		gr::io_signature::make(2, num_inputs*(data_type==DTYPE_PACKEDXY?1:polarization), num_channels*(data_type==DTYPE_PACKEDXY?2:data_size)),
 		gr::io_signature::make(0, 0, 0)),
 		GRCLBase(data_type, data_size,openCLPlatformType,devSelector,platformId,devId,setDebug),
 		d_npol(polarization), d_num_inputs(num_inputs), d_output_format(output_format),d_first_channel(first_channel),
-		d_num_channels(num_channels), d_integration_time(integration), d_cpu_integration(cpu_integration), d_cpu_integration_counter(0),
+		d_num_channels(num_channels), d_integration_time(integration), d_pipeline_integration(pipeline_integration), d_pipeline_integration_counter(0),
 		integration_tracker(0),d_data_type(data_type), d_data_size(data_size),
 		d_output_file(output_file), d_file_base(file_base), d_rollover_size_mb(rollover_size_mb),
 		d_use_internal_synchronizer(internal_synchronizer),
 		d_antenna_list(antenna_list),
 		d_sync_timestamp(sync_timestamp),
+		current_timestamp(0),
 		d_object_name(object_name),
 		d_starting_chan_center_freq(starting_chan_center_freq),
 		d_channel_width(channel_width),
@@ -217,6 +218,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 	}
 	buildCharToComplexKernel();
 
+
 	int input_matrix_type;
 
 	unsigned long gpu_memory_allocated = 0;
@@ -249,7 +251,7 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 				  "Number of Polarizations: " << d_npol << std::endl <<
 				  "Number of Baselines (including autocorrelations): " << d_num_baselines << std::endl <<
 				  "Number of GPU Integration Frames: " << d_integration_time << std::endl <<
-				  "Number of Additional CPU Integration of GPU Frames: " << d_cpu_integration << std::endl;
+				  "Number of Additional Frame Pipeline Integration: " << d_pipeline_integration << std::endl;
 
 
 	GR_LOG_INFO(d_logger,msg_stream.str());
@@ -284,6 +286,11 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 			CL_MEM_READ_WRITE,
 			output_size);
 
+	if (d_pipeline_integration > 1) {
+		// Now zero out memory for the first cycle
+		queue->enqueueFillBuffer(*cross_correlation_buffer,f_zero,0,output_size);
+	}
+
 	message_port_register_out(pmt::mp("xcorr"));
 	message_port_register_out(pmt::mp("sync"));
 
@@ -292,9 +299,6 @@ clXEngine_impl::clXEngine_impl(int openCLPlatformType,int devSelector,int platfo
 		// The SNAP outputs packets in 16-time step blocks.  So let's take advantage of that here.
 		set_output_multiple(16);
 	}
-
-	num_procs = 1;
-
 }
 
 bool clXEngine_impl::start() {
@@ -371,10 +375,7 @@ bool clXEngine_impl::start() {
 	output_matrix = output_matrix1;
 	thread_output_matrix = output_matrix;
 
-	if (d_cpu_integration > 1) {
-		cpu_integration_buffer = (gr_complex *)volk_malloc(matrix_flat_length*sizeof(gr_complex), mem_alignment);
-		d_cpu_integration_counter = 1;
-	}
+	d_pipeline_integration_counter = 1;
 
 	proc_thread = new boost::thread(boost::bind(&clXEngine_impl::runThread, this));
 	return true;
@@ -449,11 +450,11 @@ void clXEngine_impl::write_json(long seq_num) {
 	   }
 
 	   long integ_frames;
-	   if (d_cpu_integration < 2) {
+	   if (d_pipeline_integration < 2) {
 		   integ_frames = (long)d_integration_time;
 	   }
 	   else {
-		   integ_frames = (long)d_integration_time * (long)d_cpu_integration;
+		   integ_frames = (long)d_integration_time * (long)d_pipeline_integration;
 	   }
 
 	   fprintf(pFile,"{\n\"sync_timestamp\":%ld,\n\"first_seq_num\":%ld,\n\"object_name\":\"%s\",\n\"num_baselines\":%d,\n\"first_channel\":%d,\n\"first_channel_center_freq\":%f,\n\"channels\":%d,\n\"channel_width\":%f,\n\"polarizations\":%d,\n\"antennas\":%d,\n\"antenna_names\":%s,\n\"ntime\":%ld,\n\"samples_per_block\":%ld,\n\"bytes_per_block\":%ld,\n\"data_type\":\"cf32_le\",\n\"data_format\": \"triangular order\"\n}\n",
@@ -544,13 +545,6 @@ bool clXEngine_impl::stop() {
 		// delete[] output_matrix2;
 		volk_free(output_matrix2);
 		output_matrix2 = NULL;
-	}
-
-	if (cpu_integration_buffer) {
-		// delete[] cpu_integration_buffer;
-		volk_free(cpu_integration_buffer);
-
-		cpu_integration_buffer = NULL;
 	}
 
 	if (char_matrix_buffer) {
@@ -693,7 +687,15 @@ void clXEngine_impl::buildKernel_float4() {
 
 
 	srcStdStr += "float8 outputvec=(float8)(sumXX,sumXY,sumYX,sumYY);\n";
-	srcStdStr += "cross_correlation[i] = outputvec;\n";
+	// srcStdStr += "cross_correlation[i] += outputvec;\n";
+
+	if (d_pipeline_integration > 1) {
+		srcStdStr += "cross_correlation[i] += outputvec;\n";
+	}
+	else {
+		srcStdStr += "cross_correlation[i] = outputvec;\n";
+	}
+
 	srcStdStr += "}\n"; // End function
 
 	if (debugMode) {
@@ -780,15 +782,29 @@ void clXEngine_impl::buildKernel() {
 	}
 	srcStdStr += "}\n"; // End for loop
 
-	if (d_npol == 1) {
-		srcStdStr += "cross_correlation[i    ] = sumXX;\n";
+	if (d_pipeline_integration > 1) {
+		if (d_npol == 1) {
+			srcStdStr += "cross_correlation[i    ] += sumXX;\n";
+		}
+		else {
+			srcStdStr += "int four_i = 4*i;\n";
+			srcStdStr += "cross_correlation[four_i    ] += sumXX;\n";
+			srcStdStr += "cross_correlation[four_i + 1] += sumXY;\n";
+			srcStdStr += "cross_correlation[four_i + 2] += sumYX;\n";
+			srcStdStr += "cross_correlation[four_i + 3] += sumYY;\n";
+		}
 	}
 	else {
-		srcStdStr += "int four_i = 4*i;\n";
-		srcStdStr += "cross_correlation[four_i    ] = sumXX;\n";
-		srcStdStr += "cross_correlation[four_i + 1] = sumXY;\n";
-		srcStdStr += "cross_correlation[four_i + 2] = sumYX;\n";
-		srcStdStr += "cross_correlation[four_i + 3] = sumYY;\n";
+		if (d_npol == 1) {
+			srcStdStr += "cross_correlation[i    ] = sumXX;\n";
+		}
+		else {
+			srcStdStr += "int four_i = 4*i;\n";
+			srcStdStr += "cross_correlation[four_i    ] = sumXX;\n";
+			srcStdStr += "cross_correlation[four_i + 1] = sumXY;\n";
+			srcStdStr += "cross_correlation[four_i + 2] = sumYX;\n";
+			srcStdStr += "cross_correlation[four_i + 3] = sumYY;\n";
+		}
 	}
 
 	srcStdStr += "}\n"; // End function
@@ -958,6 +974,7 @@ clXEngine_impl::work_processor(int noutput_items,
 			// If we found a tag, this'll write the lowest value
 			if (lowest_tag >= 0) {
 				write_json(lowest_tag);
+				current_timestamp = lowest_tag;
 			}
 		}
 	}
@@ -1039,6 +1056,8 @@ clXEngine_impl::work_processor(int noutput_items,
 				} // for i
 			} // else datatype
 		} // else interleave
+
+		current_timestamp++;
 	} // for curblock
 
 	integration_tracker += items_processed;
@@ -1052,7 +1071,7 @@ clXEngine_impl::work_processor(int noutput_items,
 				// So this case is that we have a new block ready and the old one is complete.
 				// So before transitioning to the new one, let's send the data from the last one.
 
-				if (d_cpu_integration < 2) {
+				if (d_pipeline_integration < 2) {
 					// We're not CPU accumulating too, so just send
 					pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
 					pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
@@ -1063,14 +1082,14 @@ clXEngine_impl::work_processor(int noutput_items,
 				}
 				else {
 					// We're also CPU accumulating.
-					if (d_cpu_integration_counter > d_cpu_integration) {
-						pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,cpu_integration_buffer));
+					if (d_pipeline_integration_counter > d_pipeline_integration) {
+						pmt::pmt_t corr_out(pmt::init_c32vector(matrix_flat_length,thread_output_matrix));
 						pmt::pmt_t pdu = pmt::cons(pmt::string_to_symbol("triang_matrix"), corr_out);
 
 						if (liveWork) {
 							message_port_pub(pmt::mp("xcorr"), pdu);
 						}
-						d_cpu_integration_counter = 1;
+						d_pipeline_integration_counter = 1;
 					}
 				}
 			}
@@ -1175,6 +1194,8 @@ clXEngine_impl::general_work (int noutput_items,
 		if (test_sync) {
 			// we're actually now synchronized.  We'll set our sync flag and process as if we came in sync'd
 			d_synchronized = true;
+			current_timestamp = highest_tag;
+
 			if (d_fp && !d_wrote_json) {
 					write_json(highest_tag);
 			}
@@ -1227,52 +1248,41 @@ void clXEngine_impl::runThread() {
 				xcorrelate(thread_char_input, (XComplex *)thread_output_matrix);
 			}
 
-			// If we have cpu integration enabled, we need to do that next
-			if (d_cpu_integration > 1) {
-				if (d_cpu_integration_counter == 1) {
-					// Start a new integration
-					memcpy(cpu_integration_buffer, thread_output_matrix,matrix_flat_length * sizeof(gr_complex));
-				}
-				else {
-					// Add to existing accumulator
-					volk_32fc_x2_add_32fc(cpu_integration_buffer,cpu_integration_buffer, thread_output_matrix,matrix_flat_length);
-					/*
-					for (int i=0;i<matrix_flat_length;i++) {
-						cpu_integration_buffer[i] += thread_output_matrix[i];
-					}
-					*/
-				}
-				d_cpu_integration_counter++;
+			if (d_pipeline_integration > 1) {
+				d_pipeline_integration_counter++;
 			}
 
-			// If file and either no cpu integration or we've completed our integration, write to disk
-			if ( d_fp && ( (d_cpu_integration < 2) || (d_cpu_integration_counter > d_cpu_integration)) ) {
-				char *inbuf;
+			// If we've completed our integration
+			if ( (d_pipeline_integration < 2) || (d_pipeline_integration_counter > d_pipeline_integration)) {
+				// Read the correlation back and wait for the memory transfer to happen.
+				queue->enqueueReadBuffer(*cross_correlation_buffer,CL_TRUE,0,output_size,(void *)thread_output_matrix);
 
-				if (d_cpu_integration < 2) {
-					inbuf = (char *)thread_output_matrix;
-				}
-				else {
-					inbuf = (char *)cpu_integration_buffer;
-					d_cpu_integration_counter = 1;
-				}
+				if (d_fp) {
+					long nwritten = 0;
 
-				long nwritten = 0;
-
-				// If we have an open file, we're supposed to rollover files, and we're over our limit
-				// reset the file.
-				if ((d_fp) && (rollover_size_bytes > 0) && (d_bytesWritten >= rollover_size_bytes)) {
-					close();
-					open();
-				}
-
-				// Optimize write as one call
-				long count = fwrite(inbuf, matrix_flat_length * sizeof(gr_complex),1,d_fp);
-				if(count == 0) {
-					// Error condition, nothing written for some reason.
-					if(ferror(d_fp)) {
-						std::cout << "[X-Engine] Write failed with error: " << std::strerror(errno) << std::endl;
+					// If we have an open file, we're supposed to rollover files, and we're over our limit
+					// reset the file.
+					if ((d_fp) && (rollover_size_bytes > 0) && (d_bytesWritten >= rollover_size_bytes)) {
+						close();
+						open();
 					}
+
+					// Optimize write as one call
+					long count = fwrite((char *)thread_output_matrix, matrix_flat_length * sizeof(gr_complex),1,d_fp);
+					if(count == 0) {
+						// Error condition, nothing written for some reason.
+						if(ferror(d_fp)) {
+							std::cout << "[X-Engine] Write failed with error: " << std::strerror(errno) << std::endl;
+						}
+					}
+				}
+
+				// Given the host pointer, this needs to be done after we use thread_output_matrix above.
+				if (d_pipeline_integration > 1) {
+					// Now zero out memory for the next cycle
+					queue->enqueueFillBuffer(*cross_correlation_buffer,f_zero,0,output_size);
+
+					d_pipeline_integration_counter = 1;
 				}
 			}
 

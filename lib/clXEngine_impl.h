@@ -60,7 +60,6 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	gr_complex *complex_input2 = NULL;
 	gr_complex *output_matrix1 = NULL;
 	gr_complex *output_matrix2 = NULL;
-	gr_complex *cpu_integration_buffer = NULL;
 	char *char_input1 = NULL;
 	char *char_input2 = NULL;
 	int d_npol;
@@ -70,15 +69,14 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	int d_num_channels;
 	int d_num_baselines;
 	int d_integration_time;
-	int d_cpu_integration;
-	int d_cpu_integration_counter;
+	int d_pipeline_integration;
+	int d_pipeline_integration_counter;
 	int integration_tracker;
 	int frame_size;
 	int input_size;
 	int num_chan_x2;
 	size_t matrix_flat_length;
 	long output_size;
-	int num_procs;
 
 	bool d_synchronized;
 	bool d_use_internal_synchronizer;
@@ -114,6 +112,7 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	std::string str_antenna_list;
 
 	long d_sync_timestamp;
+	long current_timestamp;
 	std::string d_object_name;
 	double d_starting_chan_center_freq;
 	double d_channel_width;
@@ -134,10 +133,13 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 	cl::Buffer *input_matrix_buffer=NULL;
 	cl::Buffer *cross_correlation_buffer=NULL;
 
-	// Additional Kernels
+	// char to complex kernel
     cl::Program::Sources *char_to_cc_sources=NULL;
     cl::Program *char_to_cc_program=NULL;
     cl::Kernel *char_to_cc_kernel=NULL;
+
+	// zero accumulator
+    cl_float2 f_zero = {0.0f,0.0f};
 
 	virtual void runThread();
 
@@ -155,17 +157,14 @@ class clXEngine_impl : public clXEngine, public GRCLBase
 				cl::NullRange,
 				cl::NDRange(channels_times_baselines),
 				localWGSize);
-
-		// Read the correlation back and wait for the memory transfer to happen.
-		queue->enqueueReadBuffer(*cross_correlation_buffer,CL_TRUE,0,output_size,(void *)cross_correlation);
-    };
+	};
 
 public:
 	clXEngine_impl(int openCLPlatformType,int devSelector,int platformId, int devId, bool setDebug, int data_type, int data_size, int polarization, int num_inputs,
   		  int output_format, int first_channel, int num_channels, int integration, std::vector<std::string> antenna_list,
 			  bool output_file=false, std::string file_base="", int rollover_size_mb=0, bool internal_synchronizer=false,
 			  long sync_timestamp=0, std::string object_name="", double starting_chan_center_freq=0.0, double channel_width=0.0,
-			  bool disable_output=false, int cpu_integration=0);
+			  bool disable_output=false, int pipeline_integration=0);
 	~clXEngine_impl();
 
 

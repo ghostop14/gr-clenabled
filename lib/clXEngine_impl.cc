@@ -1089,7 +1089,6 @@ clXEngine_impl::work_processor(int noutput_items,
 						if (liveWork) {
 							message_port_pub(pmt::mp("xcorr"), pdu);
 						}
-						d_pipeline_integration_counter = 1;
 					}
 				}
 			}
@@ -1277,7 +1276,6 @@ void clXEngine_impl::runThread() {
 					}
 				}
 
-				// Given the host pointer, this needs to be done after we use thread_output_matrix above.
 				if (d_pipeline_integration > 1) {
 					// Now zero out memory for the next cycle
 					queue->enqueueFillBuffer(*cross_correlation_buffer,f_zero,0,output_size);

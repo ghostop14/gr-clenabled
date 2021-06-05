@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(clXEngine.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(38f80702cc43718a0d1823b06b15b271)                     */
+/* BINDTOOL_HEADER_FILE_HASH(3c0284f9749d843ae3249d54fcef8380)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -59,7 +59,7 @@ void bind_clXEngine(py::module& m)
            py::arg("starting_chan_center_freq") = 0.,
            py::arg("channel_width") = 0.,
            py::arg("disable_output") = false,
-           py::arg("cpu_integration") = 0,
+           py::arg("pipeline_integration") = 0,
            D(clXEngine,make)
         )
         

@@ -13,6 +13,7 @@
 #include <chrono>
 #include <ctime>
 #include <boost/algorithm/string/replace.hpp>
+#include <iomanip>
 
 #include "clKernel1To1_impl.h"
 #include "clKernel2To1_impl.h"

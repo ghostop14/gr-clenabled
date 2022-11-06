@@ -30,6 +30,7 @@
 #include <iomanip>
 #include <boost/algorithm/string/replace.hpp>
 #include <math.h>  // fabsf
+#include <iomanip>
 
 #include <clenabled/clSComplex.h>
 #include "clMathConst_impl.h"

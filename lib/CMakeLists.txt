@@ -18,6 +18,8 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 
+ADD_COMPILE_DEFINITIONS(CL_USE_DEPRECATED_OPENCL_1_2_APIS)
+
 ########################################################################
 # Setup library
 ########################################################################
@@ -70,6 +72,8 @@ target_link_libraries(gnuradio-clenabled
 	gnuradio-fft
 	gnuradio-filter 
 	${Boost_LIBRARIES} 
+  boost_filesystem
+  boost_system
 	${VOLK_LIBRARIES} 
 	fftw3f 
 	${OpenCL_LIBRARY} 
@@ -123,6 +127,8 @@ target_link_libraries(
   ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   gnuradio-clenabled
 )
 
@@ -167,6 +173,8 @@ target_link_libraries(
   test-clenabled
   gnuradio::gnuradio-runtime
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   ${VOLK_LIBRARIES}
   fftw3f
   ${OpenCL_LIBRARY}
@@ -203,6 +211,8 @@ target_link_libraries(
   ${GNURADIO_RUNTIME_LIBRARIES}
   gnuradio-filter
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   gnuradio-clenabled
 )
 
@@ -225,6 +235,8 @@ target_link_libraries(
   ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   gnuradio-clenabled
 )
 
@@ -248,6 +260,8 @@ target_link_libraries(
   ${OpenCL_LIBRARY}
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   gnuradio-clenabled
 )
 
@@ -265,6 +279,8 @@ target_link_libraries(
   test-clxengine
   ${GNURADIO_RUNTIME_LIBRARIES}
   ${Boost_LIBRARIES}
+  boost_filesystem
+  boost_system
   ${OpenMP_CXX_LIBRARIES}
   volk
   gnuradio-clenabled

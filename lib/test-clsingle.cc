@@ -35,6 +35,7 @@
 #include <math.h>  // fabsf
 #include <chrono>
 #include <ctime>
+#include <iomanip>
 
 #include <clenabled/clSComplex.h>
 #include <clenabled/clMathOpTypes.h>
